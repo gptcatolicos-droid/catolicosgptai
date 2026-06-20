@@ -1,0 +1,52 @@
+{
+  "titulo": "Catecismo de la Iglesia Católica",
+  "año": 1992,
+  "papa": "Juan Pablo II",
+  "partes": [
+    {
+      "numero": 1,
+      "titulo": "La profesión de la fe",
+      "secciones": [
+        {
+          "numero": 1,
+          "titulo": "Creo — Creemos",
+          "capitulos": [
+            {
+              "titulo": "El hombre es capaz de Dios",
+              "articulos": [
+                { "cic": 27, "texto": "El deseo de Dios está inscrito en el corazón del hombre, porque el hombre ha sido creado por Dios y para Dios; y Dios no cesa de atraer al hombre hacia sí, y sólo en Dios encontrará el hombre la verdad y la dicha que no cesa de buscar." },
+                { "cic": 28, "texto": "De múltiples maneras, en su historia y hasta el día de hoy, los hombres han expresado su búsqueda de Dios a través de sus creencias y sus comportamientos religiosos." }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 2,
+      "titulo": "La celebración del misterio cristiano",
+      "secciones": [
+        {
+          "numero": 1,
+          "titulo": "La economía sacramental",
+          "temas": [
+            {
+              "tema": "Los sacramentos de la Iglesia",
+              "articulos": [
+                { "cic": 1113, "texto": "Toda la vida litúrgica de la Iglesia gira en torno al sacrificio eucarístico y los sacramentos." },
+                { "cic": 1114, "texto": "Los sacramentos de la Nueva Ley son instituidos por Jesucristo. Son siete: el Bautismo, la Confirmación, la Eucaristía, la Penitencia, la Unción de enfermos, el Orden y el Matrimonio." }
+              ]
+            },
+            {
+              "tema": "La Eucaristía",
+              "articulos": [
+                { "cic": 1374, "texto": "El modo de presencia de Cristo bajo las especies eucarísticas es único. Hace de ella como la perfección de la vida espiritual y el fin al que tienden todos los sacramentos." },
+                { "cic": 1376, "texto": "El Concilio de Trento resume la fe católica al declarar: En el santísimo sacramento de la Eucaristía están contenidos verdadera, real y substancialmente el Cuerpo y la Sangre junto con el alma y la divinidad de nuestro Señor Jesucristo." }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,532 @@
+{
+  "titulo": "Santoral Católico - CatolicosGPT",
+  "fuente": "Martirologio Romano y Calendario Litúrgico Universal",
+  "actualizado": "2026",
+  "nota": "Para consultas específicas verificar siempre en aciprensa.com/santos",
+  "santos_por_mes": {
+    "enero": [
+      {
+        "dia": 1,
+        "nombre": "Solemindad de María, Madre de Dios",
+        "tipo": "Solemnidad",
+        "descripcion": "Fiesta principal de la Bienaventurada Virgen María como Theotókos (Madre de Dios). Definida en el Concilio de Éfeso (431)."
+      },
+      {
+        "dia": 2,
+        "nombre": "Santos Basilio Magno y Gregorio Nacianceno",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Obispos y Doctores del siglo IV. Basilio organizó el monacato oriental. Gregorio es llamado 'el Teólogo'. Combatieron la herejía arriana."
+      },
+      {
+        "dia": 3,
+        "nombre": "Santísimo Nombre de Jesús",
+        "tipo": "Memorial opcional",
+        "descripcion": "Celebración del Nombre de Jesús, ante el cual toda rodilla se dobla (Fil 2,10)."
+      },
+      {
+        "dia": 4,
+        "nombre": "Santa Isabel Ana Seton",
+        "tipo": "Memorial",
+        "descripcion": "Primera santa nacida en EE.UU. (1774-1821). Fundó las Hermanas de la Caridad. Convertida del anglicanismo al catolicismo."
+      },
+      {
+        "dia": 5,
+        "nombre": "San Juan Neumann",
+        "tipo": "Memorial",
+        "descripcion": "Obispo redentorista (1811-1860). Primer hombre canonizado de EE.UU. Organizó el sistema de escuelas católicas."
+      },
+      {
+        "dia": 6,
+        "nombre": "Epifanía del Señor",
+        "tipo": "Solemnidad",
+        "descripcion": "La manifestación de Jesús a los Magos del Oriente. Celebra la universalidad de la salvación para todos los pueblos."
+      },
+      {
+        "dia": 7,
+        "nombre": "San Raimundo de Peñafort",
+        "tipo": "Memorial",
+        "descripcion": "Dominico español (1175-1275). Codificó el Derecho Canónico. Fundó la Orden de la Merced para redimir cautivos."
+      },
+      {
+        "dia": 13,
+        "nombre": "San Hilario de Poitiers",
+        "tipo": "Memorial",
+        "descripcion": "Obispo y Doctor (315-367). Defensor de la fe nicena contra el arrianismo. Llamado el 'Atanasio del Occidente'."
+      },
+      {
+        "dia": 17,
+        "nombre": "San Antonio Abad",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Padre del monacato cristiano (251-356). Vivió en el desierto egipcio. Su biografía escrita por San Atanasio inspiró el monacato occidental."
+      },
+      {
+        "dia": 20,
+        "nombre": "San Fabián y San Sebastián",
+        "tipo": "Memorial",
+        "descripcion": "Fabián: Papa mártir (†250). Sebastián: mártir romano, capitán de la guardia imperial (†288). Ambos murieron bajo Decio."
+      },
+      {
+        "dia": 21,
+        "nombre": "Santa Inés",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Virgen y mártir romana (†304). Murió a los 12 años por no renegar de su fe. Patrona de las niñas y la castidad."
+      },
+      {
+        "dia": 22,
+        "nombre": "San Vicente de Zaragoza",
+        "tipo": "Memorial",
+        "descripcion": "Diácono y protomártir de España (†304). Murió bajo el gobernador Daciano. Su fortaleza fue legendaria."
+      },
+      {
+        "dia": 24,
+        "nombre": "San Francisco de Sales",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Obispo de Ginebra y Doctor (1567-1622). Fundó la Visitación con Santa Juana Chantal. Patrono de periodistas y escritores."
+      },
+      {
+        "dia": 25,
+        "nombre": "Conversión de San Pablo Apóstol",
+        "tipo": "Fiesta",
+        "descripcion": "Conmemora la conversión de Saulo de Tarso camino a Damasco (Hch 9). Base teológica de la gracia transformadora."
+      },
+      {
+        "dia": 26,
+        "nombre": "Santos Timoteo y Tito",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Discípulos predilectos de San Pablo. Recibieron cartas pastorales. Timoteo fue obispo de Éfeso; Tito de Creta."
+      },
+      {
+        "dia": 27,
+        "nombre": "Santa Ángela de Mérici",
+        "tipo": "Memorial",
+        "descripcion": "Fundadora de las Ursulinas (1474-1540). Primera congregación femenina para la educación de niñas."
+      },
+      {
+        "dia": 28,
+        "nombre": "Santo Tomás de Aquino",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Sacerdote dominico y Doctor de la Iglesia (1225-1274). El 'Doctor Angélico'. Su Summa Theologiae es cima del pensamiento escolástico."
+      },
+      {
+        "dia": 31,
+        "nombre": "San Juan Bosco",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Sacerdote italiano (1815-1888). Fundó la Congregación Salesiana. Patrono de la juventud. Creó el sistema preventivo de educación."
+      }
+    ],
+    "febrero": [
+      {
+        "dia": 2,
+        "nombre": "Presentación del Señor (La Candelaria)",
+        "tipo": "Fiesta",
+        "descripcion": "Presentación de Jesús en el Templo 40 días después de su nacimiento. Simeón proclama a Cristo 'Luz para iluminar a las naciones'."
+      },
+      {
+        "dia": 3,
+        "nombre": "San Blas",
+        "tipo": "Memorial opcional",
+        "descripcion": "Obispo y mártir (†316). Patrono de los enfermos de la garganta. La Iglesia bendice gargantas en su festividad."
+      },
+      {
+        "dia": 5,
+        "nombre": "Santa Águeda",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Virgen y mártir de Sicilia (†251). Rechazó el amor del cónsul Quinciano. Patrona de las mujeres con cáncer de mama."
+      },
+      {
+        "dia": 6,
+        "nombre": "Santos Pablo Miki y compañeros",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "26 mártires crucificados en Nagasaki, Japón (1597). Incluye jesuitas, franciscanos y laicos. Primeros mártires de Japón."
+      },
+      {
+        "dia": 10,
+        "nombre": "Santa Escolástica",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Hermana gemela de San Benito (480-547). Fundadora del monacato de las Clarisas o benedictino."
+      },
+      {
+        "dia": 11,
+        "nombre": "Nuestra Señora de Lourdes",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Aparición de la Virgen a Bernadette Soubirous en 1858. Día Mundial del Enfermo desde 1992 (Juan Pablo II)."
+      },
+      {
+        "dia": 14,
+        "nombre": "Santos Cirilo y Metodio",
+        "tipo": "Fiesta",
+        "descripcion": "Hermanos griegos (826-869 y 815-885). Evangelizaron a los eslavos. Crearon el alfabeto cirílico. Copatronos de Europa."
+      },
+      {
+        "dia": 17,
+        "nombre": "Los Siete Santos Fundadores de los Servitas",
+        "tipo": "Memorial",
+        "descripcion": "Siete mercaderes florentinos que en 1233 fundaron la Orden de los Siervos de María (Servitas)."
+      },
+      {
+        "dia": 21,
+        "nombre": "San Pedro Damián",
+        "tipo": "Memorial",
+        "descripcion": "Cardenal y Doctor (1007-1072). Reformador de la Iglesia. Combatió la simonía y el nicolaísmo."
+      },
+      {
+        "dia": 22,
+        "nombre": "Cátedra de San Pedro",
+        "tipo": "Fiesta",
+        "descripcion": "Celebración del ministerio petrino. Recuerda el primado de Pedro como fundamento visible de la Iglesia."
+      },
+      {
+        "dia": 23,
+        "nombre": "San Policarpo de Esmirna",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Obispo y mártir (†155). Discípulo de San Juan Apóstol. Quemado vivo en el anfiteatro. Sus actas son los más antiguos del martirio."
+      }
+    ],
+    "marzo": [
+      {
+        "dia": 4,
+        "nombre": "San Casimiro",
+        "tipo": "Memorial",
+        "descripcion": "Príncipe polaco (1458-1484). Renunció al trono por amor a la pobreza y la castidad. Patrono de Polonia y Lituania."
+      },
+      {
+        "dia": 7,
+        "nombre": "Santas Perpetua y Felicidad",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Mártires de Cartago (†203). Perpetua era noble y Felicidad era su esclava embarazada. Sus Actas son documento histórico valioso."
+      },
+      {
+        "dia": 8,
+        "nombre": "San Juan de Dios",
+        "tipo": "Memorial",
+        "descripcion": "Fundador de los Hermanos Hospitalarios (1495-1550). Patrono de los enfermos, hospitales y enfermeros."
+      },
+      {
+        "dia": 9,
+        "nombre": "Santa Francisca Romana",
+        "tipo": "Memorial",
+        "descripcion": "Laica italiana (1384-1440). Casada, madre y luego religiosa. Fundó las Oblatas de María. Patrona de las conductoras."
+      },
+      {
+        "dia": 17,
+        "nombre": "San Patricio",
+        "tipo": "Memorial",
+        "descripcion": "Obispo y evangelizador de Irlanda (389-461). Convirtió a los irlandeses. Patrono de Irlanda. Símbolo del trébol para explicar la Trinidad."
+      },
+      {
+        "dia": 18,
+        "nombre": "San Cirilo de Jerusalén",
+        "tipo": "Memorial",
+        "descripcion": "Obispo y Doctor (313-386). Sus Catequesis bautismales son fuente fundamental de liturgia y sacramentos."
+      },
+      {
+        "dia": 19,
+        "nombre": "San José, esposo de la Virgen María",
+        "tipo": "Solemnidad",
+        "descripcion": "Patrono de la Iglesia Universal, los trabajadores, los padres de familia y la muerte feliz. Custodio del Redentor. Proclamado por Pío IX en 1870."
+      },
+      {
+        "dia": 23,
+        "nombre": "San Toribio de Mogrovejo",
+        "tipo": "Memorial",
+        "descripcion": "Arzobispo de Lima (1538-1606). Evangelizador de América Latina. Confirmó a Santa Rosa de Lima y San Martín de Porres."
+      },
+      {
+        "dia": 25,
+        "nombre": "Anunciación del Señor",
+        "tipo": "Solemnidad",
+        "descripcion": "El ángel Gabriel anuncia a María la Encarnación del Hijo de Dios (Lc 1,26-38). Momento de la concepción de Jesús."
+      }
+    ],
+    "abril": [
+      {
+        "dia": 2,
+        "nombre": "San Francisco de Paula",
+        "tipo": "Memorial",
+        "descripcion": "Fundador de los Mínimos (1416-1507). Ermitaño calabrés. Patrono de los navegantes y las gentes de mar."
+      },
+      {
+        "dia": 4,
+        "nombre": "San Isidoro de Sevilla",
+        "tipo": "Memorial",
+        "descripcion": "Obispo y Doctor (560-636). Enciclopedista. Sus Etimologías conservaron el saber antiguo. Propuesto patrón de Internet."
+      },
+      {
+        "dia": 5,
+        "nombre": "San Vicente Ferrer",
+        "tipo": "Memorial",
+        "descripcion": "Dominico español (1350-1419). Predicador extraordinario. Realizó miles de conversiones. Patrono de los constructores."
+      },
+      {
+        "dia": 7,
+        "nombre": "San Juan Bautista de La Salle",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Sacerdote francés (1651-1719). Fundó los Hermanos de las Escuelas Cristianas. Patrono de los educadores."
+      },
+      {
+        "dia": 11,
+        "nombre": "San Estanislao de Cracovia",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Obispo y mártir polaco (1030-1079). Murió a manos del rey Boleslao II. Patrono de Polonia."
+      },
+      {
+        "dia": 13,
+        "nombre": "San Martín I",
+        "tipo": "Memorial",
+        "descripcion": "Papa y mártir (†655). Condenó la herejía monotelita en el Concilio de Letrán (649). Desterrado y martirizado."
+      },
+      {
+        "dia": 21,
+        "nombre": "San Anselmo",
+        "tipo": "Memorial",
+        "descripcion": "Arzobispo de Canterbury y Doctor (1033-1109). Padre de la Escolástica. Formuló el argumento ontológico de la existencia de Dios."
+      },
+      {
+        "dia": 23,
+        "nombre": "San Jorge",
+        "tipo": "Memorial opcional",
+        "descripcion": "Mártir (†303). Patrono de Inglaterra, Etiopía y muchos países. Su historia del dragón es alegoría del triunfo del bien sobre el mal."
+      },
+      {
+        "dia": 24,
+        "nombre": "San Fidel de Sigmaringa",
+        "tipo": "Memorial",
+        "descripcion": "Primer mártir capuchino (1578-1622). Abogado convertido en fraile. Misionero en Suiza. Patrono de los abogados."
+      },
+      {
+        "dia": 25,
+        "nombre": "San Marcos Evangelista",
+        "tipo": "Fiesta",
+        "descripcion": "Autor del Evangelio más antiguo. Fundó la Iglesia de Alejandría. Patrono de Venecia. Su símbolo es el león alado."
+      },
+      {
+        "dia": 28,
+        "nombre": "San Pedro Chanel",
+        "tipo": "Memorial",
+        "descripcion": "Protomártir de Oceanía (1803-1841). Misionero marista en Futura. Murió a manos del jefe local."
+      },
+      {
+        "dia": 29,
+        "nombre": "Santa Catalina de Siena",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Doctora de la Iglesia y Copatrona de Europa (1347-1380). Consiguió el regreso del Papa a Roma. Mística estigmatizada."
+      },
+      {
+        "dia": 30,
+        "nombre": "San Pío V",
+        "tipo": "Memorial",
+        "descripcion": "Papa dominico (1504-1572). Reformó la Iglesia tras el Concilio de Trento. Codificó la Misa Tridentina. Organizó Lepanto."
+      }
+    ],
+    "mayo": [
+      {
+        "dia": 1,
+        "nombre": "San José Obrero",
+        "tipo": "Opcional",
+        "descripcion": "Creado por Pío XII en 1955. Dignidad del trabajo humano frente al comunismo. Conecta el trabajo con la redención."
+      },
+      {
+        "dia": 2,
+        "nombre": "San Atanasio",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Obispo de Alejandría y Doctor (296-373). Defensor de la consustancialidad del Hijo. 'Atanasio contra el mundo'."
+      },
+      {
+        "dia": 3,
+        "nombre": "Santos Felipe y Santiago Apóstoles",
+        "tipo": "Fiesta",
+        "descripcion": "Felipe evangelizó Frigia; Santiago el Menor fue el primer obispo de Jerusalén y autor de la Epístola de Santiago."
+      },
+      {
+        "dia": 10,
+        "nombre": "San Juan de Ávila",
+        "tipo": "Memorial",
+        "descripcion": "Sacerdote y Doctor español (1499-1569). 'El apóstol de Andalucía'. Maestro espiritual de Santa Teresa."
+      },
+      {
+        "dia": 12,
+        "nombre": "Santos Nereo y Aquileo",
+        "tipo": "Memorial",
+        "descripcion": "Soldados romanos mártires (†100). Sirvieron a Domitila, nieta del emperador Domiciano, y murieron por la fe."
+      },
+      {
+        "dia": 13,
+        "nombre": "Nuestra Señora de Fátima",
+        "tipo": "Memoria obligatoria",
+        "descripcion": "Primera aparición de la Virgen a los tres pastorcitos el 13 de mayo de 1917. El 13 de mayo de 1981 fue el atentado contra Juan Pablo II."
+      },
+      {
+        "dia": 14,
+        "nombre": "San Matías Apóstol",
+        "tipo": "Fiesta",
+        "descripcion": "Elegido por sorteo para reemplazar a Judas Iscariote (Hch 1,26). Evangelizó Etiopía o Judea. Mártir."
+      },
+      {
+        "dia": 15,
+        "nombre": "San Isidro Labrador",
+        "tipo": "Memorial",
+        "descripcion": "Campesino madrileño (1070-1130). Patrono de los agricultores y de Madrid. Canonizado junto a Ignacio, Teresa, Felipe y Francisco Javier en 1622."
+      },
+      {
+        "dia": 18,
+        "nombre": "San Juan I",
+        "tipo": "Memorial",
+        "descripcion": "Papa y mártir (†526). Murió en la prisión del rey ostrogodo Teodorico."
+      },
+      {
+        "dia": 20,
+        "nombre": "San Bernardino de Siena",
+        "tipo": "Memorial",
+        "descripcion": "Franciscano italiano (1380-1444). Gran predicador. Difundió la devoción al Santo Nombre de Jesús (IHS)."
+      },
+      {
+        "dia": 21,
+        "nombre": "San Cristóbal Magallanes y compañeros",
+        "tipo": "Memorial",
+        "descripcion": "25 mártires mexicanos (1915-1937). Sacerdotes y laicos ejecutados durante la persecución cristera."
+      },
+      {
+        "dia": 22,
+        "nombre": "Santa Rita de Cascia",
+        "tipo": "Memorial",
+        "descripcion": "Religiosa agustina italiana (1381-1457). Viuda, madre y monja. Patrona de las causas imposibles y las mujeres maltratadas."
+      },
+      {
+        "dia": 25,
+        "nombre": "San Beda el Venerable",
+        "tipo": "Memorial",
+        "descripcion": "Monje y Doctor (673-735). Padre de la historia inglesa. Sus Crónicas conservaron la historia medieval."
+      },
+      {
+        "dia": 26,
+        "nombre": "San Felipe Neri",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Sacerdote romano (1515-1595). Fundó el Oratorio. 'El apóstol de Roma'. Patrono de los jovenes y del humor cristiano."
+      },
+      {
+        "dia": 31,
+        "nombre": "Visitación de la Virgen María",
+        "tipo": "Fiesta",
+        "descripcion": "María visita a su prima Isabel embarazada de Juan Bautista (Lc 1,39-56). Isabel proclama: 'Bendita tú entre las mujeres'."
+      }
+    ],
+    "junio": [
+      {
+        "dia": 1,
+        "nombre": "San Justino",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Filósofo y mártir (100-165). Primer gran apologista cristiano. Sus Apologías explican la fe al mundo griego."
+      },
+      {
+        "dia": 3,
+        "nombre": "Santos Carlos Lwanga y compañeros",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "22 mártires de Uganda (1885-1887). Jóvenes de la corte del rey Mwanga, asesinados por rechazar la sodomía del rey."
+      },
+      {
+        "dia": 5,
+        "nombre": "San Bonifacio",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Obispo y mártir (675-754). Apóstol de Germania. Reorganizó la Iglesia franca. Murió evangelizando frisios."
+      },
+      {
+        "dia": 6,
+        "nombre": "San Norberto",
+        "tipo": "Memorial",
+        "descripcion": "Obispo y fundador de los Premonstratenses (1080-1134). Reformador de la vida canónica."
+      },
+      {
+        "dia": 9,
+        "nombre": "San Efrén de Siria",
+        "tipo": "Memorial",
+        "descripcion": "Diácono y Doctor (306-373). Gran poeta teológico siríaco. Combatió herejías con himnos y poemas."
+      },
+      {
+        "dia": 11,
+        "nombre": "San Bernabé Apóstol",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Levita chipriota, compañero de Pablo (Hch 13-14). 'Hijo de la consolación'. Mártir en Salamina."
+      },
+      {
+        "dia": 13,
+        "nombre": "San Antonio de Padua",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Franciscano portugués y Doctor (1195-1231). Gran predicador y taumaturgo. Patrono de los pobres y de los objetos perdidos."
+      },
+      {
+        "dia": 19,
+        "nombre": "San Romualdo",
+        "tipo": "Memorial",
+        "descripcion": "Fundador de los Camaldulenses (952-1027). Reformó el monacato benedictino hacia mayor contemplación y soledad."
+      },
+      {
+        "dia": 21,
+        "nombre": "San Luis Gonzaga",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Jesuita italiano (1568-1591). Renunció a su título nobiliario. Murió cuidando apestados. Patrono de los jóvenes."
+      },
+      {
+        "dia": 22,
+        "nombre": "San Juan Fisher y Santo Tomás Moro",
+        "tipo": "Memorial",
+        "descripcion": "Mártires ingleses (†1535). Ejecutados por Enrique VIII por no aceptar el cisma anglicano. Fisher era obispo; Moro, canciller."
+      },
+      {
+        "dia": 24,
+        "nombre": "Natividad de San Juan Bautista",
+        "tipo": "Solemnidad",
+        "descripcion": "Una de las tres natividades celebradas por la Iglesia (junto a Jesús y María). Precursor del Mesías."
+      },
+      {
+        "dia": 28,
+        "nombre": "San Ireneo de Lyon",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Obispo y mártir (130-202). Combatió el gnosticismo. Su obra Adversus Haereses es fundamental para la fe."
+      },
+      {
+        "dia": 29,
+        "nombre": "Santos Pedro y Pablo Apóstoles",
+        "tipo": "Solemnidad",
+        "descripcion": "Pilares de la Iglesia de Roma. Pedro el pescador galileo, primer Papa. Pablo el apóstol de los gentiles. Ambos martirizados en Roma bajo Nerón."
+      },
+      {
+        "dia": 30,
+        "nombre": "Primeros Mártires de Roma",
+        "tipo": "Memorial",
+        "descripcion": "Cristianos martirizados por Nerón (64-68). Tacito los mencionó en sus Anales."
+      }
+    ],
+    "julio": [
+      {
+        "dia": 3,
+        "nombre": "Santo Tomás Apóstol",
+        "tipo": "Fiesta",
+        "descripcion": "El 'Dídimo' (gemelo). Evangelizó la India. Confesó 'Señor mío y Dios mío' al ver al Resucitado (Jn 20,28). Mártir en Chennai."
+      },
+      {
+        "dia": 4,
+        "nombre": "Santa Isabel de Portugal",
+        "tipo": "Memorial",
+        "descripcion": "Reina de Portugal (1271-1336). Medió entre su esposo y su hijo en guerra. Se hizo terciaria franciscana. Patrona de la paz."
+      },
+      {
+        "dia": 5,
+        "nombre": "San Antonio María Zaccaria",
+        "tipo": "Memorial",
+        "descripcion": "Médico italiano y fundador de los Barnabitas (1502-1539). Pionero de la Renovación Católica previa al Concilio de Trento."
+      },
+      {
+        "dia": 6,
+        "nombre": "Santa María Goretti",
+        "tipo": "Memorial",
+        "descripcion": "Mártir italiana (1890-1902). Murió a los 11 años defendiendo su castidad. Símbolo de la pureza cristiana."
+      },
+      {
+        "dia": 11,
+        "nombre": "San Benito de Nursia",
+        "tipo": "Memorial obligatorio",
+        "descripcion": "Padre del monacato occidental (480-547). Fundó Montecasino. Regla: Ora et Labora. Copatrono de Europa."
+      }
+    ]
+  }
+}

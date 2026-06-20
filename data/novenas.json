@@ -1,0 +1,61 @@
+{
+  "titulo": "Novenas Completas — Dataset CatolicosGPT",
+  "instruccion_ia": "Cuando el usuario pida una novena, SIEMPRE usa el texto completo de este dataset. NUNCA improvises ni resumas. Muestra la oración preparatoria, la meditación del día y la oración final completas.",
+  "novenas": [
+    {
+      "id": "san_jose",
+      "nombre": "Novena a San José",
+      "fechas": "Del 10 al 18 de marzo (para la solemnidad del 19 de marzo)",
+      "tambien_cuando": "Cualquier época del año para pedir protección de la familia y trabajo",
+      "oracion_preparatoria": "Por la señal de la Santa Cruz, de nuestros enemigos líbranos Señor Nuestro. En el nombre del Padre, del Hijo y del Espíritu Santo. Amén.\n\nSeñor mío Jesucristo, Dios y Hombre verdadero, Creador, Padre y Redentor mío; por ser Tú quien eres, bondad infinita, y porque te amo sobre todas las cosas, me pesa de todo corazón haberte ofendido. También me pesa porque puedes castigarme con las penas del infierno. Animado con tu divina gracia, propongo firmemente nunca más pecar, confesarme y cumplir la penitencia que me fuere impuesta. Amén.\n\nOh gloriosísimo Padre de Jesús, Esposo de María, Patriarca y Protector de la Santa Iglesia, a quien el Padre Eterno confió el cuidado de gobernar, regir y defender en la tierra la Sagrada Familia; protégenos también a nosotros, que pertenecemos, como fieles católicos, a la santa familia de tu Hijo que es la Iglesia, y alcánzanos los bienes necesarios de esta vida, y sobre todo los auxilios espirituales para la vida eterna.\n\nAlcánzanos especialmente estas tres gracias: la de no cometer jamás ningún pecado mortal, principalmente contra la castidad; la de un sincero amor y devoción a Jesús y María; y la de una buena muerte, recibiendo bien los últimos Sacramentos.\n\nConcédenos además la gracia especial que te pedimos en esta novena.\n[Pídase con fervor y confianza la gracia que se desea obtener]",
+      "dias": [
+        {
+          "dia": 1,
+          "titulo": "Prudencia y acierto en los casos difíciles",
+          "meditacion": "Oh benignísimo Jesús, así como consolaste a tu padre amado en las perplejidades e incertidumbres que tuvo, dudando si abandonar a tu Santísima Madre su esposa, así te suplicamos humildemente por intercesión de San José nos concedas mucha prudencia y acierto en todos los casos dudosos y angustias de nuestra vida, para que siempre acertemos con tu santísima voluntad."
+        },
+        {
+          "dia": 2,
+          "titulo": "Llevar con paciencia la pobreza y el desamparo",
+          "meditacion": "Oh benignísimo Jesús, así como consolaste a tu padre amado en la pobreza y desamparo de Belén, con tu nacimiento, y con los cánticos de los Ángeles y visitas de los pastores, así también te suplicamos humildemente por intercesión de San José, que nos concedas llevar con paciencia nuestra pobreza y desamparo en esta vida, y que alegres nuestro espíritu con tu presencia y tu gracia, y la esperanza de la gloria."
+        },
+        {
+          "dia": 3,
+          "titulo": "Amor y respeto al Santísimo Nombre de Jesús",
+          "meditacion": "Oh benignísimo Jesús, así como consolaste a tu amado padre en el doloroso misterio de la Circuncisión, recibiendo de él el dulce nombre de Jesús, así te suplicamos humildemente, por intercesión de San José, nos concedas pronunciar siempre con amor y respeto tu santísimo nombre, llevarlo en el corazón, honrarlo en la vida, y profesar con obras y palabras que somos verdadores discípulos tuyos."
+        },
+        {
+          "dia": 4,
+          "titulo": "Ser de aquellos para quienes San José intercede",
+          "meditacion": "Oh benignísimo Jesús, así como alegraste a tu amado padre con la visita de los Reyes Magos que venían a adorarte, así te suplicamos humildemente, por intercesión de San José, que nos concedas ser de aquellos a quienes El protege especialmente: los pobres, los trabajadores, los esposos, los padres de familia, y todos los que le invoncan con fe y devoción."
+        },
+        {
+          "dia": 5,
+          "titulo": "Libres de los que quieren dañar nuestras almas",
+          "meditacion": "Oh benignísimo Jesús, así como consolaste a tu amado padre en la angustia de la huida a Egipto para librarte de las manos de Herodes, así te suplicamos humildemente, por intercesión de San José, que nos libres a nosotros de los enemigos de nuestra alma, del mundo, del demonio y de la carne, y nos concedas la gracia de llegar seguros al cielo."
+        },
+        {
+          "dia": 6,
+          "titulo": "Sustento espiritual de la gracia de Dios",
+          "meditacion": "Oh benignísimo Jesús, así como diste gozo a tu amado padre con el regreso del destierro a la tierra de Israel, así te suplicamos humildemente, por intercesión de San José, que nos concedas siempre el sustento espiritual de tu gracia, para que nunca nos apartemos del camino que nos lleva a Ti, que eres nuestro único bien verdadero."
+        },
+        {
+          "dia": 7,
+          "titulo": "Nunca dejar de hacer la voluntad de Dios",
+          "meditacion": "Oh benignísimo Jesús, así como consolaste a tu amado padre en la angustia que tuvo al perderte en el templo, dándote luego a encontrar entre los doctores, así te suplicamos humildemente, por intercesión de San José, que nunca permitáis que dejemos de hacer tu voluntad, y que cuando nos hayamos alejado de ti por el pecado, nos concedas la gracia de volver a tu presencia con verdadero arrepentimiento."
+        },
+        {
+          "dia": 8,
+          "titulo": "Una muerte semejante a la de San José",
+          "meditacion": "Oh benignísimo Jesús, que en la hora de su muerte consolaste a tu glorioso padre, asistiendo juntamente con tu Madre su esposa a su última agonía, te suplicamos humildemente, por intercesión de San José, que nos concedas una muerte semejante a la suya: asistidos de tu bondad, de tu Santísima Madre y del mismo glorioso Patriarca protector de los moribundos, pronunciando al morir vuestros santísimos nombres, Jesús, María y José."
+        },
+        {
+          "dia": 9,
+          "titulo": "Ser verdaderos y sinceros católicos",
+          "meditacion": "Oh benignísimo Jesús, que quisiste ser tenido por hijo de tu siervo José, y ser sujeto a él en tu niñez y adolescencia, así te suplicamos humildemente, por intercesión de San José, que nos concedas ser siempre verdaderos y sinceros católicos, sumisos a la Santa Iglesia tu esposa, y guardar fielmente hasta la muerte la santa fe que recibimos en el Bautismo, viviendo y muriendo bajo la protección de tan glorioso Padre y Patrono."
+        }
+      ],
+      "oracion_final": "Oh custodio y Padre de Vírgenes, San José, a cuya fiel custodia fueron encomendadas la misma inocencia de Cristo Jesús y la Virgen de las vírgenes María; por estas dos queridísimas prendas, Jesús y María, te ruego y suplico me alcances que, preservado de toda impureza, sirva siempre castísimamente con alma limpia, corazón puro y cuerpo casto a Jesús y a María. Amén.\n\nJesús, José y María, os doy mi corazón y el alma mía.\nJesús, José y María, asistidme en mi última agonía.\nJesús, José y María, con Vos descanse en paz el alma mía.\n\nAntífona: El mismo Jesús, al empezar su vida pública, tenía cerca de treinta años y era, según se creía, hijo de José.\nV. San José, ruega por nosotros.\nR. Para que seamos dignos de alcanzar las promesas de Jesucristo.\n\nOremos: Oh Dios, que con inefable providencia te dignaste escoger al bienaventurado José por Esposo de tu Santísima Madre; concédenos que, así como le veneramos como protector en la tierra, merezcamos tenerle como intercesor en los cielos. Tú que vives y reinas por los siglos de los siglos. Amén."
+    }
+  ]
+}

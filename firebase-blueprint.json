@@ -1,0 +1,116 @@
+{
+  "entities": {
+    "user": {
+      "title": "User",
+      "description": "User account schema including custom metadata, active subscription details and credit usage counter",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier matching the user's ID"
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address in lowercase"
+        },
+        "passwordHash": {
+          "type": "string",
+          "description": "Hashed password using bcrypt"
+        },
+        "nombre": {
+          "type": "string",
+          "description": "Display name of the user"
+        },
+        "plan": {
+          "type": "string",
+          "description": "Current plan name (e.g. 'free', 'premium', 'admin')"
+        },
+        "infografiasUsadas": {
+          "type": "integer",
+          "description": "Number of infographics generated in the current reset period"
+        },
+        "periodoReset": {
+          "type": "string",
+          "description": "Formatted period key pointing to the reset timestamp"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO timestamp representing user sign-up date"
+        },
+        "activo": {
+          "type": "boolean",
+          "description": "Indicates if the user account is active or suspended"
+        },
+        "customLogo": {
+          "type": "string",
+          "description": "Optional URL for custom branding logo"
+        },
+        "customNombre": {
+          "type": "string",
+          "description": "Optional custom brand name display"
+        }
+      },
+      "required": ["id", "email", "passwordHash", "nombre", "plan", "activo", "createdAt"]
+    },
+    "coupon": {
+      "title": "Coupon",
+      "description": "Discount coupon schema used to activate premium plan durations",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique ID for the coupon record"
+        },
+        "code": {
+          "type": "string",
+          "description": "Sovereign uppercase promo code"
+        },
+        "plan": {
+          "type": "string",
+          "description": "Plan that this coupon awards (e.g. 'premium', 'unlimited')"
+        },
+        "durationDays": {
+          "type": "integer",
+          "description": "Duration in days allocated upon redemption"
+        },
+        "maxUses": {
+          "type": "integer",
+          "description": "Maximum number of times the coupon code can be redeemed"
+        },
+        "uses": {
+          "type": "integer",
+          "description": "Total count of current redemptions"
+        },
+        "usedBy": {
+          "type": "array",
+          "description": "Array of user IDs who have redeemed this coupon"
+        },
+        "expiry": {
+          "type": "string",
+          "description": "ISO date-time string marking code expiry"
+        },
+        "activo": {
+          "type": "boolean",
+          "description": "Determines if coupon can be actively redeemed"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        }
+      },
+      "required": ["id", "code", "plan", "maxUses", "uses", "activo", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "Sync collection of active registered faithful"
+    },
+    "/coupons/{couponId}": {
+      "schema": "coupon",
+      "description": "Sync collection of platform reward and tier upgraders"
+    }
+  }
+}

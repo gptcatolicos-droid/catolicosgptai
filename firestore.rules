@@ -1,0 +1,116 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. catch-all default-deny gate (Pillar 10/Tenant Isolation)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Fundamental primitive validators
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // 3. Validation Blueprints (Pillar 2 - Anti-Update-Gap)
+    function isValidUser(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.email is string && data.email.size() <= 128
+        && data.passwordHash is string && data.passwordHash.size() <= 200
+        && data.nombre is string && data.nombre.size() <= 128
+        && data.plan is string && data.plan.size() <= 32
+        && data.infografiasUsadas is int
+        && (data.periodoReset == null || (data.periodoReset is string && data.periodoReset.size() <= 64))
+        && data.createdAt is string && data.createdAt.size() <= 64
+        && data.activo is bool
+        && (data.customLogo == null || (data.customLogo is string && data.customLogo.size() <= 2048))
+        && (data.customNombre == null || (data.customNombre is string && data.customNombre.size() <= 128));
+    }
+
+    function isValidCoupon(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.code is string && data.code.size() <= 128
+        && data.plan is string && data.plan.size() <= 32
+        && data.durationDays is int
+        && data.maxUses is int
+        && data.uses is int
+        && data.usedBy is list
+        && (data.expiry == null || (data.expiry is string && data.expiry.size() <= 64))
+        && data.activo is bool
+        && data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    // Users collection rules
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      
+      allow create: if isSignedIn() 
+        && isOwner(userId) 
+        && isValidId(userId) 
+        && isValidUser(request.resource.data) 
+        && request.resource.data.plan == 'free';
+        
+      allow update: if isSignedIn() 
+        && (isOwner(userId) || isAdmin()) 
+        && isValidId(userId) 
+        && isValidUser(request.resource.data) 
+        && (
+          isAdmin() ||
+          // Self update: can update metadata or usage count but NOT plan or status
+          (
+            isOwner(userId) 
+            && request.resource.data.plan == resource.data.plan 
+            && request.resource.data.activo == resource.data.activo 
+            && request.resource.data.createdAt == resource.data.createdAt 
+            && request.resource.data.passwordHash == resource.data.passwordHash
+          )
+        );
+        
+      allow delete: if isAdmin();
+    }
+
+    // Coupons collection rules (Pillar 4 - Tiered Identity)
+    match /coupons/{couponId} {
+      allow get: if isSignedIn();
+      allow list: if isAdmin();
+      allow create, delete: if isAdmin();
+      
+      allow update: if isSignedIn() 
+        && isValidId(couponId) 
+        && isValidCoupon(request.resource.data) 
+        && (
+          isAdmin() ||
+          // User redeeming coupon: increment uses and append user ID to array (Total Array Guarding)
+          (
+            request.resource.data.uses == resource.data.uses + 1
+            && request.resource.data.usedBy.size() == resource.data.usedBy.size() + 1
+            && request.resource.data.code == resource.data.code
+            && request.resource.data.plan == resource.data.plan
+            && request.resource.data.durationDays == resource.data.durationDays
+            && request.resource.data.maxUses == resource.data.maxUses
+            && request.resource.data.createdAt == resource.data.createdAt
+            && request.resource.data.activo == resource.data.activo
+          )
+        );
+    }
+
+    // Admins metadata collection
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Managed solely through Firebase console to prevent client hijacking
+    }
+  }
+}

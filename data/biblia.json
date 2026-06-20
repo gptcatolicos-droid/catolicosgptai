@@ -1,0 +1,28 @@
+{
+  "titulo": "Biblia Católica — Dataset CatolicosGPT",
+  "version": "Sagrada Biblia — traducción litúrgica",
+  "libros_totales": 73,
+  "antiguo_testamento": 46,
+  "nuevo_testamento": 27,
+  "evangelios": {
+    "mateo": {
+      "nombre": "Evangelio según San Mateo",
+      "autor": "San Mateo Apóstol",
+      "fecha": "50-70 d.C.",
+      "tema_central": "Jesús como el Mesías prometido",
+      "pasajes_clave": [
+        { "ref": "Mt 5,3-12", "nombre": "Las Bienaventuranzas", "texto": "Bienaventurados los pobres de espíritu, porque de ellos es el reino de los cielos. Bienaventurados los que lloran, porque ellos serán consolados. Bienaventurados los mansos, porque ellos heredarán la tierra. Bienaventurados los que tienen hambre y sed de justicia, porque ellos serán saciados." },
+        { "ref": "Mt 16,18", "nombre": "Primacía de Pedro", "texto": "Y yo te digo que tú eres Pedro, y sobre esta piedra edificaré mi Iglesia, y las puertas del infierno no prevalecerán contra ella." }
+      ]
+    },
+    "juan": {
+      "nombre": "Evangelio según San Juan",
+      "autor": "San Juan Apóstol",
+      "tema_central": "Jesús el Verbo eterno hecho carne",
+      "pasajes_clave": [
+        { "ref": "Jn 1,1", "nombre": "El Prólogo", "texto": "En el principio era el Verbo, y el Verbo estaba con Dios, y el Verbo era Dios." },
+        { "ref": "Jn 3,16", "nombre": "Amor de Dios al mundo", "texto": "Porque tanto amó Dios al mundo, que entregó a su Hijo unigénito, para que todo el que crea en él no perezca, sino que tenga vida eterna." }
+      ]
+    }
+  }
+}

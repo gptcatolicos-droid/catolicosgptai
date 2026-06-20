@@ -1,0 +1,18 @@
+{
+  "titulo": "FAQ Católico — 300 Preguntas y Respuestas para SEO",
+  "descripcion": "Preguntas más buscadas sobre el catolicismo con respuestas basadas en el Magisterio",
+  "categorias": {
+    "fe_basica": [
+      {
+        "q": "¿Qué es el catolicismo?",
+        "a": "El catolicismo es la forma de cristianismo que reconoce al Papa como sucesor de San Pedro y cabeza visible de la Iglesia. Se basa en la Sagrada Escritura, la Tradición apostólica y el Magisterio. La Iglesia Católica Romana, fundada por Jesucristo, tiene más de 1.400 millones de fieles en todo el mundo.",
+        "fuente": "CIC 748-749"
+      },
+      {
+        "q": "¿Por qué los católicos veneran a la Virgen María?",
+        "a": "Los católicos no adoran a María, sino que la veneran (hiperdulía). Es la Madre de Dios (Theotokos) y Madre de la Iglesia, y su intercesión ante Jesús es sumamente poderosa.",
+        "fuente": "CIC 963-971"
+      }
+    ]
+  }
+}

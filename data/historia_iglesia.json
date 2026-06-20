@@ -1,0 +1,29 @@
+{
+  "titulo": "Historia de la Iglesia Católica — Dataset CatolicosGPT",
+  "periodos": [
+    {
+      "periodo": "Iglesia Primitiva",
+      "años": "33 — 313 d.C.",
+      "eventos": [
+        { "año": "33", "evento": "Pentecostés — Nacimiento de la Iglesia", "descripcion": "El Espíritu Santo desciende sobre los apóstoles reunidos con María. Pedro predica y se bautizan 3000 personas (Hch 2). La Iglesia nace en Jerusalén." },
+        { "año": "c.35", "evento": "Martirio de San Esteban", "descripcion": "Primer mártir cristiano. Saulo de Tarso presenció su lapidación." },
+        { "año": "c.35", "evento": "Conversión de San Pablo", "descripcion": "En el camino a Damasco, Saulo corta su camino de persecución de los cristianos y se convierte en el gran apóstol de los gentiles." },
+        { "año": "49", "evento": "Concilio de Jerusalén", "descripcion": "Primer concilio de la Iglesia. Decide que los gentiles no necesitan circuncidarse para salvarse. Base del universalismo cristiano." },
+        { "año": "64-67", "evento": "Martirios de Pedro y Pablo en Roma", "descripcion": "Bajo la persecución de Nerón. Pedro crucificado invertido en el Vaticano. Pablo decapitado en la Vía Ostiense." },
+        { "año": "70", "evento": "Destrucción del Templo de Jerusalén", "descripcion": "Las tropas de Tito destruyen el Templo. Cumplimiento de la profecía de Jesús (Mt 24,2)." }
+      ]
+    }
+  ],
+  "papas_importantes": [
+    { "nombre": "San Pedro", "pontificado": "c.30-67", "aporte": "Primer papa. Mártir en Roma." },
+    { "nombre": "San Clemente I", "pontificado": "88-99", "aporte": "Tercer sucesor de San Pedro. Su carta a los Corintios es el primer documento magisterial." },
+    { "nombre": "San León Magno", "pontificado": "440-461", "aporte": "Detuvo a Atila. Gran teólogo cristológico." },
+    { "nombre": "San Gregorio Magno", "pontificado": "590-604", "aporte": "Reorganizó la Iglesia. Padre del canto gregoriano." }
+  ],
+  "concilios_ecumenicos": [
+    { "num": 1, "nombre": "Nicea I", "año": 325, "definicion": "Consubstancialidad del Hijo — contra el arrianismo" },
+    { "num": 2, "nombre": "Constantinopla I", "año": 381, "definicion": "Divinidad del Espíritu Santo" },
+    { "num": 3, "nombre": "Éfeso", "año": 431, "definicion": "María Theotokos — contra el nestorianismo" },
+    { "num": 4, "nombre": "Calcedonia", "año": 451, "definicion": "Dos naturalezas en Cristo — contra el monofisismo" }
+  ]
+}

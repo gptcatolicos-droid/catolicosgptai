@@ -1,0 +1,75 @@
+{
+  "titulo": "Documentos Pontificios — Dataset CatolicosGPT",
+  "fuente": "Vatican.va",
+  "encíclicas_sociales": [
+    {
+      "nombre": "Rerum Novarum",
+      "papa": "León XIII",
+      "año": 1891,
+      "tema": "Cuestión obrera, capital y trabajo",
+      "resumen": "Primera encíclica social. Defiende el derecho a la propiedad privada, el salario justo, el derecho de asociación sindical.",
+      "citas_clave": [
+        "El trabajo no es una mercancía (RN 34)"
+      ]
+    },
+    {
+      "nombre": "Quadragesimo Anno",
+      "papa": "Pío XI",
+      "año": 1931,
+      "tema": "40 aniversario Rerum Novarum, subsidiariedad",
+      "resumen": "Desarrolla la DSI. Introduce el principio de subsidiariedad."
+    },
+    {
+      "nombre": "Laudato Si",
+      "papa": "Francisco",
+      "año": 2015,
+      "tema": "Ecología integral y cuidado de la casa común",
+      "resumen": "Primera encíclica sobre ecología. Une fe, ciencia y cuidado de la creación. Denuncia el paradigma tecnocrático. Propone una ecología integral.",
+      "citas_clave": [
+        "Todo está conectado (LS 138)"
+      ]
+    },
+    {
+      "nombre": "Fratelli Tutti",
+      "papa": "Francisco",
+      "año": 2020,
+      "tema": "Fraternidad universal y amistad social",
+      "resumen": "Propone la fraternidad universal como respuesta a la globalización de la indiferencia. Rechaza el individualismo y la guerra.",
+      "citas_clave": [
+        "Nadie se salva solo (FT 32)"
+      ]
+    },
+    {
+      "nombre": "Magnifica Humanitas",
+      "papa": "León XIV",
+      "año": 2026,
+      "tema": "Custodia de la persona humana en el tiempo de la Inteligencia Artificial",
+      "resumen": "Primera encíclica de León XIV (15 mayo 2026). Actualiza la DSI para la era digital. Aborda IA, transhumanismo, dignidad del trabajo, destino universal de bienes digitales.",
+      "citas_clave": [
+        "Permanecer siendo humanos: ninguna máquina podrá jamás sustituir la dignidad humana en su esplendor (MH 15)"
+      ]
+    }
+  ],
+  "encíclicas_doctrinales": [
+    {
+      "nombre": "Humanae Vitae",
+      "papa": "Pablo VI",
+      "año": 1968,
+      "tema": "Transmisión de la vida humana y matrimonio",
+      "resumen": "Reafirma que cada acto conyugal debe permanecer abierto a la vida. Condena la contracepción artificial.",
+      "citas_clave": [
+        "Es necesario que cada acto matrimonial quede abierto a la transmisión de la vida (HV 11)"
+      ]
+    },
+    {
+      "nombre": "Evangelium Vitae",
+      "papa": "Juan Pablo II",
+      "año": 1995,
+      "tema": "El valor y la inviolabilidad de la vida humana",
+      "resumen": "La vida humana es sagrada desde la concepción hasta la muerte natural. Condena el aborto, la eutanasia y la pena de muerte como regla.",
+      "citas_clave": [
+        "El aborto directo... es siempre un desorden moral grave (EV 57)"
+      ]
+    }
+  ]
+}
