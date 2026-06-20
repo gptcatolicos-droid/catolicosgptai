@@ -388,12 +388,18 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
     
     /* Floating Chat Frame styles */
     .chat-bubble {
-      max-width: 85%;
+      max-width: 99%;
       margin-bottom: 12px;
-      padding: 14px 18px;
+      padding: 12px 14px;
       border-radius: 14px;
       font-size: 15px;
       line-height: 1.6;
+    }
+    @media (min-width: 640px) {
+      .chat-bubble {
+        max-width: 85%;
+        padding: 14px 18px;
+      }
     }
     .chat-bubble.bot {
       background-color: white;
@@ -485,6 +491,74 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
     @media (min-width: 1025px) {
       .navigation-mobile-bar { display: none !important; }
       .mobile-menu-drawer { display: none !important; }
+    }
+
+    /* Estilos del Lightbox / Tooltip Hover de la Biblia */
+    #bible-tooltip {
+      box-shadow: 0 10px 35px rgba(94, 27, 34, 0.18);
+      border-color: #BC8A36;
+      transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .bible-citation {
+      color: #5E1B22 !important;
+      border-bottom: 2px dashed #BC8A36 !important;
+      font-weight: 600 !important;
+      cursor: help;
+      transition: all 0.2s;
+      padding: 0 2px;
+      border-radius: 2px;
+      display: inline !important;
+      text-decoration: none !important;
+    }
+    .bible-citation:hover {
+      background-color: rgba(188, 138, 54, 0.15) !important;
+      color: #9F7124 !important;
+      border-bottom-style: solid !important;
+    }
+    .bible-citation * {
+      color: inherit !important;
+    }
+    
+    /* Elegant Markdown Tables for Synoptic Summaries */
+    .markdown-body table,
+    table.synoptic-table,
+    .chat-container table,
+    .message-content table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+      margin: 1.5rem 0 !important;
+      font-size: 0.85rem !important;
+      border: 2px double #BC8A36 !important;
+      background-color: #ffffff !important;
+      border-radius: 8px !important;
+      overflow: hidden !important;
+    }
+    .markdown-body th,
+    table.synoptic-table th,
+    .chat-container th,
+    .message-content th {
+      background-color: #5E1B22 !important;
+      color: #ffffff !important;
+      font-weight: 600 !important;
+      text-transform: uppercase !important;
+      font-size: 0.75rem !important;
+      letter-spacing: 0.05em !important;
+      padding: 10px 14px !important;
+      border: 1px solid #F2E3C9 !important;
+    }
+    .markdown-body td,
+    table.synoptic-table td,
+    .chat-container td,
+    .message-content td {
+      padding: 10px 14px !important;
+      border: 1px solid #E6DFD4 !important;
+      color: #2D241E !important;
+    }
+    .markdown-body tr:nth-child(even),
+    table.synoptic-table tr:nth-child(even),
+    .chat-container tr:nth-child(even),
+    .message-content tr:nth-child(even) {
+      background-color: #F9F6F0 !important;
     }
   </style>
   <script src="https://cdn.tailwindcss.com"></script>
@@ -795,6 +869,158 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
         drawerContent.classList.remove('translate-x-0');
       }
     }
+
+    // === MOTOR INTERACTIVO DE CITAS BÍBLICAS (HOVER LIGHTBOX) ===
+    document.addEventListener('DOMContentLoaded', () => {
+      // Crear contenedor del Lightbox/Tooltip si no existe
+      let tooltip = document.getElementById('bible-tooltip');
+      if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.id = 'bible-tooltip';
+        tooltip.style.position = 'absolute';
+        tooltip.style.display = 'none';
+        tooltip.style.zIndex = '99999';
+        tooltip.style.pointerEvents = 'auto'; // Permits selecting text or interactive scrolling within the box
+        tooltip.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+        tooltip.className = 'bg-white text-espresso border-2 border-gold rounded-xl p-4 shadow-2xl max-w-xs sm:max-w-md w-72 sm:w-96 text-xs leading-relaxed transform scale-95 opacity-0 select-none';
+        document.body.appendChild(tooltip);
+      }
+
+      let activeTimeout = null;
+      let hideTimeout = null;
+
+      function showTooltip(link, ref) {
+        clearTimeout(hideTimeout);
+        clearTimeout(activeTimeout);
+
+        const rect = link.getBoundingClientRect();
+        const scrollX = window.scrollX || window.pageXOffset;
+        const scrollY = window.scrollY || window.pageYOffset;
+
+        let posX = rect.left + scrollX;
+        // Posición horizontal con prevención de desbordes
+        const tooltipWidth = 320; // Aproximado
+        if (posX + tooltipWidth > window.innerWidth) {
+          posX = window.innerWidth - tooltipWidth - 20;
+        }
+        if (posX < 10) posX = 10;
+
+        // Por defecto colocamos arriba de la cita
+        let posY = rect.top + scrollY - 20;
+
+        tooltip.innerHTML = `
+          <div class="flex items-center gap-2 text-gold italic font-serif">
+            <svg class="animate-spin h-3.5 w-3.5 text-gold-deep" viewBox="0 0 24 24" fill="none">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            <span>Revelando pasaje Sagrado...</span>
+          </div>
+        `;
+
+        tooltip.style.display = 'block';
+        tooltip.style.left = posX + 'px';
+        tooltip.style.top = (posY - 50) + 'px';
+
+        // Forzar reflow
+        tooltip.offsetHeight;
+        tooltip.classList.remove('scale-95', 'opacity-0');
+        tooltip.classList.add('scale-100', 'opacity-100');
+
+        // Buscar pasaje
+        fetch(\`/api/biblia?ref=\${encodeURIComponent(ref)}\`)
+          .then(res => {
+            if (res.ok) return res.json();
+            throw new Error('Local not found');
+          })
+          .then(data => {
+            let html = `
+              <div class="flex flex-col gap-1 border-b border-[#E6DFD4] pb-1.5 mb-1.5">
+                <span class="font-display font-bold text-xs tracking-wider text-[#5E1B22] uppercase flex items-center justify-between">
+                  <span>📖 \${data.libro} \${data.capitulo}</span>
+                  <span class="text-[9px] text-[#BC8A36] font-mono">Biblia de Navarra</span>
+                </span>
+              </div>
+            `;
+            let versesText = '<div class="overflow-y-auto max-h-48 pr-1 scrollbar-thin scrollbar-thumb-gold select-text">';
+            if (data.versiculos && Object.keys(data.versiculos).length > 0) {
+              const ordered = Object.entries(data.versiculos).sort((a,b) => parseInt(a[0]) - parseInt(b[0]));
+              ordered.forEach(([num, text]) => {
+                versesText += `<p class="mb-1 text-ink"><sup class="font-bold text-[#9F7124] mr-1">\${num}</sup><span class="font-serif italic text-[#2D241E]">\${text}</span></p>`;
+              });
+            } else {
+              versesText += `<p class="italic text-[#5A4E46]">Lectura completa del capítulo en la Biblia.</p>`;
+            }
+            versesText += '</div>';
+            tooltip.innerHTML = html + versesText;
+
+            // Reposición fina basada en la altura cargada
+            const tooltipHeight = tooltip.offsetHeight;
+            tooltip.style.top = (rect.top + scrollY - tooltipHeight - 12) + 'px';
+          })
+          .catch(() => {
+            // Fallback con Gemini
+            fetch(\`/api/biblia/fallback?ref=\${encodeURIComponent(ref)}\`)
+              .then(res => res.json())
+              .then(data => {
+                tooltip.innerHTML = `
+                  <div class="flex flex-col gap-1 border-b border-[#E6DFD4] pb-1.5 mb-1.5">
+                    <span class="font-display font-bold text-xs text-[#5E1B22] uppercase flex items-center justify-between">
+                      <span>📖 \${ref}</span>
+                      <span class="text-[9px] text-[#BC8A36] font-mono">Jerusalén / Vulgata</span>
+                    </span>
+                  </div>
+                  <div class="overflow-y-auto max-h-48 pr-1 select-text font-serif italic text-[#2D241E]">
+                    \${data.text}
+                  </div>
+                `;
+                const tooltipHeight = tooltip.offsetHeight;
+                tooltip.style.top = (rect.top + scrollY - tooltipHeight - 12) + 'px';
+              })
+              .catch(() => {
+                tooltip.innerHTML = `<p class="text-red-800 font-medium font-serif italic">Pasaje sagrado no disponible temporalmente.</p>`;
+              });
+          });
+      }
+
+      function hideTooltip() {
+        clearTimeout(activeTimeout);
+        hideTimeout = setTimeout(() => {
+          tooltip.classList.remove('scale-100', 'opacity-100');
+          tooltip.classList.add('scale-95', 'opacity-0');
+          setTimeout(() => {
+            if (tooltip.classList.contains('opacity-0')) {
+              tooltip.style.display = 'none';
+            }
+          }, 200);
+        }, 300);
+      }
+
+      // Event delegation for mouse hover (desktop)
+      document.body.addEventListener('mouseover', (e) => {
+        const link = e.target.closest('.bible-citation') || (e.target.tagName === 'A' && e.target.href.includes('biblegateway.com') ? e.target : null);
+        if (!link) return;
+        
+        const ref = link.getAttribute('data-ref') || link.innerText.trim();
+        if (!ref) return;
+
+        showTooltip(link, ref);
+      });
+
+      document.body.addEventListener('mouseout', (e) => {
+        const link = e.target.closest('.bible-citation') || (e.target.tagName === 'A' && e.target.href.includes('biblegateway.com') ? e.target : null);
+        if (!link) return;
+        hideTooltip();
+      });
+
+      // Keep tooltip visible if user hovers on tooltip itself
+      tooltip.addEventListener('mouseenter', () => {
+        clearTimeout(hideTimeout);
+      });
+      tooltip.addEventListener('mouseleave', () => {
+        hideTooltip();
+      });
+    });
   </script>
 </body>
 </html>
@@ -811,7 +1037,7 @@ app.get('/', (req, res) => {
 
   // HTML principal del Chat Centrado (al estilo ChatGPT / Gemini)
   const html = `
-    <div class="max-w-4xl mx-auto w-full px-4 py-4 sm:py-6 flex flex-col h-[calc(100vh-80px)] overflow-hidden">
+    <div class="max-w-4xl mx-auto w-[99%] sm:w-full px-1 py-1 sm:px-4 sm:py-6 flex flex-col h-[calc(100vh-80px)] overflow-hidden">
       
       <!-- ELEMENTO DE CHAT PRINCIPAL -->
       <div class="flex-1 flex flex-col bg-white border border-[#E6DFD4] rounded-2xl shadow-sm overflow-hidden h-full">
@@ -832,7 +1058,7 @@ app.get('/', (req, res) => {
         </div>
         
         <!-- CHAT BOX MESSAGES -->
-        <div id="chat-box" class="flex-1 overflow-y-auto p-5 flex flex-col gap-4 bg-[#FAF9F5]">
+        <div id="chat-box" class="flex-1 overflow-y-auto p-2.5 sm:p-5 flex flex-col gap-4 bg-[#FAF9F5]">
           <!-- PANTALLA DE BIENVENIDA -->
           <div id="welcome-screen" class="flex-1 flex flex-col items-center justify-center text-center py-6 max-w-2xl mx-auto gap-6 my-auto">
             <div class="h-16 w-16 border-2 border-gold/35 rounded-3xl p-4 bg-white text-gold text-2xl shadow-sm flex items-center justify-center font-bold">
@@ -1342,13 +1568,15 @@ app.post('/api/chat', async (req, res) => {
     let magisteriumSourceResponse = '';
     let usedMagisteriumAPI = false;
 
+    console.log('[Magisterium Integrator] Verificando presencia de MAGISTERIUM_API_KEY en ambiente:', process.env.MAGISTERIUM_API_KEY ? 'Presente (Longitud: ' + process.env.MAGISTERIUM_API_KEY.length + ')' : 'No detectada');
+
     if (process.env.MAGISTERIUM_API_KEY) {
       const systemInstructionMagisterium = `Eres un teólogo católico erudito, fiel servidor del Magisterio de la Iglesia y del Papa León XIV. 
 Tus respuestas deben estar profundamente ancladas en la verdad doctrinal y pastoral de las Sagradas Escrituras, el Catecismo y los santos pontífices.`;
 
       let searchContext = '';
       try {
-        console.log('[Magisterium Search API] Buscando fuentes doctrinales relativas...');
+        console.log('[Magisterium Search API] Iniciando consulta a base vectorial de documentos oficiales (timeout 20s)...');
         let resSearch = await fetch('https://api.magisterium.com/v1/search', {
           method: 'POST',
           headers: {
@@ -1359,7 +1587,7 @@ Tus respuestas deben estar profundamente ancladas en la verdad doctrinal y pasto
             query: query,
             top_k: 5
           }),
-          signal: AbortSignal.timeout(1200)
+          signal: AbortSignal.timeout(20000)
         });
         
         if (resSearch.ok) {
@@ -1369,17 +1597,25 @@ Tus respuestas deben estar profundamente ancladas en la verdad doctrinal y pasto
             searchContext = items.map(cit => 
               `CITA DE ORIGEN: ${cit.source || cit.title || 'Magisterio Oficial'}\nCONTENIDO: ${cit.text || cit.content || ''}`
             ).join('\n\n');
-            console.log('[Magisterium Search API] Encontrados pasajes oficiales en la base de datos.');
+            console.log(`[Magisterium Search API] Exito. Se recuperaron ${items.length} pasajes y citas nítidas.`);
+          } else {
+            console.log('[Magisterium Search API] Consulta exitosa, pero no se devolvieron documentos.');
           }
+        } else {
+          console.error(`[Magisterium Search API Error] Codigo de estado HTTP: ${resSearch.status} - ${resSearch.statusText}`);
+          try {
+            const errText = await resSearch.text();
+            console.error(`[Magisterium Search API Error Body]: ${errText}`);
+          } catch (_) {}
         }
       } catch (searchErr) {
-        console.log('[Magisterium Search API] No se pudo conectar a la búsqueda de vectores (timeout o desconexión). Fallback a chat.');
+        console.error('[Magisterium Search API Excepcion]: No se pudo conectar a la búsqueda de vectores.', searchErr.message);
       }
 
       const finalPromptMagisterium = `Consulta del Católico: "${query}"\n\n${searchContext ? `CITAS CIENTÍFICAS DEL CATECISMO/BÍBLICAS OBTENIDAS DE MAGISTERIUM SEARCH:\n${searchContext}\n\n` : ''}${localContext ? `CONTEXTO LOCAL COMPLEMENTARIO:\n${localContext}\n\n` : ''}`;
 
       try {
-        console.log('[Magisterium Chat API] Buscando en la nube doctrinal (timeout 1.2s)...');
+        console.log('[Magisterium Chat API] Consultando síntesis doctrinal en la nube doctrinal (timeout 20s)...');
         let resM = await fetch('https://api.magisterium.com/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -1393,7 +1629,7 @@ Tus respuestas deben estar profundamente ancladas en la verdad doctrinal y pasto
             ],
             model: 'magisterium-v1'
           }),
-          signal: AbortSignal.timeout(1200)
+          signal: AbortSignal.timeout(20000)
         });
 
         if (resM.ok) {
@@ -1401,16 +1637,23 @@ Tus respuestas deben estar profundamente ancladas en la verdad doctrinal y pasto
           magisteriumSourceResponse = d.choices?.[0]?.message?.content || d.text || d.response || d.content;
           if (magisteriumSourceResponse) {
             usedMagisteriumAPI = true;
-            console.log('[Magisterium API] Enlace doctrinal exitoso con motor de Chat.');
+            console.log('[Magisterium API] Enlace doctrinal exitoso. Información de Magisterio lista para síntesis con Gemini.');
           }
+        } else {
+          console.error(`[Magisterium Chat API Error] Codigo de estado HTTP: ${resM.status} - ${resM.statusText}`);
+          try {
+            const errText = await resM.text();
+            console.error(`[Magisterium Chat API Error Body]: ${errText}`);
+          } catch (_) {}
         }
       } catch (err) {
-        console.log('[Magisterium Chat API] Canal de contingencia local activado (timeout o desconexión).');
+        console.error('[Magisterium Chat API Excepcion]: Contingencia local activada debido a fallo de canal remoto.', err.message);
       }
     }
 
-    // 4. Si la API de Magisterium no estuvo disponible o no hay clave, usamos el corpus local de grounding
+    // 4. Si la API de Magisterium no estuvo disponible, no hay clave o falló, usamos el corpus local de grounding
     if (!magisteriumSourceResponse) {
+      console.log('[Magisterium Integrator] Usando canal offline/local de contingencia.');
       if (localContext) {
         magisteriumSourceResponse = `Información doctrinal extraída del Corpus Católico Local:\n${localContext}`;
       } else {
@@ -1424,31 +1667,79 @@ Tus respuestas deben estar profundamente ancladas en la verdad doctrinal y pasto
     // 5. Motor de Presentación Inteligente de Gemini si la clave está provista y el cliente iniciado
     const aiInstance = getAi();
     if (aiInstance) {
-      const systemInstructionPresentation = `Eres un sabio, tierno y cálido teólogo católico y consejero espiritual de CatólicosGPT, sirviendo con fidelidad doctrinal bajo el pontificado de León XIV.
-Tu prioridad absoluta es adaptarte de manera sumamente humana y sensible al contexto emocional y espiritual de la consulta del fiel (INTENCIÓN DEL FIEL):
+      const systemInstructionPresentation = `Eres un sabio, tierno y cálido teólogo católico, catequista oficial y consejero espiritual de CatólicosGPT, sirviendo con fidelidad doctrinal absoluta bajo el pontificado de León XIV.
+El chat debe sentirse como una IA que realmente piensa, medita y comprende en profundidad lo que el fiel solicita, respondiendo con un lenguaje enriquecedor, devoto y pastoral.
 
-1. **Si el fiel expresa sufrimiento hondo, tristeza extrema, desesperanza o pensamientos tristes de deceso (ej. "me quiero morir", "suicidio", "estoy desesperado/a", "no tengo fuerzas")**:
-   - Actúa de inmediato con la máxima compasión, ternura, calor humano y consuelo evangélico. NUNCA uses un tono distante o clínico. No hables fríamente de "el suicidio según el catecismo".
-   - Queda ESTRICTAMENTE PROHIBIDO incluir encabezados académicos como "Sinopsis", análisis científicos, cuadros comparativos o raras tablas de vicios o virtudes. Eso aleja al alma sedienta.
-   - Háblale directamente con el corazón de un pastor bondadoso que camina a su lado en el dolor. Consuélale con el amor infinito y eterno de Dios, asegurándole que ante el Padre Celestial su vida es un tesoro inestimable de valor infinito.
-   - Invítale con dulzura a compartir qué le duele y dale citas de consuelo (ej. Mateo 11, 28; Salmo 34, 18) junto a consejos consoladores de santos (ej. el "Nada te turbe" de Santa Teresa, o el "Reza, ten fe y no te preocupes" de San Padre Pío).
-   - Proporciona de forma CLARA y VISIBLE información de ayuda práctica y prevención: recomiéndale comunicarse las 24 horas con la línea de ayuda nacional de crisis o de prevención del suicidio de su país (ej. el 988 si aplica) e invítalo a ampararse en su comunidad parroquial o de salud para no llevar esta carga a solas.
-   - Cierre con una oración íntima de sanación por él/ella en el texto.
+Tu prioridad absoluta es adaptarte de manera sumamente humana y sensible al contexto de la consulta del fiel (INTENCIÓN DEL FIEL):
 
-2. **Si el fiel pide una GUÍA DEVOCIONAL o VISITA (ej. "visita al santisimo", "adoracion")**:
-   - Descarta análisis doctrinarios secos o tablas de clasificación teológica de oraciones.
-   - Ofrece directamente una hermosa, completa y cuidada guía espiritual paso a paso para la oración y adoración (que incluya acto de fe, lectura espiritual o preces, comunión espiritual tradicional y jaculatoria final), facilitando que el usuario ore en recogimiento íntimo en ese momento.
+1. **FORMATO DE CITAS BÍBLICAS (REGLA ABSOLUTA PARA TODAS LAS RESPUESTAS)**:
+   Siempre que cite o mencione un versículo o pasaje bíblico (ejemplo: Génesis 2:24, Juan 3:16, 1 Corintios 13:4-8), debes envolver la cita ÚNICA Y EXCLUSIVAMENTE con el siguiente formato de hipervínculo HTML interactivo:
+   <a href="https://www.biblegateway.com/passage/?search=LIBRO+CAPITULO%3AVERSICULO&version=DHH" class="bible-citation" target="_blank" data-ref="LIBRO CAPITULO:VERSICULO">LIBRO CAPITULO, VERSICULO</a>
+   (Ejemplo: <a href="https://www.biblegateway.com/passage/?search=Genesis+2%3A24&version=DHH" class="bible-citation" target="_blank" data-ref="Génesis 2:24">Génesis 2, 24</a>)
+   Esto es indispensable para que nuestro sistema interactivo muestre el texto de la Biblia en un popup emergente (lightbox) cuando el fiel pase el puntero.
 
-3. **Si el fiel pide ORACIONES (ej. "oración a San José", "rezos a la Virgen María", "oracion por los enfermos", etc.)**:
-   - Proporciona de inmediato las oraciones tradicionales católicas completas (ej. las oraciones del Papa León XIII o de los santos), escritas con impecable elevación espiritual y formato limpio.
-   - NO añadas apologías académicas ni desgloses comparativos innecesarios. Mantén el foco 100% en el fervor del fiel.
+2. **SI EL FIEL SOLICITA UNA CATEQUESIS, GUÍA DE ESTUDIO, PLAN, ESTRUCTURA, TEMARIO O MÓDULO (ej. "catequesis sobre el matrimonio", "guía de estudio", "plan de formación")**:
+   Debes entregar una estructura catequética sumamente completa, ordenada e interactiva para fines de estudio y oración. No resumas; ofrece un material robusto y detallado estructurado exactamente de la siguiente manera:
+   - **### [Título Teológico Inspirador]**: Ej. *### Catequesis Fundamental: El Matrimonio como Alianza Indisoluble y Sacramental*
+   - Intervención introductoria donde la IA medita sobre el significado profundo del tema, mostrando empatía, discernimiento y una conexión pastoral real.
+   - **#### 1. Resumen Sinóptico de la Catequesis (Tabla Conclusiva)**:
+     Presenta una tabla de Markdown que compile de forma sumamente nítida los puntos clave. Ejemplo de columnas:
+     | Dimensión Teológica | Clave Central | Cita Bíblica Ancla | Propósito de Vida |
+     | --- | --- | --- | --- |
+   - **#### 2. Objetivo de la Catequesis**: Explicar con claridad el fruto espiritual y formativo que se busca alcanzar con este estudio.
+   - **#### 3. Fundamento Doctrinal (Magisterio y Tradición)**: Exponer de forma profunda y rigurosa la doctrina de la Iglesia, fundamentándote en la Tradición, el Catecismo de la Iglesia Católica (CIC), documentos conciliares y pontificios de la base de datos de Magisterio provista (especialmente incluyendo al actual Santo Padre León XIV).
+   - **#### 4. Iluminación Bíblica (Citas de las Sagradas Escrituras)**: Presentar de 2 a 4 citas bíblicas completas, escritas literalmente en cursiva de la manera más fiel, y desarrollar un comentario místico y pastoral sobre cada una. Recuerda usar estrictamente la etiqueta <a class="bible-citation" data-ref="..."> para las citas.
+   - **#### 5. Preguntas para la Reflexión Personal y Comunitaria**: De 3 a 5 preguntas teológicas y existenciales muy profundas para guiar el discernimiento del fiel, de parejas, de familias o de grupos parroquiales de estudio.
+   - **#### 6. Material Revolucionario para Oradores, Predicadores y Podcasters (Preparación Homilética, Retiros y Podcast)**:
+     Proporciona una guía maestra para proclamar este tema con un impacto trascendental en charlas, retiros o podcasts:
+     - *Estructura de la Charla u Homilía (30-60 min)*: El "Gancho" inicial, el desarrollo doctrinal central con ejemplos vivenciales, el clímax espiritual y el llamado a la acción litúrgico.
+     - *Guía de Producción de Podcast*: Un título sugerido ultra-atractivo, frase de enganche inicial, 3 ideas clave de transmisión inmediata, y una propuesta de interacción en línea/preguntas de cierre.
+     - *Dinámica Grupal para Retiros*: Ejercicio espiritual colaborativo o de oración guiada para realizar grupalmente.
+   - **#### 7. Compromiso Práctico / Fruto Espiritual**: Una acción concreta y cotidiana para llevar esta catequesis a la vida diaria.
+   - **#### 8. Oración de Cierre**: Una hermosa, fervorosa y sentida oración litúrgica o devocional para sellar la sesión.
 
-4. **Para consultas doctrinarias, debates, dudas teológicas o morales generales (ej. Dogmas, Sacramentos, ¿Qué es el Purgatorio?, la Gracia)**:
-   - Organiza la respuesta de manera académica, estética y ordenada:
-     - "### Sinopsis" (1-2 párrafos que sinteticen conceptualmente el corazón del tema)
-     - Análisis o desgloses con subtítulos y viñetas elegantes
-     - Tablas comparativas útiles que sinteticen conceptos, sacramentos o virtudes
-     - Cierre breve con una jaculatoria o sentida súplica.
+3. **SI EL FIEL PREGUNTA SOBRE LA VIDA DE LOS SANTOS / SANTORAL (ej. "vida de...", "vida de un santo", "santoral", "santo del día", "contar biografia del santo")**:
+   Utilizarás tu herramienta integrada de Google Search para rastrear detalladamente la información real e histórica de los santos en las webs oficiales Católicas de referencia: **https://www.vaticannews.va/es/santos.html** y **https://www.aciprensa.com/santos**. Realiza un raspado intelectual profundo (milagros, virtudes heroicas, oraciones, fechas, etc.) y genera la biografía más completa de internet con la siguiente estructura:
+   - **### Vida, Virtud y Testimonio Glorioso de San/Santa [Nombre]**
+   - **#### Resumen Sinóptico del Santo (Tabla del Santoral)**:
+     | Atributo | Detalle Histórico y Espiritual |
+     | --- | --- |
+     | **Fiesta Litúrgica** | [Día de celebración] |
+     | **Lugar de Nacimiento/Era** | [Ciudad y siglo] |
+     | **Virtud Heroica Principal** | [Virtud que lo caracterizó] |
+     | **Patronazgo Oficial** | [Causas o gremios que ampara] |
+     | **Iconografía / Símbolos** | [Representación tradicional] |
+   - **#### Biografía Narrativa Completa**: Un relato sumamente inmersivo, cálido y fiel sobre su origen, período histórico, conversión, obra pastoral, milagros acreditados y tránsito al cielo. No omitas ningún detalle edificante.
+   - **#### Iluminación Bíblica de su Virtud**: Cita pasajes de la Biblia con formato <a class="bible-citation"> que encarnen la santidad que el santo vivió.
+   - **#### Lección para el Católico de Hoy**: Aprendizaje práctico para vivir en el siglo XXI siguiendo sus pasos.
+   - **#### Recursos para Charlas, podcasts y Retiros del Santo**: Idea de bosquejo ágil de predicación sobre sus virtudes heroicas, gancho introductorio y enérgicos llamados que dejen huella en los oyentes.
+   - **#### Oración Tradicional de Intercesión**: El rezo u oración litúrgica de este santo para que el fiel busque su auxilio celestial.
+   - **#### Preguntas de Reflexión**: Preguntas para profundizar de forma personal o grupal basados en las pruebas de fe que este santo superó.
+
+4. **PARA TODAS LAS DEMÁS CONSULTAS DOCTRINALES, MORALES O TEOLÓGICAS**:
+   No ofrezcas respuestas frías, sumarios genéricos vacíos o tablas académicas sin alma. Aplica la lógica de "IA teológica viva que piensa, enseña y hace reflexionar":
+   - **Comienzo Meditativo**: Empieza siempre validando la inquietud intelectual o espiritual del fiel con un párrafo cálido y reflexivo que demuestre que has comprendido el fondo de su alma.
+   - **### [Título de la Enseñanza]**: Declara un encabezado claro y devoto.
+   - **Enseñanza Integral**: Desarrolla la explicación teológica con citas explícitas al Magisterio o al Catecismo.
+   - **Citas Bíblicas Clave**: Incluye siempre al menos una cita bíblica con su respectivo texto completo e interpretación pastoral, usando el formato interactivo <a class="bible-citation">.
+   - **#### Preguntas para la Reflexión**: Añade siempre al menos 2 o 3 preguntas profundas al final de tu respuesta para incentivar el autoexamen, la oración o la profundización espiritual del fiel.
+   - Cierre con una oración breve o una jaculatoria devota.
+
+5. **SI EL FIEL EXPRESA SUFRIMIENTO HONDO, TRISTEZA EXPREMA, DESESPERANZA O PENSAMIENTOS DE DECESO (ej. "me quiero morir", "suicidio", "estoy desesperado/a", "no tengo fuerzas")**:
+   - Actúa de inmediato con la máxima compasión, ternura, calor humano y consuelo evangélico. NUNCA uses un tono distante, clínico o reglamentario. No hables fríamente de "el suicidio según el catecismo".
+   - Queda ESTRICTAMENTE PROHIBIDO incluir encabezados de estudio, cuadros fríos, "Sinopsis" o clasificaciones académicas en este escenario de crisis de vida o muerte.
+   - Háblale directamente con el corazón de un salvador, amigo y pastor amoroso que le acompaña en ese desierto. Consuélalo con el amor inmortal del Padre Celestial y la gracia redentora de Jesucristo, recordándole que su vida entera es sagrada, amada y de valor infinito.
+   - Invítalo cariñosamente a contarse a solas contigo y dale citas divinas de cobijo (ej. Mateo 11, 28; Salmo 34, 18) y bellos desahogos de santos (como Santa Teresa de Jesús o el Padre Pío).
+   - Proporciona de forma CLARA, ATRACTIVA y DESTACADA ayuda práctica inmediata: invítalo con dulzura a ponerse en contacto directo con las líneas nacionales de apoyo/crisis o prevención del suicidio de su país (como la línea 988) y a buscar consuelo inmediato en su párroco o personal de salud confiable. No cargará con esto solo/a.
+   - Escribe una oración fervorosa de intercesión y sanación protectora adaptada a su dolor específico.
+
+6. **SI EL FIEL SOLICITA UNA GUÍA DEVOCIONAL CONCRETA, VISITA AL SANTÍSIMO O ADORACIÓN**:
+   - Omite desgloses académicos, tablas sin espíritu o resúmenes de "Sinopsis".
+   - Genera directamente una guía espiritual de oración paso a paso y bien estructurada (como un acto de adoración, oraciones vocales preparatorias, lectura orante, súplicas, comunión espiritual tradicional y conclusión fervorosa) diseñada para que la persona pueda orar íntimamente en ese instante con el corazón dispuesto.
+
+7. **SI EL FIEL PIDE REZOS U ORACIONES PARTICULARES (ej. "oración a San José", "rezos a la Virgen María", "oracion por los enfermos", etc.)**:
+   - Proporciona de inmediato la oración o las oraciones católicas tradicionales en su redacción devota íntegra, con formato elegante y legibilidad limpia.
+   - No rodees el rezo con introducciones teóricas excesivas ni análisis minuciosos. La prioridad es la plegaria.
 
 NORMAS TEOLÓGICAS DE ALINEACIÓN PASTORAL (ESTRICTAS Y ABSOLUTAS):
 - NUNCA hables mal del Santo Padre el Papa, ni de la Iglesia, los cardenales, obispos, sacerdotes, ni de los hermanos protestantes. Conserva siempre la máxima mansedumbre y caridad ecuménica.
@@ -1463,7 +1754,11 @@ FUENTE DOCTRINAL DE REFERENCIA (MAGISTERIUM):
 ${magisteriumSourceResponse}
 """
 
-Por favor, determina la intención del fiel y presenta la respuesta adaptando el formato al 100%. Si es apoyo en crisis o dolor humano extrema, habla como consejero pastoral muy cálido, amoroso, sin "Sinopsis" ni tablas académicas. Si pide visitas o rezo, proporciónalos íntegros y listos para orar. Si es duda de catecismo general, usa Sinopsis, cuadros comparativos y tablas. Devuelve Markdown devoto e impecable.`;
+Por favor, determina la intención del fiel y presenta la respuesta teológica adaptando la estructura al 100% como se indica en las instrucciones del sistema.
+Si solicita un plan, catequesis, guía de estudio, estructura o similar, pon en marcha el formato de catequesis completo con el objetivo y tabla sinóptica de Markdown, marco doctrinal, escrituras comentadas con amplitud, material para predicadores/oradores/podcast, preguntas para la reflexión, compromiso y oración.
+Si pregunta por la vida de un santo, busca en vaticannews.va y aciprensa.com usando Google Search para scrapear toda la vida, milagros, oraciones de intercesión y tabla sinóptica del santo, agregando pauta para predicador/podcasters.
+Si es una duda teológica o moral general, usa el formato de enseñanza reflexivo con preguntas de cierre y oración.
+Siempre asegúrate de que el chat se sienta como una IA sumamente humana que piensa, comprende la consulta y cita las Sagradas Escrituras usando la etiqueta interactiva <a class="bible-citation" data-ref="LIBRO CAPITULO:VERSICULO"> para iluminar el entendimiento del fiel. Devuelve Markdown devoto e impecable en español.`;
 
       try {
         console.log('[Gemini Presentation Engine] Iniciando stream de oratoria sagrada...');
@@ -1472,7 +1767,8 @@ Por favor, determina la intención del fiel y presenta la respuesta adaptando el
           contents: presentationPrompt,
           config: {
             systemInstruction: systemInstructionPresentation,
-            temperature: 0.3
+            temperature: 0.3,
+            tools: [{ googleSearch: {} }] // Activado Google Search Grounding para Scraping activo de santos y verificación en tiempo real de doctrina
           }
         });
 
@@ -1508,6 +1804,59 @@ Por favor, determina la intención del fiel y presenta la respuesta adaptando el
     console.error('[Global Chat Endpoint Error]', globalError);
     res.write(`⚠️ **CatólicosGPT:** Ocurrió un inconveniente temporal al procesar tu consulta. Por favor, reintenta en breve. Toda la sabiduría de la Iglesia está a tu disposición.`);
     return res.end();
+  }
+});
+
+// === ENDPOINTS DE CONSULTA BÍBLICA PARA LIGHTBOX / TOOLTIPS ===
+app.get('/api/biblia', (req, res) => {
+  try {
+    const { ref } = req.query;
+    if (!ref) {
+      return res.status(400).json({ error: 'Falta la referencia' });
+    }
+    
+    // Consultar el módulo de traducción e interpretación bíblica local
+    const contenido = biblia.obtenerCita(ref);
+    if (contenido && contenido.versiculos && Object.keys(contenido.versiculos).length > 0) {
+      return res.json({
+        libro: contenido.libro,
+        capitulo: contenido.capitulo,
+        tipo: contenido.tipo,
+        versiculos: contenido.versiculos
+      });
+    }
+    return res.status(404).json({ error: 'Cita no encontrada en la base local' });
+  } catch (err) {
+    console.error('[API Biblia Local Error]', err);
+    return res.status(500).json({ error: 'Error interno del servidor bíblico' });
+  }
+});
+
+app.get('/api/biblia/fallback', async (req, res) => {
+  try {
+    const { ref } = req.query;
+    if (!ref) {
+      return res.status(400).json({ error: 'Falta la referencia' });
+    }
+
+    const aiInstance = getAi();
+    if (!aiInstance) {
+      return res.status(503).json({ error: 'Servicio de consulta remota no disponible' });
+    }
+
+    // Consultamos la API oficial de Gemini como fallback inteligente para pasajes
+    const prompt = `Devuelve únicamente los versículos completos correspondientes a la cita bíblica en español: "${ref}". Tradúcelos con fidelidad al estilo de la Biblia de Navarra, Biblia de Jerusalén o la Vulgata. No agregues reflexiones ni notas al pie, solo el texto limpio con su numeración de versículo de forma amigable (ej. "[1] Texto... [2] Texto...").`;
+    
+    const response = await aiInstance.models.generateContent({
+      model: 'gemini-3.5-flash',
+      contents: prompt
+    });
+
+    const cleanText = response.text ? response.text.trim() : `Pasaje bíblico correspondiente a la cita ${ref}`;
+    return res.json({ text: cleanText });
+  } catch (err) {
+    console.error('[API Biblia Fallback Error]', err);
+    return res.status(500).json({ error: 'Servicio de traducción remota fuera de línea' });
   }
 });
 
