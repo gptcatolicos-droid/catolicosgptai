@@ -235,6 +235,10 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
   <meta property="og:image" content="${M.image || 'https://res.cloudinary.com/df9vdt2da/image/upload/v1714498302/catolicosgpt_hero.png'}">
   <meta property="og:site_name" content="CatólicosGPT">
   
+  <!-- Favicon Oficial CatólicosGPT -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="shortcut icon" type="image/svg+xml" href="/favicon.svg">
+  
   <!-- Google Fonts & Tailwind -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1486,51 +1490,6 @@ Por favor, determina la intención del fiel y presenta la respuesta adaptando el
 
     // 6. Último recurso offline: Generador Teológico de Alta Fidelidad Local (Ultra-Fast)
     if (!finalResponseText && !hasWrittenSomething) {
-      console.log('[Local Engine] Generando respuesta teológica con motor local de alta fidelidad.');
-      finalResponseText = generateOfflineTheologicalResponse(query, magisteriumSourceResponse, groundingsLocal);
-      res.write(finalResponseText);
-    }
-
-    // 7. Descubrir infografías, blogs, videos, podcasts relacionados de forma interactiva y agregarlos al pie
-    const recomendados = obtenerRecursosRelacionados(query);
-    const recomendadosHtml = renderRelacionadosHtml(recomendados);
-    if (recomendadosHtml) {
-      res.write("\n\n" + recomendadosHtml);
-    }
-
-    return res.end();"${query}"
-
-FUENTE DOCTRINAL DE REFERENCIA (MAGISTERIUM):
-"""
-${magisteriumSourceResponse}
-"""
-
-Por favor, determina la intención del fiel y presenta la respuesta adaptando el formato al 100%. Si es apoyo en crisis o dolor humano extrema, habla como consejero pastoral muy cálido, amoroso, sin "Sinopsis" ni tablas académicas. Si pide visitas o rezo, proporciónalos íntegros y listos para orar. Si es duda de catecismo general, usa Sinopsis, cuadros comparativos y tablas. Devuelve Markdown devoto e impecable.`;
-
-      try {
-        console.log('[Gemini Presentation Engine] Iniciando stream de oratoria sagrada...');
-        const gResStream = await aiInstance.models.generateContentStream({
-          model: 'gemini-3.5-flash',
-          contents: presentationPrompt,
-          config: {
-            systemInstruction: systemInstructionPresentation,
-            temperature: 0.3
-          }
-        });
-
-        for await (const chunk of gResStream) {
-          if (chunk.text) {
-            res.write(chunk.text);
-          }
-        }
-        finalResponseText = 'stream-completed';
-      } catch (gemIniErr) {
-        console.error('[Gemini Presentation Engine Error]', gemIniErr.message);
-      }
-    }
-
-    // 6. Último recurso offline: Generador Teológico de Alta Fidelidad Local (Ultra-Fast)
-    if (!finalResponseText) {
       console.log('[Local Engine] Generando respuesta teológica con motor local de alta fidelidad.');
       finalResponseText = generateOfflineTheologicalResponse(query, magisteriumSourceResponse, groundingsLocal);
       res.write(finalResponseText);
@@ -2876,6 +2835,16 @@ app.get('/rss.xml', (req, res) => {
 
   res.setHeader('Content-Type', 'application/xml');
   res.send(rssFeed);
+});
+
+app.get('/favicon.svg', (req, res) => {
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.sendFile(path.join(__dirname, 'favicon.svg'));
+});
+
+app.get('/favicon.ico', (req, res) => {
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.sendFile(path.join(__dirname, 'favicon.svg'));
 });
 
 // ════════════════════════════════════════════════════════════════════════════
