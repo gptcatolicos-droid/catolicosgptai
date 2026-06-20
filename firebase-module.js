@@ -1,29 +1,59 @@
 // ════════════════════════════════════════════════════════════════════════════
-// CATOLICOSGPT — MÓDULO FIREBASE / CLOUD FIRESTORE SYNC
+// CATOLICOSGPT — MÓDULO FIREBASE / CLOUD FIRESTORE SYNC (EDICIÓN ULTRA RESILIENTE)
 // Sincronización híbrida de alta disponibilidad y tolerancia a fallos
 // ════════════════════════════════════════════════════════════════════════════
 
-const { initializeApp } = require('firebase/app');
-const { 
-  getFirestore, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  setDoc, 
-  deleteDoc, 
-  collection,
-  getDocFromServer
-} = require('firebase/firestore');
-const { getAuth } = require('firebase/auth');
 const fs = require('fs');
 const path = require('path');
 
-const firebaseConfig = require('./firebase-applet-config.json');
+let firebaseConfig = null;
+let app = null;
+let db = null;
+let auth = null;
+let isFirebaseEnabled = false;
 
-// Inicializar Aplicación Web de Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app, firebaseConfig.firestoreDatabaseId); /* CRITICAL: The app will break without this line */
-const auth = getAuth(app);
+// Intentar cargar la configuración de Firebase de forma asertiva pero tolerando fallos o ausencia de archivos
+try {
+  const configPath = path.join(__dirname, 'firebase-applet-config.json');
+  if (fs.existsSync(configPath)) {
+    firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    if (firebaseConfig && firebaseConfig.apiKey && firebaseConfig.projectId) {
+      const { initializeApp } = require('firebase/app');
+      const { getFirestore } = require('firebase/firestore');
+      const { getAuth } = require('firebase/auth');
+
+      app = initializeApp(firebaseConfig);
+      db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+      auth = getAuth(app);
+      isFirebaseEnabled = true;
+      console.log('[Firebase] Inicialización exitosa de los servicios de la nube.');
+    } else {
+      console.warn('[Firebase] Configuración incompleta en firebase-applet-config.json. Sincronización en la nube desactivada.');
+    }
+  } else {
+    console.warn('[Firebase] Archivo firebase-applet-config.json no encontrado. Sincronización en la nube desactivada.');
+  }
+} catch (e) {
+  console.warn('[Firebase] No se pudo inicializar Firebase en el arranque:', e.message);
+}
+
+// Importación selectiva de funciones de Firestore sólo si está activo
+let doc, getDoc, getDocs, setDoc, deleteDoc, collection, getDocFromServer;
+if (isFirebaseEnabled) {
+  try {
+    const firestoreModule = require('firebase/firestore');
+    doc = firestoreModule.doc;
+    getDoc = firestoreModule.getDoc;
+    getDocs = firestoreModule.getDocs;
+    setDoc = firestoreModule.setDoc;
+    deleteDoc = firestoreModule.deleteDoc;
+    collection = firestoreModule.collection;
+    getDocFromServer = firestoreModule.getDocFromServer;
+  } catch (err) {
+    console.error('[Firebase] Error importando submódulos de Firestore:', err.message);
+    isFirebaseEnabled = false;
+  }
+}
 
 // ── 1. Manejador de Errores Críticos Exigido por el Skill ──
 const OperationType = {
@@ -38,17 +68,17 @@ const OperationType = {
 function handleFirestoreError(error, operationType, path) {
   const errInfo = {
     error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+    authInfo: (auth && auth.currentUser) ? {
+      userId: auth.currentUser.uid,
+      email: auth.currentUser.email,
+      emailVerified: auth.currentUser.emailVerified,
+      isAnonymous: auth.currentUser.isAnonymous,
+      tenantId: auth.currentUser.tenantId,
+      providerInfo: auth.currentUser.providerData ? auth.currentUser.providerData.map(provider => ({
         providerId: provider.providerId,
         email: provider.email,
-      })) || []
-    },
+      })) : []
+    } : 'Inactivo',
     operationType,
     path
   };
@@ -58,6 +88,7 @@ function handleFirestoreError(error, operationType, path) {
 
 // Validar Conexión Inicial Requerida por el Skill (Phase 1)
 async function testConnection() {
+  if (!isFirebaseEnabled) return;
   try {
     await getDocFromServer(doc(db, 'system_test', 'connection_test_doc'));
     console.log('[Firebase] Conexión de validación a Firestore establecida correctamente.');
@@ -65,15 +96,21 @@ async function testConnection() {
     if (error instanceof Error && error.message.includes('the client is offline')) {
       console.error("[Firebase] Warning: El cliente está desconectado. Por favor, revisa la configuración de Firebase.");
     } else {
-      // Ignoramos errores de permisos en este documento de prueba, ya que no existe un documento real
       console.log('[Firebase] Canal listo, se asumen reglas activas.');
     }
   }
 }
-testConnection();
+
+if (isFirebaseEnabled) {
+  testConnection();
+}
 
 // ── 2. Funciones de Sincronización de Usuarios en la Nube ──
 async function syncDownloadUsers(localUsersList) {
+  if (!isFirebaseEnabled) {
+    console.log('[Firebase Sync] Descarga omitida (Firebase desactivado).');
+    return localUsersList;
+  }
   const path = 'users';
   try {
     const querySnapshot = await getDocs(collection(db, path));
@@ -107,12 +144,12 @@ async function syncDownloadUsers(localUsersList) {
     return merged;
   } catch (err) {
     console.error('[Firebase Sync] No se pudo descargar usuarios de la nube. Utilizando base de datos local:', err.message);
-    // No arrojamos para mantener la resiliencia offline de CatólicosGPT, pero guardamos reporte en server
     return localUsersList;
   }
 }
 
 async function syncUploadUser(user) {
+  if (!isFirebaseEnabled) return;
   const path = `users/${user.id}`;
   try {
     // Sanitizar campos opcionales para evitar undefined en Firestore
@@ -139,6 +176,10 @@ async function syncUploadUser(user) {
 
 // ── 3. Funciones de Sincronización de Cupones en la Nube ──
 async function syncDownloadCoupons(localCouponsList) {
+  if (!isFirebaseEnabled) {
+    console.log('[Firebase Sync] Descarga de cupones omitida (Firebase desactivado).');
+    return localCouponsList;
+  }
   const path = 'coupons';
   try {
     const querySnapshot = await getDocs(collection(db, path));
@@ -163,12 +204,13 @@ async function syncDownloadCoupons(localCouponsList) {
     console.log(`[Firebase Sync] Cupones sincronizados desde la nube. Total: ${merged.length}`);
     return merged;
   } catch (err) {
-    console.error('[Firebase Sync] Error sincronizando cupones de la nube:', err.message);
+    console.error('[Firebase Sync] Error sincronizando cupones de las nubes:', err.message);
     return localCouponsList;
   }
 }
 
 async function syncUploadCoupon(coupon) {
+  if (!isFirebaseEnabled) return;
   const path = `coupons/${coupon.id}`;
   try {
     const sanitizedCoupon = {
