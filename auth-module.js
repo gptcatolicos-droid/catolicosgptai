@@ -118,10 +118,13 @@ async function initFirebaseSync() {
   console.log('[Firebase Sync] Sincronización inicial exitosa.');
 }
 
-// Iniciar sincronización de fondo
-initFirebaseSync().catch(err => {
-  console.error('[Firebase Sync] Falló el proceso de inicio de sincronización:', err.message);
-});
+// Iniciar sincronización de fondo con pequeño delay para acelerar el arranque y la escucha de puerto de Express en Cloud Run
+setTimeout(() => {
+  console.log('[Firebase Sync] Iniciando sincronización de fondo diferida...');
+  initFirebaseSync().catch(err => {
+    console.error('[Firebase Sync] Falló el proceso de inicio de sincronización:', err.message);
+  });
+}, 2000);
 
 // ── Usuarios ──
 function getUserByEmail(email) { return loadUsers().users.find(u => u.email.toLowerCase() === email.toLowerCase()) || null; }

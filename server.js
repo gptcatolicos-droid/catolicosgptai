@@ -37,20 +37,24 @@ if (!fs.existsSync(DATA_DIR)) {
   try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch(e) {}
 }
 
-// ── Iniciar e-liturgia de fondo ──
-liturgia.init().then(() => {
-  console.log('[Liturgia] Cache del día inicializado correctamente.');
-}).catch(err => {
-  console.error('[Liturgia] Error inicializando cache:', err.message);
-});
+// ── Iniciar e-liturgia de fondo de forma diferida (evita saturación y bloqueos en el arranque de Cloud Run) ──
+setTimeout(() => {
+  console.log('[Liturgia] Iniciando descarga diferida de la liturgia del día de fondo...');
+  liturgia.init().then(() => {
+    console.log('[Liturgia] Cache del día inicializado correctamente en segundo plano.');
+  }).catch(err => {
+    console.error('[Liturgia] Error inicializando cache de liturgia:', err.message);
+  });
+}, 5000);
 
 // ── Cliente Gemini Central ──
 let ai = null;
 function getAi() {
-  if (!ai && process.env.GEMINI_API_KEY) {
+  const geminiKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim() : null;
+  if (!ai && geminiKey) {
     try {
       ai = new GoogleGenAI({
-        apiKey: process.env.GEMINI_API_KEY,
+        apiKey: geminiKey,
         httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
       });
       console.log('[Gemini] Cliente inicializado correctamente.');
@@ -1568,9 +1572,10 @@ app.post('/api/chat', async (req, res) => {
     let magisteriumSourceResponse = '';
     let usedMagisteriumAPI = false;
 
-    console.log('[Magisterium Integrator] Verificando presencia de MAGISTERIUM_API_KEY en ambiente:', process.env.MAGISTERIUM_API_KEY ? 'Presente (Longitud: ' + process.env.MAGISTERIUM_API_KEY.length + ')' : 'No detectada');
+    const magisteriumApiKey = process.env.MAGISTERIUM_API_KEY ? process.env.MAGISTERIUM_API_KEY.trim() : null;
+    console.log('[Magisterium Integrator] Verificando presencia de MAGISTERIUM_API_KEY en ambiente:', magisteriumApiKey ? 'Presente (Longitud: ' + magisteriumApiKey.length + ')' : 'No detectada');
 
-    if (process.env.MAGISTERIUM_API_KEY) {
+    if (magisteriumApiKey) {
       const systemInstructionMagisterium = `Eres un teólogo católico erudito, fiel servidor del Magisterio de la Iglesia y del Papa León XIV. 
 Tus respuestas deben estar profundamente ancladas en la verdad doctrinal y pastoral de las Sagradas Escrituras, el Catecismo y los santos pontífices.`;
 
@@ -1581,7 +1586,7 @@ Tus respuestas deben estar profundamente ancladas en la verdad doctrinal y pasto
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.MAGISTERIUM_API_KEY}`
+            'Authorization': `Bearer ${magisteriumApiKey}`
           },
           body: JSON.stringify({
             query: query,
@@ -1620,7 +1625,7 @@ Tus respuestas deben estar profundamente ancladas en la verdad doctrinal y pasto
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.MAGISTERIUM_API_KEY}`
+            'Authorization': `Bearer ${magisteriumApiKey}`
           },
           body: JSON.stringify({
             messages: [
