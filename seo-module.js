@@ -6,7 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const APP_URL = process.env.APP_URL || 'https://www.catolicosgpt.com';
+const APP_URL = process.env.APP_URL || 'https://ai.catolicosgpt.com';
 
 // ── Sitemap Generator ──
 function generateSitemapXML({ infografias = [], posts = [], sementeras = [] } = {}) {
