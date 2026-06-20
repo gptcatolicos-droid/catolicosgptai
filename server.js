@@ -198,7 +198,7 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
   };
 
   const M = { ...defaultMetaTags, ...metaTags };
-  const APP_URL = process.env.APP_URL || 'https://www.catolicosgpt.com';
+  const APP_URL = process.env.APP_URL || 'https://ai.catolicosgpt.com';
 
   return `<!DOCTYPE html>
 <html lang="es" class="h-full">
@@ -1415,6 +1415,7 @@ Tus respuestas deben estar profundamente ancladas en la verdad doctrinal y pasto
     }
 
     let finalResponseText = '';
+    let hasWrittenSomething = false;
 
     // 5. Motor de Presentación Inteligente de Gemini si la clave está provista y el cliente iniciado
     const aiInstance = getAi();
@@ -1428,7 +1429,7 @@ Tu prioridad absoluta es adaptarte de manera sumamente humana y sensible al cont
    - Háblale directamente con el corazón de un pastor bondadoso que camina a su lado en el dolor. Consuélale con el amor infinito y eterno de Dios, asegurándole que ante el Padre Celestial su vida es un tesoro inestimable de valor infinito.
    - Invítale con dulzura a compartir qué le duele y dale citas de consuelo (ej. Mateo 11, 28; Salmo 34, 18) junto a consejos consoladores de santos (ej. el "Nada te turbe" de Santa Teresa, o el "Reza, ten fe y no te preocupes" de San Padre Pío).
    - Proporciona de forma CLARA y VISIBLE información de ayuda práctica y prevención: recomiéndale comunicarse las 24 horas con la línea de ayuda nacional de crisis o de prevención del suicidio de su país (ej. el 988 si aplica) e invítalo a ampararse en su comunidad parroquial o de salud para no llevar esta carga a solas.
-   - Cierra con una oración íntima de sanación por él/ella en el texto.
+   - Cierre con una oración íntima de sanación por él/ella en el texto.
 
 2. **Si el fiel pide una GUÍA DEVOCIONAL o VISITA (ej. "visita al santisimo", "adoracion")**:
    - Descarta análisis doctrinarios secos o tablas de clasificación teológica de oraciones.
@@ -1448,10 +1449,56 @@ Tu prioridad absoluta es adaptarte de manera sumamente humana y sensible al cont
 NORMAS TEOLÓGICAS DE ALINEACIÓN PASTORAL (ESTRICTAS Y ABSOLUTAS):
 - NUNCA hables mal del Santo Padre el Papa, ni de la Iglesia, los cardenales, obispos, sacerdotes, ni de los hermanos protestantes. Conserva siempre la máxima mansedumbre y caridad ecuménica.
 - NO ofrezcas opiniones políticas sobre partidos, candidatos ni ideologías seculares. Somos un portal espiritual que trasciende debates de poder terrenal.
-- DEFIENDE SIEMPRE de forma inquebrantable la vida humana desde la concepción hasta la muerte natural, la institución sagrada del matrimonio y la familia. Oponte con celo pastoral, ternura y claridad magisterial al aborto, la eutanasia, las uniones civiles homosexuales y el uso de anticonceptivos artificiales.
+- DEFIENDE SIEMPRE de forma inquebrantable la santidad de la vida humana en todas sus etapas (desde la concepción hasta el término natural), así como la sagrada institución del matrimonio cristiano y de la familia, promoviendo con caridad y firmeza pastoral las enseñanzas y la doctrina moral de nuestra Santa Madre Iglesia en estos ámbitos de importancia moral y ética.
 - Queda prohibida cualquier mención sobre claves API o configuraciones.`;
 
       const presentationPrompt = `CONSULTA ORIGINAL DEL FIEL: "${query}"
+
+FUENTE DOCTRINAL DE REFERENCIA (MAGISTERIUM):
+"""
+${magisteriumSourceResponse}
+"""
+
+Por favor, determina la intención del fiel y presenta la respuesta adaptando el formato al 100%. Si es apoyo en crisis o dolor humano extrema, habla como consejero pastoral muy cálido, amoroso, sin "Sinopsis" ni tablas académicas. Si pide visitas o rezo, proporciónalos íntegros y listos para orar. Si es duda de catecismo general, usa Sinopsis, cuadros comparativos y tablas. Devuelve Markdown devoto e impecable.`;
+
+      try {
+        console.log('[Gemini Presentation Engine] Iniciando stream de oratoria sagrada...');
+        const gResStream = await aiInstance.models.generateContentStream({
+          model: 'gemini-3.5-flash',
+          contents: presentationPrompt,
+          config: {
+            systemInstruction: systemInstructionPresentation,
+            temperature: 0.3
+          }
+        });
+
+        for await (const chunk of gResStream) {
+          if (chunk.text) {
+            res.write(chunk.text);
+            hasWrittenSomething = true;
+          }
+        }
+        finalResponseText = 'stream-completed';
+      } catch (gemIniErr) {
+        console.error('[Gemini Presentation Engine Error]', gemIniErr.message);
+      }
+    }
+
+    // 6. Último recurso offline: Generador Teológico de Alta Fidelidad Local (Ultra-Fast)
+    if (!finalResponseText && !hasWrittenSomething) {
+      console.log('[Local Engine] Generando respuesta teológica con motor local de alta fidelidad.');
+      finalResponseText = generateOfflineTheologicalResponse(query, magisteriumSourceResponse, groundingsLocal);
+      res.write(finalResponseText);
+    }
+
+    // 7. Descubrir infografías, blogs, videos, podcasts relacionados de forma interactiva y agregarlos al pie
+    const recomendados = obtenerRecursosRelacionados(query);
+    const recomendadosHtml = renderRelacionadosHtml(recomendados);
+    if (recomendadosHtml) {
+      res.write("\n\n" + recomendadosHtml);
+    }
+
+    return res.end();"${query}"
 
 FUENTE DOCTRINAL DE REFERENCIA (MAGISTERIUM):
 """
@@ -2789,6 +2836,19 @@ app.use('/', seoPillarsRouter);
 // ════════════════════════════════════════════════════════════════════════════
 // RUTAS DE ARCHIVOS XML SITEMAPS Y RSS DE POTENCIA SEO
 // ════════════════════════════════════════════════════════════════════════════
+
+app.get('/robots.txt', (req, res) => {
+  const APP_URL = process.env.APP_URL || 'https://ai.catolicosgpt.com';
+  res.setHeader('Content-Type', 'text/plain');
+  res.send(`User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /login-admin-bypass
+
+Sitemap: ${APP_URL}/sitemap.xml
+`);
+});
 
 app.get('/sitemap.xml', (req, res) => {
   const infCatalog = infografias.loadCatalog();
