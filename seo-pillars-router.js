@@ -11,6 +11,7 @@ const seoTopics = require('./seo-topics');
 const bibliaModule = require('./biblia-module');
 
 const router = express.Router();
+const APP_URL = process.env.APP_URL || 'https://ai.catolicosgpt.com';
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const CACHE_DIR = path.join(DATA_DIR, 'seo_cache');
 
@@ -273,13 +274,13 @@ function renderSEOPage(req, pageData, relatedData) {
         "@type": "ListItem",
         "position": 1,
         "name": "Inicio",
-        "item": "https://www.catolicosgpt.com/"
+        "item": `${APP_URL}/`
       },
       {
         "@type": "ListItem",
         "position": 2,
         "name": pageData.title,
-        "item": `https://www.catolicosgpt.com${req.originalUrl}`
+        "item": `${APP_URL}${req.originalUrl}`
       }
     ]
   };
