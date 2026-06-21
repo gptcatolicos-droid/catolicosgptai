@@ -23,13 +23,12 @@ try {
       const { getAuth } = require('firebase/auth');
 
       app = initializeApp(firebaseConfig);
-      // Forzar Long Polling para máxima resiliencia ante cortes de red y desconexión de streams gRPC.
       db = initializeFirestore(app, {
         experimentalForceLongPolling: true
       }, firebaseConfig.firestoreDatabaseId);
       auth = getAuth(app);
       isFirebaseEnabled = true;
-      console.log('[Firebase] Inicialización exitosa de los servicios de la nube (Long Polling adaptativo).');
+      console.log('[Firebase] Inicialización exitosa de los servicios de la nube.');
     } else {
       console.warn('[Firebase] Configuración incompleta en firebase-applet-config.json. Sincronización en la nube desactivada.');
     }
@@ -58,7 +57,7 @@ if (isFirebaseEnabled) {
   }
 }
 
-// ── Manejador de Errores Críticos Exigido por el Skill ──
+// ── 1. Manejador de Errores Críticos ──
 const OperationType = {
   CREATE: 'create',
   UPDATE: 'update',
@@ -89,7 +88,7 @@ function handleFirestoreError(error, operationType, path) {
   throw new Error(JSON.stringify(errInfo));
 }
 
-// Validar Conexión Inicial Requerida por el Skill (Phase 1)
+// Validar Conexión Inicial Requerida por el SDK de Firestore
 async function testConnection() {
   if (!isFirebaseEnabled) return;
   try {
@@ -108,7 +107,7 @@ if (isFirebaseEnabled) {
   testConnection();
 }
 
-// Funciones de Sincronización de Usuarios en la Nube
+// ── 2. Funciones de Sincronización de Usuarios en la Nube ──
 async function syncDownloadUsers(localUsersList) {
   if (!isFirebaseEnabled) {
     console.log('[Firebase Sync] Descarga omitida (Firebase desactivado).');
@@ -134,6 +133,7 @@ async function syncDownloadUsers(localUsersList) {
       if (idx === -1) {
         merged.push(cu);
       } else {
+        // En caso de conflicto, se preserva el registro de la nube o con fecha de modificación posterior
         const localTime = new Date(merged[idx].createdAt || 0).getTime();
         const cloudTime = new Date(cu.createdAt || 0).getTime();
         if (cloudTime >= localTime) {
@@ -145,7 +145,7 @@ async function syncDownloadUsers(localUsersList) {
     console.log(`[Firebase Sync] Descargados ${cloudUsers.length} usuarios de Firestore. Total unificados: ${merged.length}`);
     return merged;
   } catch (err) {
-    console.error('[Firebase Sync] No se pudo descargar usuarios de la nube. Utilizando base de datos local:', err.message);
+    console.error('[Firebase Sync] No se pudo descargar usuarios de labase de datos. Utilizando base de datos local:', err.message);
     return localUsersList;
   }
 }
@@ -154,6 +154,7 @@ async function syncUploadUser(user) {
   if (!isFirebaseEnabled) return;
   const path = `users/${user.id}`;
   try {
+    // Sanitizar campos opcionales para evitar undefined en Firestore
     const sanitizedUser = {
       id: user.id || '',
       email: (user.email || '').toLowerCase(),
@@ -175,7 +176,7 @@ async function syncUploadUser(user) {
   }
 }
 
-// Funciones de Sincronización de Cupones en la Nube
+// ── 3. Funciones de Sincronización de Cupones en la Nube ──
 async function syncDownloadCoupons(localCouponsList) {
   if (!isFirebaseEnabled) {
     console.log('[Firebase Sync] Descarga de cupones omitida (Firebase desactivado).');
