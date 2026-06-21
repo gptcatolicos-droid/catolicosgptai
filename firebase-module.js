@@ -19,11 +19,18 @@ try {
     firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     if (firebaseConfig && firebaseConfig.apiKey && firebaseConfig.projectId) {
       const { initializeApp } = require('firebase/app');
-      const { getFirestore } = require('firebase/firestore');
+      const { initializeFirestore } = require('firebase/firestore');
       const { getAuth } = require('firebase/auth');
 
       app = initializeApp(firebaseConfig);
-      db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+      const fsSettings = {
+        experimentalForceLongPolling: true
+      };
+      if (firebaseConfig.firestoreDatabaseId && typeof firebaseConfig.firestoreDatabaseId === 'string' && firebaseConfig.firestoreDatabaseId.trim() !== '') {
+        db = initializeFirestore(app, fsSettings, firebaseConfig.firestoreDatabaseId.trim());
+      } else {
+        db = initializeFirestore(app, fsSettings);
+      }
       auth = getAuth(app);
       isFirebaseEnabled = true;
       console.log('[Firebase] Inicialización exitosa de los servicios de la nube.');

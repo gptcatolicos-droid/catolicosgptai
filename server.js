@@ -25,7 +25,7 @@ const biblia        = require('./biblia-module');
 const { GoogleGenAI } = require('@google/genai');
 
 const app  = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.use(cors());
 app.use(express.json({ limit: '30mb' }));
@@ -912,15 +912,13 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
         // Por defecto colocamos arriba de la cita
         let posY = rect.top + scrollY - 20;
 
-        tooltip.innerHTML = `
-          <div class="flex items-center gap-2 text-gold italic font-serif">
-            <svg class="animate-spin h-3.5 w-3.5 text-gold-deep" viewBox="0 0 24 24" fill="none">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-            </svg>
-            <span>Revelando pasaje Sagrado...</span>
-          </div>
-        `;
+        tooltip.innerHTML = '<div class="flex items-center gap-2 text-gold italic font-serif">' +
+          '<svg class="animate-spin h-3.5 w-3.5 text-gold-deep" viewBox="0 0 24 24" fill="none">' +
+            '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>' +
+            '<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>' +
+          '</svg>' +
+          '<span>Revelando pasaje Sagrado...</span>' +
+        '</div>';
 
         tooltip.style.display = 'block';
         tooltip.style.left = posX + 'px';
@@ -938,22 +936,20 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
             throw new Error('Local not found');
           })
           .then(data => {
-            let html = `
-              <div class="flex flex-col gap-1 border-b border-[#E6DFD4] pb-1.5 mb-1.5">
-                <span class="font-display font-bold text-xs tracking-wider text-[#5E1B22] uppercase flex items-center justify-between">
-                  <span>📖 \${data.libro} \${data.capitulo}</span>
-                  <span class="text-[9px] text-[#BC8A36] font-mono">Biblia de Navarra</span>
-                </span>
-              </div>
-            `;
+            let html = '<div class="flex flex-col gap-1 border-b border-[#E6DFD4] pb-1.5 mb-1.5">' +
+              '<span class="font-display font-bold text-xs tracking-wider text-[#5E1B22] uppercase flex items-center justify-between">' +
+                '<span>📖 ' + data.libro + ' ' + data.capitulo + '</span>' +
+                '<span class="text-[9px] text-[#BC8A36] font-mono">Biblia de Navarra</span>' +
+              '</span>' +
+            '</div>';
             let versesText = '<div class="overflow-y-auto max-h-48 pr-1 scrollbar-thin scrollbar-thumb-gold select-text">';
             if (data.versiculos && Object.keys(data.versiculos).length > 0) {
               const ordered = Object.entries(data.versiculos).sort((a,b) => parseInt(a[0]) - parseInt(b[0]));
               ordered.forEach(([num, text]) => {
-                versesText += `<p class="mb-1 text-ink"><sup class="font-bold text-[#9F7124] mr-1">\${num}</sup><span class="font-serif italic text-[#2D241E]">\${text}</span></p>`;
+                versesText += '<p class="mb-1 text-ink"><sup class="font-bold text-[#9F7124] mr-1">' + num + '</sup><span class="font-serif italic text-[#2D241E]">' + text + '</span></p>';
               });
             } else {
-              versesText += `<p class="italic text-[#5A4E46]">Lectura completa del capítulo en la Biblia.</p>`;
+              versesText += '<p class="italic text-[#5A4E46]">Lectura completa del capítulo en la Biblia.</p>';
             }
             versesText += '</div>';
             tooltip.innerHTML = html + versesText;
@@ -967,22 +963,20 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
             fetch(\`/api/biblia/fallback?ref=\${encodeURIComponent(ref)}\`)
               .then(res => res.json())
               .then(data => {
-                tooltip.innerHTML = `
-                  <div class="flex flex-col gap-1 border-b border-[#E6DFD4] pb-1.5 mb-1.5">
-                    <span class="font-display font-bold text-xs text-[#5E1B22] uppercase flex items-center justify-between">
-                      <span>📖 \${ref}</span>
-                      <span class="text-[9px] text-[#BC8A36] font-mono">Jerusalén / Vulgata</span>
-                    </span>
-                  </div>
-                  <div class="overflow-y-auto max-h-48 pr-1 select-text font-serif italic text-[#2D241E]">
-                    \${data.text}
-                  </div>
-                `;
+                tooltip.innerHTML = '<div class="flex flex-col gap-1 border-b border-[#E6DFD4] pb-1.5 mb-1.5">' +
+                  '<span class="font-display font-bold text-xs text-[#5E1B22] uppercase flex items-center justify-between">' +
+                    '<span>📖 ' + ref + '</span>' +
+                    '<span class="text-[9px] text-[#BC8A36] font-mono">Jerusalén / Vulgata</span>' +
+                  '</span>' +
+                '</div>' +
+                '<div class="overflow-y-auto max-h-48 pr-1 select-text font-serif italic text-[#2D241E]">' +
+                  data.text +
+                '</div>';
                 const tooltipHeight = tooltip.offsetHeight;
                 tooltip.style.top = (rect.top + scrollY - tooltipHeight - 12) + 'px';
               })
               .catch(() => {
-                tooltip.innerHTML = `<p class="text-red-800 font-medium font-serif italic">Pasaje sagrado no disponible temporalmente.</p>`;
+                tooltip.innerHTML = '<p class="text-red-800 font-medium font-serif italic">Pasaje sagrado no disponible temporalmente.</p>';
               });
           });
       }
@@ -1034,6 +1028,14 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
 // ════════════════════════════════════════════════════════════════════════════
 // RUTAS DE LA APP — VISTA PRINCIPAL (ASISTENTE CHAT)
 // ════════════════════════════════════════════════════════════════════════════
+
+app.get('/download-server', (req, res) => {
+  res.download(path.join(__dirname, 'server.js'), 'server.js');
+});
+
+app.get('/download-firebase', (req, res) => {
+  res.download(path.join(__dirname, 'firebase-module.js'), 'firebase-module.js');
+});
 
 app.get('/', (req, res) => {
   const lit = liturgia.get('lecturas');
