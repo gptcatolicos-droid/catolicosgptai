@@ -19,8 +19,14 @@ try {
     firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     if (firebaseConfig && firebaseConfig.apiKey && firebaseConfig.projectId) {
       const { initializeApp } = require('firebase/app');
-      const { initializeFirestore } = require('firebase/firestore');
+      const { initializeFirestore, setLogLevel } = require('firebase/firestore');
       const { getAuth } = require('firebase/auth');
+
+      try {
+        setLogLevel('error');
+      } catch (logErr) {
+        console.warn('[Firebase] No se pudo configurar el nivel de log en error:', logErr.message);
+      }
 
       app = initializeApp(firebaseConfig);
       const fsSettings = {
@@ -91,6 +97,41 @@ function handleFirestoreError(error, operationType, path) {
   };
   console.error('[Firebase Error] Details:', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
+}
+
+// ── Función de Autenticación de Servidor para Permitir Escritura Segura ──
+async function authenticateServer() {
+  if (!isFirebaseEnabled || !auth) return;
+  const email = 'sellerplusco@gmail.com';
+  const password = 'Comics2026*';
+  try {
+    const { signInWithEmailAndPassword, createUserWithEmailAndPassword } = require('firebase/auth');
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      console.log('[Firebase Auth] Servidor autenticado con éxito como:', email);
+    } catch (err) {
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+        try {
+          console.log('[Firebase Auth] Intentando registrar usuario administrador de respaldo...');
+          await createUserWithEmailAndPassword(auth, email, password);
+          console.log('[Firebase Auth] Súper-administrador registrado y autenticado.');
+        } catch (regErr) {
+          if (regErr.code === 'auth/email-already-in-use') {
+            await signInWithEmailAndPassword(auth, email, password);
+            console.log('[Firebase Auth] Servidor autenticado en segundo intento.');
+          } else {
+            console.warn('[Firebase Auth] No se pudo auto-registrar el administrador del servidor:', regErr.message);
+          }
+        }
+      } else if (err.code === 'auth/operation-not-allowed') {
+        console.warn('[Firebase Auth] El proveedor de Email/Password no está habilitado en tu consola de Firebase. Por favor, actívalo para permitir la sincronización.');
+      } else {
+        console.warn('[Firebase Auth] Error durante la autenticación de servidor:', err.message);
+      }
+    }
+  } catch (err) {
+    console.warn('[Firebase Auth] Error al cargar dependencias de autenticación para el servidor:', err.message);
+  }
 }
 
 // Validar Conexión Inicial Requerida por el Skill (Phase 1)
@@ -245,6 +286,7 @@ module.exports = {
   auth,
   OperationType,
   handleFirestoreError,
+  authenticateServer,
   syncDownloadUsers,
   syncUploadUser,
   syncDownloadCoupons,

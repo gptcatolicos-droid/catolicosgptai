@@ -170,7 +170,11 @@ IMPORTANTE:
         };
       }
     } catch (err) {
-      console.error('[Scraper Dominicos AI Error]', err.message);
+      if (err.message && (err.message.includes('Quota exceeded') || err.message.includes('429'))) {
+        console.warn('[Scraper Dominicos AI] Cuota de Gemini agotada (429). Se usará el extractor local de respaldo.');
+      } else {
+        console.error('[Scraper Dominicos AI Error]', err.message);
+      }
     }
   }
 
@@ -206,7 +210,11 @@ async function scrapeIBreviary(hora) {
   try {
     const url = `https://www.ibreviary.com/m/preghiere.php?lang=spagnolo&s=${slug}`;
     const r = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 CatolicosGPT' },
+      headers: { 
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8'
+      },
       signal: AbortSignal.timeout(10000)
     });
     if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -278,7 +286,11 @@ IMPORTANTE:
           };
         }
       } catch (err) {
-        console.error('[Scraper Ordo AI Error]', err.message);
+        if (err.message && (err.message.includes('Quota exceeded') || err.message.includes('429'))) {
+          console.warn('[Scraper Ordo AI] Cuota de Gemini agotada (429). Se mantendrá la liturgia base sin formatear.');
+        } else {
+          console.error('[Scraper Ordo AI Error]', err.message);
+        }
       }
     }
 

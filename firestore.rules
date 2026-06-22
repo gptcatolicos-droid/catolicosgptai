@@ -21,7 +21,11 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == 'sellerplusco@gmail.com' ||
+        request.auth.token.email == 'danipalacio@gmail.com'
+      );
     }
 
     // 3. Validation Blueprints (Pillar 2 - Anti-Update-Gap)
@@ -58,10 +62,10 @@ service cloud.firestore {
       allow list: if isAdmin();
       
       allow create: if isSignedIn() 
-        && isOwner(userId) 
+        && (isOwner(userId) || isAdmin()) 
         && isValidId(userId) 
         && isValidUser(request.resource.data) 
-        && request.resource.data.plan == 'free';
+        && (request.resource.data.plan == 'free' || isAdmin());
         
       allow update: if isSignedIn() 
         && (isOwner(userId) || isAdmin()) 

@@ -43,10 +43,13 @@ function generateSitemapXML({ infografias = [], posts = [], sementeras = [] } = 
     addUrl(`/infografias/${inf.slug}`, '0.7', 'monthly', fecha);
   });
 
+  const slugifySimple = (val) => (val || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
   // 3. Blog posts
   posts.forEach(p => {
     const fecha = p.fechaCreacion ? p.fechaCreacion.slice(0, 10) : null;
-    addUrl(`/blog/${p.slug}`, '0.7', 'weekly', fecha);
+    const catSlug = p.categoria ? slugifySimple(p.categoria) : 'catequesis';
+    addUrl(`/blog/${catSlug}/${p.slug}`, '0.7', 'weekly', fecha);
   });
 
   // 4. Secciones SEO temáticas (sementeras)

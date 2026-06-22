@@ -77,6 +77,13 @@ function savePlanConfig(d) {
 
 // ── Inicialización de la Sincronización de Fondo con Firestore ──
 async function initFirebaseSync() {
+  console.log('[Firebase Sync] Intentando autenticar servidor en la nube...');
+  if (typeof firebaseSync.authenticateServer === 'function') {
+    await firebaseSync.authenticateServer().catch(err => {
+      console.warn('[Firebase Sync] No se pudo autenticar el servidor:', err.message);
+    });
+  }
+
   console.log('[Firebase Sync] Iniciando sincronización bidireccional con Firestore...');
   
   // 1. Unificar usuarios

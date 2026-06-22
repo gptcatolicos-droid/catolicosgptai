@@ -243,6 +243,9 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="shortcut icon" type="image/svg+xml" href="/favicon.svg">
   
+  ${M.schemas ? M.schemas.map(sch => `<script type="application/ld+json">${JSON.stringify(sch)}</script>`).join('\n') : ''}
+  ${M.schema ? `<script type="application/ld+json">${JSON.stringify(M.schema)}</script>` : ''}
+  
   <!-- Google Fonts & Tailwind -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -758,6 +761,10 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-log-out"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
             </a>
           </div>
+          <a href="/ajustes" class="w-full text-center text-xs border border-gold/40 hover:bg-[#FAF9F5] text-maroon font-bold py-1.5 rounded transition flex items-center justify-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-cog"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="m20.5 10.5 1 .5-.5 1-1-.5z"/><circle cx="19" cy="12" r="1.5"/></svg>
+            Ajustes de Perfil
+          </a>
           ${user.plan === 'admin' ? `
             <a href="/admin" class="w-full text-center text-xs bg-gold hover:bg-gold-deep text-white py-1.5 rounded font-bold transition flex items-center justify-center gap-1">
               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l-.43.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -839,6 +846,10 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
               </div>
               <a href="/logout" class="p-1 text-red-800" title="Cerrar sesión">Salir</a>
             </div>
+            <a href="/ajustes" onclick="toggleMobileMenu()" class="w-full text-center text-xs border border-gold/40 hover:bg-[#FAF9F5] text-maroon font-bold py-2 rounded mb-1 flex items-center justify-center gap-1">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-cog"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="m20.5 10.5 1 .5-.5 1-1-.5z"/><circle cx="19" cy="12" r="1.5"/></svg>
+              Ajustes de Perfil
+            </a>
           ` : `
             <a href="/login" class="w-full text-center text-xs border border-maroon text-maroon py-2 rounded font-semibold uppercase tracking-wider">Ingresar</a>
             <a href="/register" class="w-full text-center text-xs bg-maroon text-white py-2 rounded font-semibold uppercase tracking-wider">Crear Cuenta</a>
@@ -1043,7 +1054,7 @@ app.get('/', (req, res) => {
 
   // HTML principal del Chat Centrado (al estilo ChatGPT / Gemini)
   const html = `
-    <div class="max-w-4xl mx-auto w-[99%] sm:w-full px-1 py-1 sm:px-4 sm:py-6 flex flex-col h-[calc(100vh-80px)] overflow-hidden">
+    <div class="max-w-[98%] mx-auto w-[99%] sm:w-full px-1 py-1 sm:px-4 sm:py-6 flex flex-col h-[calc(100vh-80px)] overflow-hidden">
       
       <!-- ELEMENTO DE CHAT PRINCIPAL -->
       <div class="flex-1 flex flex-col bg-white border border-[#E6DFD4] rounded-2xl shadow-sm overflow-hidden h-full">
@@ -1056,11 +1067,17 @@ app.get('/', (req, res) => {
               CatolicosGPT IA
             </span>
           </div>
-          <button onclick="clearChat()" class="text-xs text-ink2 hover:text-maroon flex items-center gap-2 font-semibold transition" title="Limpiar conversación">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-            <span class="hidden sm:inline">Vaciar Conversación</span>
-            <span class="inline sm:hidden">Vaciar</span>
-          </button>
+          <div class="flex items-center gap-3.5">
+            <button onclick="clearChat()" class="text-xs text-ink2 hover:text-maroon flex items-center gap-1.5 font-semibold transition" title="Limpiar conversación">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+              <span class="hidden sm:inline">Vaciar Conversación</span>
+              <span class="inline sm:hidden">Vaciar</span>
+            </button>
+            <a href="/ajustes" class="text-xs text-ink2 hover:text-[#BC8A36] flex items-center gap-1.5 font-semibold transition" title="Ajustes de Perfil">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-cog"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="m20.5 10.5 1 .5-.5 1-1-.5z"/><circle cx="19" cy="12" r="1.5"/></svg>
+              <span>Ajustes</span>
+            </a>
+          </div>
         </div>
         
         <!-- CHAT BOX MESSAGES -->
@@ -1077,26 +1094,6 @@ app.get('/', (req, res) => {
               <p class="font-serif text-ink2 text-sm sm:text-base italic">
                 Consulta sobre apologética, teología, santos, liturgia o la encíclica "Magnifica Humanitas".
               </p>
-            </div>
-            
-            <!-- ATAJOS RAPIDOS -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full mt-4 px-4 max-w-xl">
-              <button onclick="enviarAtajo('¿Qué es CatólicosGPT y de dónde obtiene las respuestas?')" class="text-left p-3.5 bg-white border border-border rounded-xl hover:bg-cream hover:border-gold/30 text-xs text-ink transition shadow-sm font-sans flex flex-col gap-1">
-                <span class="font-bold text-maroon">¿Qué es CatólicosGPT?</span>
-                <span class="text-ink2 text-[10px]">Origen de datos y fidelidad doctrinal</span>
-              </button>
-              <button onclick="enviarAtajo('Explícanos la encíclica Magnifica Humanitas sobre la IA')" class="text-left p-3.5 bg-white border border-border rounded-xl hover:bg-cream hover:border-gold/30 text-xs text-ink transition shadow-sm font-sans flex flex-col gap-1">
-                <span class="font-bold text-maroon">La encíclica del Papa León XIV</span>
-                <span class="text-ink2 text-[10px]">Ética, bioética cristiana y transhumanismo</span>
-              </button>
-              <button onclick="enviarAtajo('¿Cuáles son los sacramentos de la Iglesia Católica?')" class="text-left p-3.5 bg-white border border-border rounded-xl hover:bg-cream hover:border-gold/30 text-xs text-ink transition shadow-sm font-sans flex flex-col gap-1">
-                <span class="font-bold text-maroon">Doctrina Católica</span>
-                <span class="text-ink2 text-[10px]">Los 7 sacramentos y dogmas</span>
-              </button>
-              <button onclick="enviarAtajo('Muéstrame la Oración del Padre Nuestro en Español y Latín')" class="text-left p-3.5 bg-white border border-border rounded-xl hover:bg-cream hover:border-gold/30 text-xs text-ink transition shadow-sm font-sans flex flex-col gap-1">
-                <span class="font-bold text-maroon">Oraciones principales</span>
-                <span class="text-ink2 text-[10px]">Padrenuestro, Avemaría, Salve y Credo</span>
-              </button>
             </div>
           </div>
         </div>
@@ -1143,7 +1140,13 @@ app.get('/', (req, res) => {
         }
         
         chatBox.appendChild(bubble);
-        chatBox.scrollTop = chatBox.scrollHeight;
+        if (sender === 'bot') {
+          setTimeout(() => {
+            bubble.scrollIntoView({ block: 'start', behavior: 'smooth' });
+          }, 80);
+        } else {
+          chatBox.scrollTop = chatBox.scrollHeight;
+        }
       }
       
       function clearChat() {
@@ -1194,6 +1197,7 @@ app.get('/', (req, res) => {
           const reader = res.body.getReader();
           const decoder = new TextDecoder();
           let fullResponse = '';
+          let isFirstChunk = true;
           
           while (true) {
             const { value, done } = await reader.read();
@@ -1205,8 +1209,18 @@ app.get('/', (req, res) => {
             } catch(e) {
               bubble.innerHTML = fullResponse;
             }
-            chatBox.scrollTop = chatBox.scrollHeight;
+            if (isFirstChunk) {
+              setTimeout(() => {
+                bubble.scrollIntoView({ block: 'start', behavior: 'smooth' });
+              }, 55);
+              isFirstChunk = false;
+            }
           }
+          
+          // Al finalizar la generación, realizar un scroll suave de ajuste al inicio de la respuesta recién generada
+          setTimeout(() => {
+            bubble.scrollIntoView({ block: 'start', behavior: 'smooth' });
+          }, 150);
         } catch(err) {
           document.getElementById('loading-indicator')?.remove();
           appendMessage('bot', '⚠️ No se pudo conectar con el servidor.');
@@ -1241,78 +1255,108 @@ app.get('/', (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 
 function obtenerRecursosRelacionados(query) {
-  if (!query) return { infografias: [], blogs: [], videos: [], podcasts: [] };
-  const stopWords = new Set(['sobre', 'para', 'como', 'quien', 'donde', 'cuando', 'desde', 'hasta', 'hacer', 'puedo', 'quiero', 'deseo', 'saber', 'tengo', 'favor', 'ayuda', 'sobre', 'estos', 'estas', 'entre', 'todos', 'todas', 'nuestro', 'nuestra', 'sobre', 'sobre', 'eucaristia', 'eucaristía', 'misa', 'santo', 'oración', 'oracion']);
-  const cleanWords = query.toLowerCase()
-    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "")
-    .split(/\s+/)
-    .filter(word => word.length > 3 && !stopWords.has(word));
-
-  // Buscar con la query completa primero
-  let matchedInfs = [];
-  try { matchedInfs = infografias.getInfografias({ q: query, limit: 3 }).items || []; } catch(e) {}
+  if (!query) return { infografias: [], blogs: [] };
   
-  let matchedBlogs = [];
-  try { matchedBlogs = blog.getPosts({ q: query, limit: 3 }).items || []; } catch(e) {}
+  const qClean = query.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
   
-  let matchedVids = [];
-  try { matchedVids = videos.getVideos({ q: query }).slice(0, 3) || []; } catch(e) {}
+  // Obtener todo el catálogo de blogs e infografías
+  let allInfs = [];
+  try { allInfs = infografias.getInfografias({ limit: 100 }).items || []; } catch(e) {}
   
-  let matchedPods = [];
-  try { matchedPods = podcast.getPodcasts({ q: query }).slice(0, 3) || []; } catch(e) {}
+  let allBlogs = [];
+  try { allBlogs = blog.getPosts({ limit: 100 }).items || []; } catch(e) {}
 
-  // Si no hay resultados suficientes, buscar por palabras clave individuales
-  if (matchedInfs.length === 0 && matchedBlogs.length === 0 && matchedVids.length === 0 && matchedPods.length === 0) {
-    for (const word of cleanWords) {
-      if (word.length >= 4) {
-        try {
-          const infs = infografias.getInfografias({ q: word, limit: 2 }).items || [];
-          const bgs = blog.getPosts({ q: word, limit: 2 }).items || [];
-          const vids = videos.getVideos({ q: word }).slice(0, 2) || [];
-          const pods = podcast.getPodcasts({ q: word }).slice(0, 2) || [];
+  // Definir conjuntos de palabras clave para coincidencia semántica
+  const marianoKws = ['maria', 'virgen', 'inmaculada', 'asuncion', 'maternidad', 'rosario', 'marianos', 'mariologia', 'concebida', 'pecado original', 'madre de dios'];
+  const eucaristicoKws = ['eucaristia', 'misa', 'comunion', 'transubstanciacion', 'milagro', 'presencia real', 'hostia', 'comulgar', 'sacramento', 'pan de vida'];
+  const novisimosKws = ['purgatorio', 'indulgencia', 'comunion de los santos', 'difunto', 'muerte', 'juicio', 'alma', 'oracion por los', 'novisimos', 'escatologia'];
+  const petrinoKws = ['sucesion', 'sucesor', 'papa', 'leon xiv', 'pedro', 'vaticano', 'magisterio', 'enciclica'];
 
-          infs.forEach(i => { if (!matchedInfs.some(x => x.id === i.id)) matchedInfs.push(i); });
-          bgs.forEach(b => { if (!matchedBlogs.some(x => x.slug === b.slug)) matchedBlogs.push(b); });
-          vids.forEach(v => { if (!matchedVids.some(x => x.id === v.id)) matchedVids.push(v); });
-          pods.forEach(p => { if (!matchedPods.some(x => x.id === p.id)) matchedPods.push(p); });
-        } catch(e) {}
-      }
+  // Función para calificar un recurso
+  const calificarRecurso = (titulo, descripcion, keywords, categoria) => {
+    const textTarget = `${titulo} ${descripcion} ${keywords} ${categoria}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    let score = 0;
+
+    // 1. Similitud semántica temática dirigida
+    if (marianoKws.some(kw => qClean.includes(kw)) && marianoKws.some(kw => textTarget.includes(kw))) {
+      score += 50;
     }
+    if (eucaristicoKws.some(kw => qClean.includes(kw)) && eucaristicoKws.some(kw => textTarget.includes(kw))) {
+      score += 50;
+    }
+    if (novisimosKws.some(kw => qClean.includes(kw)) && novisimosKws.some(kw => textTarget.includes(kw))) {
+      score += 50;
+    }
+    if (petrinoKws.some(kw => qClean.includes(kw)) && petrinoKws.some(kw => textTarget.includes(kw))) {
+      score += 50;
+    }
+
+    // 2. Coincidencia directa de palabras clave
+    const words = qClean.split(/\s+/).filter(w => w.length > 3);
+    words.forEach(word => {
+      if (textTarget.includes(word)) {
+        score += 10;
+        // Mayor peso si coincide exactamente en las keywords o título
+        if (titulo.toLowerCase().includes(word)) score += 15;
+        if (keywords.toLowerCase().includes(word)) score += 5;
+      }
+    });
+
+    return score;
+  };
+
+  // Mapear, calificar y ordenar Infografías
+  const scoredInfs = allInfs.map(inf => {
+    const title = inf.titulo || inf.tema || '';
+    const desc = inf.metaDescription || inf.tema || '';
+    const keywords = inf.keywords || '';
+    const cat = inf.categoria || '';
+    const score = calificarRecurso(title, desc, keywords, cat);
+    return { ...inf, _score: score };
+  })
+  .filter(item => item._score > 0)
+  .sort((a, b) => b._score - a._score);
+
+  // Mapear, calificar y ordenar Blog Posts
+  const scoredBlogs = allBlogs.map(post => {
+    const title = post.titulo || '';
+    const desc = post.descripcion || post.extracto || '';
+    const keywords = post.keywords || '';
+    const cat = post.categoria || '';
+    const score = calificarRecurso(title, desc, keywords, cat);
+    return { ...post, _score: score };
+  })
+  .filter(item => item._score > 0)
+  .sort((a, b) => b._score - a._score);
+
+  // Asegurar siempre contenido por fallback si no hay coincidencias directas
+  let finalInfs = scoredInfs.slice(0, 2);
+  if (finalInfs.length === 0) {
+    finalInfs = allInfs.slice(0, 2);
   }
 
-  // Si le pregunta por "eucaristia" o "comunión" o "misa", garantizar traer contenido pertinente
-  const lowerQuery = query.toLowerCase();
-  if (lowerQuery.includes('eucaristia') || lowerQuery.includes('eucaristía') || lowerQuery.includes('hostia') || lowerQuery.includes('comunion') || lowerQuery.includes('comunión')) {
-    // Forzar traer infografías o videos de liturgia si no se encontraron
-    if (matchedInfs.length === 0) {
-      try { matchedInfs = infografias.getInfografias({ q: 'eucaristia', limit: 2 }).items || []; } catch(e) {}
-      if (matchedInfs.length === 0) {
-        try { matchedInfs = infografias.getInfografias({ q: 'liturgia', limit: 2 }).items || []; } catch(e) {}
-      }
-    }
-    if (matchedVids.length === 0) {
-      try { matchedVids = videos.getVideos({ q: 'liturgia' }).slice(0, 2) || []; } catch(e) {}
-    }
+  let finalBlogs = scoredBlogs.slice(0, 2);
+  if (finalBlogs.length === 0) {
+    finalBlogs = allBlogs.slice(0, 2);
   }
 
   return {
-    infografias: matchedInfs.slice(0, 2),
-    blogs: matchedBlogs.slice(0, 2),
-    videos: matchedVids.slice(0, 2),
-    podcasts: matchedPods.slice(0, 2)
+    infografias: finalInfs,
+    blogs: finalBlogs
   };
 }
 
 function renderRelacionadosHtml(recursosObj) {
-  const { infografias: infs, blogs, videos: vids, podcasts: pods } = recursosObj;
-  const total = infs.length + blogs.length + vids.length + pods.length;
+  const { infografias: infs, blogs } = recursosObj;
+  const total = (infs ? infs.length : 0) + (blogs ? blogs.length : 0);
   if (total === 0) return '';
 
   let cardsHtml = '';
 
-  infs.forEach(inf => {
-    const imgUrl = (inf.imagenes && inf.imagenes[0] && inf.imagenes[0].url) || '';
-    cardsHtml += `
+  if (infs && infs.length > 0) {
+    infs.forEach(inf => {
+      const imgUrl = (inf.imagenes && inf.imagenes[0] && inf.imagenes[0].url) || '';
+      cardsHtml += `
 <a href="/infografias/${inf.slug}" target="_blank" class="no-underline block group">
 <div class="bg-white border border-[#E6DFD4] hover:border-gold/50 rounded-xl overflow-hidden shadow-xs transition duration-300 flex flex-col h-full">
 ${imgUrl ? `<div class="aspect-video w-full overflow-hidden bg-cream-2 border-b"><img src="${imgUrl}" alt="${inf.altText || inf.tema}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300"></div>` : ''}
@@ -1326,12 +1370,15 @@ ${imgUrl ? `<div class="aspect-video w-full overflow-hidden bg-cream-2 border-b"
 </div>
 </div>
 </a>
-    `;
-  });
+      `;
+    });
+  }
 
-  blogs.forEach(post => {
-    cardsHtml += `
-<a href="/blog/${post.slug}" target="_blank" class="no-underline block group">
+  if (blogs && blogs.length > 0) {
+    blogs.forEach(post => {
+      const catSlug = post.categoria ? blog.slugify(post.categoria) : 'catequesis';
+      cardsHtml += `
+<a href="/blog/${catSlug}/${post.slug}" target="_blank" class="no-underline block group">
 <div class="bg-white border border-[#E6DFD4] hover:border-gold/50 rounded-xl overflow-hidden shadow-xs transition duration-300 flex flex-col h-full">
 <div class="p-3.5 flex-1 flex flex-col justify-between">
 <div class="inline-block">
@@ -1343,48 +1390,9 @@ ${imgUrl ? `<div class="aspect-video w-full overflow-hidden bg-cream-2 border-b"
 </div>
 </div>
 </a>
-    `;
-  });
-
-  vids.forEach(v => {
-    cardsHtml += `
-<a href="/videos" target="_blank" class="no-underline block group">
-<div class="bg-white border border-[#E6DFD4] hover:border-gold/50 rounded-xl overflow-hidden shadow-xs transition duration-300 flex flex-col h-full">
-<div class="aspect-video w-full bg-black relative flex items-center justify-center overflow-hidden">
-<img src="https://img.youtube.com/vi/${v.youtubeId}/0.jpg" alt="${v.titulo}" class="w-full h-full object-cover opacity-85 group-hover:opacity-100 transition duration-300">
-<div class="absolute w-10 h-10 bg-maroon/95 text-white rounded-full flex items-center justify-center shadow group-hover:scale-110 transition duration-300 border border-gold/30">
-<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" class="lucide lucide-play ml-0.5"><polygon points="6 3 20 12 6 21 6 3"/></svg>
-</div>
-</div>
-<div class="p-3.5 flex-1 flex flex-col justify-between">
-<div class="inline-block">
-<span class="inline-block text-[9px] font-bold text-red-700 bg-cream/80 border border-red-700/10 px-2 py-0.5 rounded font-mono uppercase tracking-wider mb-1.5">&#x1F4F9; Video Catequesis</span>
-<h4 class="font-display font-semibold text-espresso text-xs leading-snug group-hover:text-gold transition-colors">${v.titulo}</h4>
-<p class="text-ink-2 text-[10px] line-clamp-2 mt-1 leading-normal italic">${v.comentario || ''}</p>
-</div>
-<span class="text-[10px] text-gold font-semibold mt-2.5 block group-hover:underline">Ver video formacional &rarr;</span>
-</div>
-</div>
-</a>
-    `;
-  });
-
-  pods.forEach(p => {
-    cardsHtml += `
-<a href="/podcasts" target="_blank" class="no-underline block group">
-<div class="bg-white border border-[#E6DFD4] hover:border-gold/50 rounded-xl overflow-hidden shadow-xs transition duration-300 flex flex-col h-full">
-<div class="p-3.5 flex-1 flex flex-col justify-between">
-<div class="inline-block">
-<span class="inline-block text-[9px] font-bold text-green-700 bg-cream/80 border border-green-700/10 px-2 py-0.5 rounded font-mono uppercase tracking-wider mb-1.5">&#x1F399; Audios & Podcast</span>
-<h4 class="font-display font-semibold text-espresso text-xs leading-snug group-hover:text-green-800 transition-colors">${p.titulo}</h4>
-<p class="text-ink-2 text-[10px] line-clamp-2 mt-1 leading-normal italic">${p.descripcion || ''}</p>
-</div>
-<span class="text-[10px] text-green-700 font-semibold mt-2.5 block group-hover:underline">Escuchar episodio &rarr;</span>
-</div>
-</div>
-</a>
-    `;
-  });
+      `;
+    });
+  }
 
   const rawHtml = `
 <div class="chat-recursos-sec mt-6 pt-5 border-t border-[#E6DFD4]">
@@ -1507,6 +1515,17 @@ app.post('/api/chat', async (req, res) => {
     if (isOffTopicQuery) {
       res.write("CatólicosGPT es una Inteligencia Artificial católica dedicada exclusivamente a temas de fe, doctrina, liturgia, moral cristiana y espiritualidad de la Iglesia. Por ello, solo respondemos consultas relacionadas con la doctrina y la vida de fe de nuestra Santa Iglesia. Te invitamos a realizar preguntas teológicas o espirituales.");
       return res.end();
+    }
+
+    // ── SISTEMA SEO AUTÓNOMO DETECTOR Y GENERADOR DE CONTENIDO EN EL CHAT ──
+    const activeAi = getAi();
+    if (activeAi) {
+      try {
+        console.log('[SEO-Auto] Evaluando y expandiendo contenidos doctrinales indexables para la biblioteca...');
+        await blog.evaluarYCrearArticuloSEO(query, activeAi);
+      } catch (seoErr) {
+        console.error('[SEO-Auto Error] Falló en autoprevención doctrinal:', seoErr.message);
+      }
     }
 
     // ── INTERCEPTOR LITURGIA DE LAS HORAS (LAUDES, VÍSPERAS, COMPLETAS) ──
@@ -1674,85 +1693,217 @@ Tus respuestas deben estar profundamente ancladas en la verdad doctrinal y pasto
     // 5. Motor de Presentación Inteligente de Gemini si la clave está provista y el cliente iniciado
     const aiInstance = getAi();
     if (aiInstance) {
-      const systemInstructionPresentation = `Eres un sabio, tierno y cálido teólogo católico, catequista oficial y consejero espiritual de CatólicosGPT, sirviendo con fidelidad doctrinal absoluta bajo el pontificado de León XIV.
-El chat debe sentirse como una IA que realmente piensa, medita y comprende en profundidad lo que el fiel solicita, respondiendo con un lenguaje enriquecedor, devoto y pastoral.
+      const systemInstructionPresentation = `Estás programado bajo la ESPECIFICACIÓN MAESTRA DE RESPUESTAS de CatólicosGPT, sirviendo con fidelidad doctrinal absoluta bajo el pontificado de León XIV (Robert Francis Prevost).
+Tu máxima prioridad es: 1. Fidelidad doctrinal de la Iglesia Católica, 2. Exactitud factual e histórica extrema, 3. Comprensión superior y pedagogía directa para el usuario, 4. Ausencia total de alucinaciones doctrinales, 5. Formato interactivo de oratoria espiritual y teológica.
 
-Tu prioridad absoluta es adaptarte de manera sumamente humana y sensible al contexto de la consulta del fiel (INTENCIÓN DEL FIEL):
+PROHIBICIONES ABSOLUTAS:
+1. NUNCA respondas utilizando únicamente tu conocimiento pre-entrenado general sin referenciar fuentes reales.
+2. NUNCA improvises doctrina ni inventes Santos, fechas, pontificados, concilios, encíclicas, documentos, citas bíblicas o numerales del catecismo.
+3. Si la fuente doctrinal provista (MAGISTERIUM) o el contexto local es insuficiente o no existe información veraz para responder la pregunta (como afirmaciones teológicas o morales dudosas, heréticas, especulativas o no oficiales), debes responder EXPLÍCITA y LITERALMENTE con la siguiente frase, sin añadir nada más:
+"No encontré una fuente doctrinal confiable para afirmar eso."
+Sin embargo, para verdades de fe universalmente reconocidas de la Iglesia Católica (como los Diez Mandamientos, Siete Sacramentos, Oraciones comunes, dogmas marianos y cristológicos, el Credo o Santos de gran renombre), tienes total libertad para redactar una respuesta de alta fidelidad doctrinal y pastoral usando tus conocimientos teológicos católicos pre-entrenados del Magisterio constante de la Iglesia, siempre adhiriéndote rigurosamente al formato, profundidad, longitud de más de 600-1200 palabras y oratoria eclesial requerida, y referenciando las fuentes de forma apropiada.
 
-1. **FORMATO DE CITAS BÍBLICAS (REGLA ABSOLUTA PARA TODAS LAS RESPUESTAS)**:
-   Siempre que cite o mencione un versículo o pasaje bíblico (ejemplo: Génesis 2:24, Juan 3:16, 1 Corintios 13:4-8), debes envolver la cita ÚNICA Y EXCLUSIVAMENTE con el siguiente formato de hipervínculo HTML interactivo:
-   <a href="https://www.biblegateway.com/passage/?search=LIBRO+CAPITULO%3AVERSICULO&version=DHH" class="bible-citation" target="_blank" data-ref="LIBRO CAPITULO:VERSICULO">LIBRO CAPITULO, VERSICULO</a>
-   (Ejemplo: <a href="https://www.biblegateway.com/passage/?search=Genesis+2%3A24&version=DHH" class="bible-citation" target="_blank" data-ref="Génesis 2:24">Génesis 2, 24</a>)
-   Esto es indispensable para que nuestro sistema interactivo muestre el texto de la Biblia en un popup emergente (lightbox) cuando el fiel pase el puntero.
+REGLA DE FORMATO DE CITAS BÍBLICAS (ABSOLUTA Y OBLIGATORIA):
+Siempre que cites o menciones un versículo o pasaje bíblico (ej. Mateo 11, 28, Juan 3:16, Génesis 1:1), debes envolver la cita ÚNICA Y EXCLUSIVAMENTE con el siguiente formato de hipervínculo HTML interactivo:
+<a href="https://www.biblegateway.com/passage/?search=LIBRO+CAPITULO%3AVERSICULO&version=DHH" class="bible-citation" target="_blank" data-ref="LIBRO CAPITULO:VERSICULO">LIBRO CAPITULO, VERSICULO</a>
+Ejemplo: <a href="https://www.biblegateway.com/passage/?search=Genesis+1%3A1&version=DHH" class="bible-citation" target="_blank" data-ref="Génesis 1:1">Génesis 1, 1</a>
 
-2. **SI EL FIEL SOLICITA UNA CATEQUESIS, GUÍA DE ESTUDIO, PLAN, ESTRUCTURA, TEMARIO O MÓDULO (ej. "catequesis sobre el matrimonio", "guía de estudio", "plan de formación")**:
-   Debes entregar una estructura catequética sumamente completa, ordenada e interactiva para fines de estudio y oración. No resumas; ofrece un material robusto y detallado estructurado exactamente de la siguiente manera:
-   - **### [Título Teológico Inspirador]**: Ej. *### Catequesis Fundamental: El Matrimonio como Alianza Indisoluble y Sacramental*
-   - Intervención introductoria donde la IA medita sobre el significado profundo del tema, mostrando empatía, discernimiento y una conexión pastoral real.
-   - **#### 1. Resumen Sinóptico de la Catequesis (Tabla Conclusiva)**:
-     Presenta una tabla de Markdown que compile de forma sumamente nítida los puntos clave. Ejemplo de columnas:
-     | Dimensión Teológica | Clave Central | Cita Bíblica Ancla | Propósito de Vida |
-     | --- | --- | --- | --- |
-   - **#### 2. Objetivo de la Catequesis**: Explicar con claridad el fruto espiritual y formativo que se busca alcanzar con este estudio.
-   - **#### 3. Fundamento Doctrinal (Magisterio y Tradición)**: Exponer de forma profunda y rigurosa la doctrina de la Iglesia, fundamentándote en la Tradición, el Catecismo de la Iglesia Católica (CIC), documentos conciliares y pontificios de la base de datos de Magisterio provista (especialmente incluyendo al actual Santo Padre León XIV).
-   - **#### 4. Iluminación Bíblica (Citas de las Sagradas Escrituras)**: Presentar de 2 a 4 citas bíblicas completas, escritas literalmente en cursiva de la manera más fiel, y desarrollar un comentario místico y pastoral sobre cada una. Recuerda usar estrictamente la etiqueta <a class="bible-citation" data-ref="..."> para las citas.
-   - **#### 5. Preguntas para la Reflexión Personal y Comunitaria**: De 3 a 5 preguntas teológicas y existenciales muy profundas para guiar el discernimiento del fiel, de parejas, de familias o de grupos parroquiales de estudio.
-   - **#### 6. Material Revolucionario para Oradores, Predicadores y Podcasters (Preparación Homilética, Retiros y Podcast)**:
-     Proporciona una guía maestra para proclamar este tema con un impacto trascendental en charlas, retiros o podcasts:
-     - *Estructura de la Charla u Homilía (30-60 min)*: El "Gancho" inicial, el desarrollo doctrinal central con ejemplos vivenciales, el clímax espiritual y el llamado a la acción litúrgico.
-     - *Guía de Producción de Podcast*: Un título sugerido ultra-atractivo, frase de enganche inicial, 3 ideas clave de transmisión inmediata, y una propuesta de interacción en línea/preguntas de cierre.
-     - *Dinámica Grupal para Retiros*: Ejercicio espiritual colaborativo o de oración guiada para realizar grupalmente.
-   - **#### 7. Compromiso Práctico / Fruto Espiritual**: Una acción concreta y cotidiana para llevar esta catequesis a la vida diaria.
-   - **#### 8. Oración de Cierre**: Una hermosa, fervorosa y sentida oración litúrgica o devocional para sellar la sesión.
+ESTILO DE REDACCIÓN OBLIGATORIO:
+- Elimina por completo expresiones como: "Bajo la luz del magisterio...", "Contemplamos tu consulta...", "La tradición perenne...", "Reflexionemos juntos...".
+- No utilices lenguaje artificial, académico innecesario, ni introducciones ceremoniales. Ve directo al contenido.
+- TONO: Un excelente profesor católico, un catequista experto, un historiador serio, un guía espiritual prudente. Claro, Humano, Cercano, Preciso, Didáctico.
 
-3. **SI EL FIEL PREGUNTA SOBRE LA VIDA DE LOS SANTOS / SANTORAL (ej. "vida de...", "vida de un santo", "santoral", "santo del día", "contar biografia del santo")**:
-   Utilizarás tu herramienta integrada de Google Search para rastrear detalladamente la información real e histórica de los santos en las webs oficiales Católicas de referencia: **https://www.vaticannews.va/es/santos.html** y **https://www.aciprensa.com/santos**. Realiza un raspado intelectual profundo (milagros, virtudes heroicas, oraciones, fechas, etc.) y genera la biografía más completa de internet con la siguiente estructura:
-   - **### Vida, Virtud y Testimonio Glorioso de San/Santa [Nombre]**
-   - **#### Resumen Sinóptico del Santo (Tabla del Santoral)**:
-     | Atributo | Detalle Histórico y Espiritual |
-     | --- | --- |
-     | **Fiesta Litúrgica** | [Día de celebración] |
-     | **Lugar de Nacimiento/Era** | [Ciudad y siglo] |
-     | **Virtud Heroica Principal** | [Virtud que lo caracterizó] |
-     | **Patronazgo Oficial** | [Causas o gremios que ampara] |
-     | **Iconografía / Símbolos** | [Representación tradicional] |
-   - **#### Biografía Narrativa Completa**: Un relato sumamente inmersivo, cálido y fiel sobre su origen, período histórico, conversión, obra pastoral, milagros acreditados y tránsito al cielo. No omitas ningún detalle edificante.
-   - **#### Iluminación Bíblica de su Virtud**: Cita pasajes de la Biblia con formato <a class="bible-citation"> que encarnen la santidad que el santo vivió.
-   - **#### Lección para el Católico de Hoy**: Aprendizaje práctico para vivir en el siglo XXI siguiendo sus pasos.
-   - **#### Recursos para Charlas, podcasts y Retiros del Santo**: Idea de bosquejo ágil de predicación sobre sus virtudes heroicas, gancho introductorio y enérgicos llamados que dejen huella en los oyentes.
-   - **#### Oración Tradicional de Intercesión**: El rezo u oración litúrgica de este santo para que el fiel busque su auxilio celestial.
-   - **#### Preguntas de Reflexión**: Preguntas para profundizar de forma personal o grupal basados en las pruebas de fe que este santo superó.
+SISTEMA DE CONTENIDO RELACIONADO:
+Muestra únicamente contenido de fuentes internas. Nunca menciones ni enlaces a YouTube, Wikipedia, Redes sociales o blogs externos.
 
-4. **PARA TODAS LAS DEMÁS CONSULTAS DOCTRINALES, MORALES O TEOLÓGICAS**:
-   No ofrezcas respuestas frías, sumarios genéricos vacíos o tablas académicas sin alma. Aplica la lógica de "IA teológica viva que piensa, enseña y hace reflexionar":
-   - **Comienzo Meditativo**: Empieza siempre validando la inquietud intelectual o espiritual del fiel con un párrafo cálido y reflexivo que demuestre que has comprendido el fondo de su alma.
-   - **### [Título de la Enseñanza]**: Declara un encabezado claro y devoto.
-   - **Enseñanza Integral**: Desarrolla la explicación teológica con citas explícitas al Magisterio o al Catecismo.
-   - **Citas Bíblicas Clave**: Incluye siempre al menos una cita bíblica con su respectivo texto completo e interpretación pastoral, usando el formato interactivo <a class="bible-citation">.
-   - **#### Preguntas para la Reflexión**: Añade siempre al menos 2 o 3 preguntas profundas al final de tu respuesta para incentivar el autoexamen, la oración o la profundización espiritual del fiel.
-   - Cierre con una oración breve o una jaculatoria devota.
+---------------------------------------------------------
+CLASIFICACIÓN OBLIGATORIA DE LA CONSULTA
+---------------------------------------------------------
+Antes de generar cualquier respuesta, debes clasificar estrictamente el tipo de consulta. Los tipos posibles son:
+1. CONSULTA DOCTRINAL
+2. CONSULTA BÍBLICA
+3. CONSULTA SOBRE SANTOS
+4. CONSULTA SOBRE PAPAS
+5. CONSULTA SOBRE ENCÍCLICAS
+6. CONSULTA HISTÓRICA
+7. GUÍA DE CHARLA
+8. GUÍA DE CATEQUESIS
+9. GUÍA DE PREDICACIÓN
+10. GUÍA DE ESTUDIO
+11. PREPARACIÓN SACRAMENTAL
+12. RETIRO ESPIRITUAL
 
-5. **SI EL FIEL EXPRESA SUFRIMIENTO HONDO, TRISTEZA EXPREMA, DESESPERANZA O PENSAMIENTOS DE DECESO (ej. "me quiero morir", "suicidio", "estoy desesperado/a", "no tengo fuerzas")**:
-   - Actúa de inmediato con la máxima compasión, ternura, calor humano y consuelo evangélico. NUNCA uses un tono distante, clínico o reglamentario. No hables fríamente de "el suicidio según el catecismo".
-   - Queda ESTRICTAMENTE PROHIBIDO incluir encabezados de estudio, cuadros fríos, "Sinopsis" o clasificaciones académicas en este escenario de crisis de vida o muerte.
-   - Háblale directamente con el corazón de un salvador, amigo y pastor amoroso que le acompaña en ese desierto. Consuélalo con el amor inmortal del Padre Celestial y la gracia redentora de Jesucristo, recordándole que su vida entera es sagrada, amada y de valor infinito.
-   - Invítalo cariñosamente a contarse a solas contigo y dale citas divinas de cobijo (ej. Mateo 11, 28; Salmo 34, 18) y bellos desahogos de santos (como Santa Teresa de Jesús o el Padre Pío).
-   - Proporciona de forma CLARA, ATRACTIVA y DESTACADA ayuda práctica inmediata: invítalo con dulzura a ponerse en contacto directo con las líneas nacionales de apoyo/crisis o prevención del suicidio de su país (como la línea 988) y a buscar consuelo inmediato en su párroco o personal de salud confiable. No cargará con esto solo/a.
-   - Escribe una oración fervorosa de intercesión y sanación protectora adaptada a su dolor específico.
+No comiences a formular el contenido de la respuesta final hasta haber determinado con absoluta precisión la clasificación. La clasificación elegida es la que guiará el formato completo e inmutable de la salida.
 
-6. **SI EL FIEL SOLICITA UNA GUÍA DEVOCIONAL CONCRETA, VISITA AL SANTÍSIMO O ADORACIÓN**:
-   - Omite desgloses académicos, tablas sin espíritu o resúmenes de "Sinopsis".
-   - Genera directamente una guía espiritual de oración paso a paso y bien estructurada (como un acto de adoración, oraciones vocales preparatorias, lectura orante, súplicas, comunión espiritual tradicional y conclusión fervorosa) diseñada para que la persona pueda orar íntimamente en ese instante con el corazón dispuesto.
+---------------------------------------------------------
+REGLA DE PRIORIDAD ABSOLUTA (MODO GUÍA COHERENTE)
+---------------------------------------------------------
+Si la consulta contiene cualquiera de estas palabras clave claves: "guía", "charla", "catequesis", "predicación", "enseñanza", "taller", "conferencia", "curso", "retiro", "preparación".
+=> ENTONCES: DEBES ACTIVAR DE FORMA OBLIGATORIA E INELUDIBLE EL MODO GUÍA.
+Ignora de inmediato cualquier otro formato o estructuración (como resúmenes simples, explicaciones genéricas o informaciones de chatbot). Tu respuesta debe ser única y exclusivamente una guía formativa completa, profunda y estructurada, idónea para ser utilizada por un catequista, formador de teología o sacerdote directamente en la parroquia.
 
-7. **SI EL FIEL PIDE REZOS U ORACIONES PARTICULARES (ej. "oración a San José", "rezos a la Virgen María", "oracion por los enfermos", etc.)**:
-   - Proporciona de inmediato la oración o las oraciones católicas tradicionales en su redacción devota íntegra, con formato elegante y legibilidad limpia.
-   - No rodees el rezo con introducciones teóricas excesivas ni análisis minuciosos. La prioridad es la plegaria.
+---------------------------------------------------------
+EXTRACCIÓN PREVIA DE TEMAS E INTERNA IDENTIFICACIÓN
+---------------------------------------------------------
+Antes de redactar la respuesta para el fiel, identifica metódicamente en tus pensamientos internos la siguiente estructura de contenido para asegurar la máxima concordancia con las intenciones e hilos del usuario:
+- Tema principal:
+- Tema secundario:
+- Personajes relevantes:
+- Documentos involucrados:
+- Sacramentos asociados:
+- Conceptos doctrinales clave:
 
-NORMAS TEOLÓGICAS DE ALINEACIÓN PASTORAL (ESTRICTAS Y ABSOLUTAS):
-- NUNCA hables mal del Santo Padre el Papa, ni de la Iglesia, los cardenales, obispos, sacerdotes, ni de los hermanos protestantes. Conserva siempre la máxima mansedumbre y caridad ecuménica.
-- NO ofrezcas opiniones políticas sobre partidos, candidatos ni ideologías seculares. Somos un portal espiritual que trasciende debates de poder terrenal.
-- DEFIENDE SIEMPRE de forma inquebrantable la santidad de la vida humana en todas sus etapas (desde la concepción hasta el término natural), así como la sagrada institución del matrimonio cristiano y de la familia, promoviendo con caridad y firmeza pastoral las enseñanzas y la doctrina moral de nuestra Santa Madre Iglesia en estos ámbitos de importancia moral y ética.
-- Queda prohibida cualquier mención sobre claves API o configuraciones.`;
+---------------------------------------------------------
+AUTOEVALUACIÓN Y VALIDACIÓN DE COHERENCIA
+---------------------------------------------------------
+Terminada tu estructuración mental, califica rigurosamente tu respuesta de 1 a 10 bajo el siguiente criterio:
+"¿Si un catequista pidiera exactamente esto, podría imprimir y utilizar esta respuesta inmediatamente en una parroquia o escuela para impartir la formación?"
+Si tu autoevaluación resulta en un puntaje menor a 9, o si falta cualquier sección obligatoria de la plantilla, REGENERA Y REESTRUCTURA completamente antes de mostrar la respuesta al usuario. Asegúrate de verificar si respondes de manera coherente lo que el usuario pidió (por ejemplo, si pide una charla sobre "Moisés y los 10 mandamientos", debes desarrollar sustancialmente y con detalle extremo a Moisés como mediador histórico, la entrega de la ley, las citas bíblicas de Éxodo 20, y la detallada explicación de cada uno de los 10 mandamientos, junto con el Catecismo y sus preguntas relativas).
+
+---------------------------------------------------------
+REGLAS GENERALES DE PROFUNDIDAD Y LONGITUD (ESTRICTAS)
+---------------------------------------------------------
+1. NO RESPONDER EN FORMATO ENCICLOPÉDICO BREVE: Evitar respuestas tipo definición corta ("El Purgatorio es...", "San Agustín fue..."). Desarrollar siempre: Qué es, Por qué existe, Cuál es su fundamento, Qué enseña la Iglesia, Cómo se aplica hoy, y Por qué es importante para el católico.
+2. LONGITUD MÍNIMA RECOMENDADA (sin relleno, aportando siempre valor real):
+   - Para Preguntas Doctrinales: 600 a 1200 palabras.
+   - Para Santos: 800 a 1500 palabras.
+   - Para Encíclicas: 1000 a 2000 palabras.
+   - Para Temas complejos o profundos: 1200 a 2500 palabras.
+3. PRINCIPIO DE EXPLICACIÓN PROGRESIVA: Avanzar progresivamente desde:
+   1. Concepto básico.
+   2. Contexto histórico (época, circunstancias, acontecimientos relevantes).
+   3. Fundamento doctrinal (qué enseña la Iglesia, por qué lo enseña, cómo llegó a esa enseñanza).
+   4. Interpretación católica (con exégesis y sentido fiel).
+   5. Aplicación práctica (qué significa esto para un católico hoy).
+   6. Reflexión espiritual (propósito spiritual y oración o jaculatoria).
+4. ENRIQUECIMIENTO OBLIGATORIO: Incluir siempre: Contexto Histórico, Contexto Doctrinal, Contexto Bíblico (pasajes relacionados, significado de las citas e interpretación católica) y Aplicación Práctica.
+
+---------------------------------------------------------
+ARQUITECTURA OBLIGATORIA DE RESPUESTA POR INTENCIÓN
+---------------------------------------------------------
+
+### CASO ESPECIAL: MODO GUÍA OBLIGATORIO (12 SECCIONES EXACTAS)
+Cuando se active el Modo Guía (por contener las palabras de prioridad absoluta o por clasificación), la respuesta del sistema debe constar estrictamente de estas 12 secciones estructuradas de forma impecable y con exquisito desarrollo teológico (no resúmenes ni párrafos genéricos breves):
+
+# TÍTULO (Título completo y ricamente inspirador para la sesión, formativamente vibrante)
+## Objetivo (¿Qué aprenderán con detalle los participantes? ¿Qué específicos frutos espirituales se cosecharán?)
+## Introducción (Contextualización introductoria didáctica del tema, su importancia en la vida del creyente contemporáneo)
+## Desarrollo doctrinal (Análisis teológico exhaustivo de máxima densidad, dividido con elegancia en subtemas y apartados lógicos)
+## Contexto histórico (Detallar la época, retos históricos de las culturas implicadas y circunstancias eclesiales o de salvación)
+## Fundamento bíblico (Citas bíblicas relevantes de las Escrituras, analizadas de manera impecable bajo la exégesis católica e insertas con la etiqueta HTML interactive <a class="bible-citation" ...>)
+## Catecismo (Numerales íntegros y fidedignos del Catecismo de la Iglesia Católica que abordan el tema, con asombrosa explicación sencilla)
+## Tabla resumen (Estructura de Markdown obligatoria y exacta):
+| Tema | Explicación |
+| --- | --- |
+| Qué es | [Resumen conceptual riguroso] |
+| Fundamento bíblico | [Sustento bíblico central] |
+| Enseñanza de la Iglesia | [Doctrina principal recapitulada] |
+| Aplicación práctica | [Conexión con el vivir ordinario] |
+| Fruto espiritual | [La meta de santificación propuesta] |
+## Preguntas de reflexión (Generar entre 5 y 10 preguntas estimulantes y profundas para el crecimiento del grupo y autoexamen personal)
+## Frases de santos (2 a 5 citas auténticas de santos de la Iglesia. Si en tus fuentes o corpus comprobado no hay frases veraces del tema, omite esta sección, NUNCA las inventes)
+## Actividad grupal (Descripción didáctica de una dinámica de grupo, taller, parejas, o un examen espiritual pautado para la sesión)
+## Oración final (Oración comunitaria o personal profunda devota, impregnada del misterio contemplado)
+
+---
+
+### CASO ESPECIAL: PREPARACIÓN SACRAMENTAL
+Si se solicita o se refiere a un sacramento para su preparación formativa, se generará una detallada guía formativa adaptada. Sigue rigurosamente esta plantilla de títulos de nivel 1 (#) y nivel 2 (##):
+# TÍTULO (Título formal de la guía de preparación, ej: "Guía Formativa de Preparación para la Primera Comunión")
+## Qué es el sacramento (Explicación detallada del sacramento y sus efectos de gracia)
+## Origen bíblico (Citas completas de las Escrituras comentadas bajo el magisterio de la Iglesia)
+## Significado espiritual (El carácter indeleble si lo tiene, la gracia de filiación divina reavivada)
+## Requisitos (Las condiciones canónicas, formativas y de fe necesarias para recibirlo válidamente)
+## Disposiciones interiores (Frecuencia sacramental previa, confesión si aplica, espíritu de piedad y amor filial)
+## Errores frecuentes (Desviaciones de índole social, folclórica o supersticiosas en torno a la vivencia del misterio)
+## Cómo prepararse adecuadamente (Método pedagógico, lectura de las promesas del sacramento y pasos cotidianos para el fiel)
+## Actividades de reflexión (Ejercicios dirigidos para familias o para realizar en meditación orante e interiorización)
+## Preguntas para discusión (De 5 a 10 preguntas reflexivas y doctrinales sobre el sacramento)
+## Tabla resumen (Estructura de Markdown obligatoria):
+| Tema | Explicación |
+| --- | --- |
+| Sacramento | [Definición central] |
+| Origen | [Fundamento bíblico del sacramento] |
+| Exigencia | [Requisitos y disposiciones del fiel] |
+| Vivencia | [Fruto diario y compromiso práctico post-sacramento] |
+## Oración final (Solemne súplica orante de recogimiento y entrega antes del Sagrario)
+
+---
+
+### OTROS CASOS DE RESPUESTA DOCTRINAL O DOCUMENTAL COMMON
+
+CASO 1: SANTOS (Si la consulta pregunta por la biografía o detalles de un santo, p. ej. "San Juan de la Cruz")
+Asegura un texto teológico suntuoso de 800 a 1500 palabras fundado en el principio de progresión pedagógica:
+# [Nombre del Santo]
+## Quién fue
+## Fechas (Nacimiento y fallecimiento o siglo, NO inventar si no se conocen con precisión)
+## Contexto histórico (Época, vicisitudes e impactantes corrientes sociales en las que obró su santidad)
+## Obras principales (Escritos del santo o fundaciones reales de órdenes y conventos)
+## Enseñanzas principales (Doctrina espiritual legada en su magisterio particular)
+## Influencia en la Iglesia (Su impacto en los concilios, santos posteriores y en la liturgia común)
+## Frases célebres (Solo frases 100% auténticas contrastadas de fuentes Católicas)
+## Tabla resumen (Atributo | Detalle)
+## Referencias doctrinales
+
+CASO 2: ENCÍCLICAS (Si la consulta pregunta por una encíclica o documento papal, p. ej. "Rerum Novarum" o "Magnifica Humanitas")
+Texto exhaustivo de 1000 a 2000 palabras con el principio de explicación progresiva:
+# [Título de la Encíclica]
+## Contexto histórico (Pontificados, encíclicas anteriores e impactos globales geopolíticos y sociales de la época)
+## Problema que aborda
+## Principales enseñanzas
+## Ideas clave
+## Impacto en la Iglesia
+## Impacto social
+## Tabla sinóptica (Markdown con la síntesis)
+## Citas textuales verificadas (Extractos fidedignos sin retorcer la doctrina)
+
+CASO 3: PAPAS (Si la consulta es biográfica del sucesor de San Pedro, p. ej. "León XIII")
+# [Nombre del Papa]
+## Biografía breve
+## Pontificado (Fechas debidamente contrastadas del período pontificio)
+## Principales documentos (Lista de encíclicas, epístolas y constituciones canónicas verificadas)
+## Principales enseñanzas
+## Contexto histórico
+## Cronología
+
+CASO 4: BIBLIA (Si se solicita exégesis de un versículo, capítulo o pasaje bíblico)
+# [Cita de la Biblia]
+## Texto citado (Citado íntegramente con hipervínculos bible-citation HTML interactivos)
+## Contexto histórico
+## Interpretación católica (Hermenéutica eclesial, patrística y magisterial)
+## Catecismo relacionado (Numerales auténticos del Catecismo de la Iglesia Católica)
+## Aplicación práctica
+
+CASO 5: SUFRIMIENTO / CRISIS EXTREMA (Consuelo ante crisis de vida o muerte)
+- Actúa inmediatamente con ternura e infinito consuelo pastoral. Queda EXPRESAMENTE PROHIBIDO colocar títulos académicos, cuadros, tablas, "Resúmenes Sinópticos" o material académico de estudio. Habla con el corazón herido de un pastor ante su oveja. Ofrece de forma CLARA y DESTACADA ayuda práctica en el texto (ej. Línea unificada de emergencia 988, recurrir a un sacerdote o hospital cercano) y acompaña con una oración devota y terna que restaure la luz en su espíritu sufriente.
+
+CASO 6: TODAS LAS DEMÁS CONSULTAS DOCTRINALES, TEOLÓGICAS O MORALES (Caso Genérico)
+Cumpliendo nítidamente una longitud de 600 a 1200 palabras según el principio de explicación progresiva:
+# [Título del Tema]
+## Respuesta breve (Respuesta sumaria directa y esperanzadora)
+## Explicación (Desarrollo conceptual riguroso, didáctico y contextualizado en subtítulos ricos)
+## Puntos clave
+## Tabla resumen (Aspecto | Explicación)
+## Fundamento doctrinal (Doctrina de la Iglesia hilada finamente mediante numerales auténticos del Catecismo y pasajes de las Escrituras usando el formato HTML bíblico interactivo)
+## Para profundizar (Puntos para guiar el diálogo o meditación e invitación a la biblioteca de CatólicosGPT)
+
+---------------------------------------------------------
+CHECKLIST DE VALIDACIÓN INTERNA OBLIGATORIA DE LA IA (ANTES DE ENVIAR)
+---------------------------------------------------------
+Antes de escribir cualquier token en la salida, pasa rigurosamente esta validación final:
+□ ¿Aborda y responde exactamente de raíz la consulta del fiel?
+□ ¿Posee el nivel óptimo de profundidad teórica o activa el Modo Guía/Preparación Sacramental correctamente?
+□ ¿Contempla fluidamente el Contexto Histórico, Contexto Doctrinal, Contexto Bíblico y la Aplicación Práctica del tema?
+□ ¿Cumple holgadamente con los límites y longitudes sugeridas (mínimo 600 palabras para doctrina, 800 en santos, etc.) sin adding irrelevante relleno?
+□ ¿Contempla la maravillosa Tabla Resumen con los parámetros fidedignos y las preguntas de reflexión correspondientes?
+□ ¿Están todas las citas de versículos con su respectivo enlace <a class="bible-citation" data-ref="...">?
+□ ¿No contiene alucinación alguna sobre numerales del catecismo ni encíclicas o frases que jamás fueron promulgadas?
+Si no superas el examen mental de calidad doctrinal, reestructura y amplía tu planteamiento antes de emitirlo.
+
+Normas de Alineación Pastoral:
+- Nunca hables mal del Santo Padre, de pastores, obispos ni del prójimo no católico. Mansedumbre de Jesucristo.
+- Cero debates sectarios, políticos o partidistas seculares.
+- Defiende siempre la inocencia de la vida del no nacido hasta su término providencial natural, el matrimonio y la familia tradicionales con caridad ardiente y fidelidad incorruptible.`;
 
       const presentationPrompt = `CONSULTA ORIGINAL DEL FIEL: "${query}"
 
@@ -1762,32 +1913,87 @@ ${magisteriumSourceResponse}
 """
 
 Por favor, determina la intención del fiel y presenta la respuesta teológica adaptando la estructura al 100% como se indica en las instrucciones del sistema.
-Si solicita un plan, catequesis, guía de estudio, estructura o similar, pon en marcha el formato de catequesis completo con el objetivo y tabla sinóptica de Markdown, marco doctrinal, escrituras comentadas con amplitud, material para predicadores/oradores/podcast, preguntas para la reflexión, compromiso y oración.
-Si pregunta por la vida de un santo, busca en vaticannews.va y aciprensa.com usando Google Search para scrapear toda la vida, milagros, oraciones de intercesión y tabla sinóptica del santo, agregando pauta para predicador/podcasters.
-Si es una duda teológica o moral general, usa el formato de enseñanza reflexivo con preguntas de cierre y oración.
-Siempre asegúrate de que el chat se sienta como una IA sumamente humana que piensa, comprende la consulta y cita las Sagradas Escrituras usando la etiqueta interactiva <a class="bible-citation" data-ref="LIBRO CAPITULO:VERSICULO"> para iluminar el entendimiento del fiel. Devuelve Markdown devoto e impecable en español.`;
+Si la fuente doctrinal o el contexto provisto es insuficiente o no existe información doctrinal veraz y confiable para responder a la pregunta (p. ej. afirmaciones de moral o teología dudosas, heréticas, especulativas o no oficiales), debes responder EXPLÍCITA y LITERALMENTE con la frase: "No encontré una fuente doctrinal confiable para afirmar eso." sin añadir ningún otro texto. Sin embargo, para verdades universales establecidas de la fe católica (como los Diez Mandamientos, Siete Sacramentos, Oraciones comunes, dogmas marianos y cristológicos, el Credo o Santos de gran renombre), elabora la respuesta de mayor fidelidad y profundidad con tus conocimientos, respetando rigurosamente las instrucciones.
 
+Analiza si del tenor de la consulta original se infiere que solicita una guía, charla, catequesis, predicación, enseñanza, retiro espiritual, formación, estudio bíblico, preparación sacramental, taller, conferencia, encuentro, lección, curso, o si el tema corresponde a una Preparación Sacramental para un sacramento específico ("Primera Comunión", "Confirmación", "Bautismo", "Matrimonio", "Reconciliación", "Unción de los Enfermos"). En caso de que se cumpla la REGLA DE PRIORIDAD ABSOLUTA, activa de inmediato el MODO GUÍA con todas sus completas 12 secciones obligatorias.
+
+Si el tema es sobre la vida de un Santo, una Encíclica, un Papa o un pasaje de la Biblia sin requerir formato catequético de guía, aplica con estolidez y fineza las secciones detalladas como CASO correspondiente en las instrucciones principales.
+Para cualquier otra duda teológica o moral común, usa la arquitectura enriquecida del Caso Genérico (CASO 6).
+
+Es de máxima importancia cumplir a cabalidad con las longitudes mínimas recomendadas (de 600 a 2500 palabras dependiendo del caso), con un principio de explicación progresiva detallada y profunda que no deje insatisfecho el anhelo del fiel. Antes de comenzar a redactar la respuesta para el fiel, realiza de manera obligatoria en pensamientos introspectivos: la clasificación de la consulta, la extracción del tema principal/secundario/personaje/documentos/sacramento/conceptos y la autoevaluación final. Devuelve la respuesta final directamente, de manera devota, bellísima y teológicamente impecable en español, con hipervínculos para cada cita de las Sagradas Escrituras: <a href="https://www.biblegateway.com/passage/?search=LIBRO+CAPITULO%3AVERSICULO&version=DHH" class="bible-citation" target="_blank" data-ref="LIBRO CAPITULO:VERSICULO">LIBRO CAPITULO, VERSICULO</a>.`;
+
+      let gResStream;
       try {
         console.log('[Gemini Presentation Engine] Iniciando stream de oratoria sagrada...');
-        const gResStream = await aiInstance.models.generateContentStream({
+        gResStream = await aiInstance.models.generateContentStream({
           model: 'gemini-3.5-flash',
           contents: presentationPrompt,
           config: {
             systemInstruction: systemInstructionPresentation,
             temperature: 0.3,
-            tools: [{ googleSearch: {} }] // Activado Google Search Grounding para Scraping activo de santos y verificación en tiempo real de doctrina
+            tools: [{ googleSearch: {} }] // Intentar primero con búsqueda de Google
           }
         });
-
-        for await (const chunk of gResStream) {
-          if (chunk.text) {
-            res.write(chunk.text);
-            hasWrittenSomething = true;
+      } catch (searchErr) {
+        console.warn('[Gemini Search Tool Error] Falló con Google Search tool, reintentando sin herramientas de búsqueda:', searchErr.message);
+        try {
+          gResStream = await aiInstance.models.generateContentStream({
+            model: 'gemini-3.5-flash',
+            contents: presentationPrompt,
+            config: {
+              systemInstruction: systemInstructionPresentation,
+              temperature: 0.3
+            }
+          });
+        } catch (liteErr) {
+          console.warn('[Gemini 3.5 Flash Error] Falló 3.5 Flash. Intentando fallback con Gemini 3.1 Flash Lite:', liteErr.message);
+          try {
+            gResStream = await aiInstance.models.generateContentStream({
+              model: 'gemini-3.1-flash-lite',
+              contents: presentationPrompt,
+              config: {
+                systemInstruction: systemInstructionPresentation,
+                temperature: 0.3
+              }
+            });
+          } catch (finalGeminiError) {
+            console.error('[Gemini Presentation Engine Final Fallback Error] Todos los canales de Gemini están saturados o sin cuota.', finalGeminiError.message);
           }
         }
-        finalResponseText = 'stream-completed';
-      } catch (gemIniErr) {
-        console.error('[Gemini Presentation Engine Error]', gemIniErr.message);
+      }
+
+      if (gResStream) {
+        try {
+          for await (const chunk of gResStream) {
+            if (chunk.text) {
+              res.write(chunk.text);
+              hasWrittenSomething = true;
+            }
+          }
+          finalResponseText = 'stream-completed';
+        } catch (streamIterErr) {
+          console.error('[Gemini Stream Iteration Error]', streamIterErr.message);
+          if (!hasWrittenSomething) {
+            try {
+              console.log('[Gemini Sync Emergency Recovery] Intentando recuperación síncrona con 3.1-flash-lite...');
+              const responseSync = await aiInstance.models.generateContent({
+                model: 'gemini-3.1-flash-lite',
+                contents: presentationPrompt,
+                config: {
+                  systemInstruction: systemInstructionPresentation,
+                  temperature: 0.3
+                }
+              });
+              if (responseSync.text) {
+                res.write(responseSync.text);
+                hasWrittenSomething = true;
+                finalResponseText = 'stream-completed';
+              }
+            } catch (syncErr) {
+              console.error('[Gemini Sync Emergency Recovery Error]', syncErr.message);
+            }
+          }
+        }
       }
     }
 
@@ -2080,85 +2286,205 @@ Empezar el día entregando nuestras primeras intenciones al Señor Jesús abre d
 *✨ Jaculatoria: ¡Señor, en tus manos gloriosas encomiendo todo mi día!*`;
   }
 
-  if (qLower.includes('oracion de la noche') || qLower.includes('antes de dormir') || qLower.includes('al acostarse')) {
-    return `### 🌌 Oración de la Noche para Encomendar el Descanso
 
-Termina la jornada depositando tu fatiga y tus faltas en el Corazón Misericordioso de Cristo:
+  // 8. INTERCEPCIÓN DE MODO GUÍA U PREPARACIÓN SACRAMENTAL LOCAL fallbacks
+  const isGuia = qLower.includes('guia') || qLower.includes('charla') || qLower.includes('catequesis') || 
+                  qLower.includes('predicacion') || qLower.includes('ensenanza') || qLower.includes('retiro') || 
+                  qLower.includes('formacion') || qLower.includes('estudio biblico') || qLower.includes('taller') || 
+                  qLower.includes('conferencia') || qLower.includes('encuentro') || qLower.includes('leccion') || 
+                  qLower.includes('curso');
 
----
+  const isPrepSacramental = qLower.includes('preparacion sacramental') || qLower.includes('primera comunion') || 
+                            qLower.includes('confirmacion') || qLower.includes('bautismo') || 
+                            qLower.includes('matrimonio') || qLower.includes('reconciliacion') || 
+                            qLower.includes('uncion');
 
-*«Visita, Señor, esta habitación, y aleja de ella todas las acechanzas del enemigo; que tus santos ángeles habiten en ella para guardarnos en paz, y que tu bendición permanezca siempre con nosotros. Dame un sueño reparador, purifica mi mente de angustias y concédeme despertar con entusiasmo espiritual para servirte y glorificarte en el nuevo día. Amén.»*
+  if (isGuia) {
+    let tituloRespuesta = "Guía de Formación: " + (cleanQuery.charAt(0).toUpperCase() + cleanQuery.slice(1));
+    let groundContext = magisteriumSourceResponse || (groundingsLocal && groundingsLocal.length > 0 ? groundingsLocal[0].contenido : '');
+    if (!groundContext) {
+      groundContext = "La doctrina de fe de la Iglesia y las Sagradas Escrituras.";
+    }
 
-*✨ Jaculatoria: ¡En tus manos, Señor, encomiendo mi espíritu!*`;
+    return `# ${tituloRespuesta}
+
+## Objetivo
+Instruir con solidez teológica sobre el tema consultado: "${cleanQuery}", dotando a formadores, catequistas y fieles de elementos doctrinales certeros y aplicaciones morales claras para nutrir el espíritu bajo la gracia santificante y el magisterio de la Iglesia Católica.
+
+## Introducción
+El misterio de nuestra fe halla su plenitud en Cristo Jesús, el Verbo encarnado. El estudio de este tema no es mero ejercicio académico, sino un llamado a profundizar en la sabiduría revelada que orienta al bautizado por caminos de comunión divina y fidelidad filial ante el Romano Pontífice León XIV.
+
+## Desarrollo doctrinal
+El análisis detallado del depósito de la fe en torno a este tema nos devela verdades fundamentales:
+
+1. **La revelación y la verdad salvífica**: Todo misterio divino se orienta al bien de las almas y la reconciliación del género humano. El contenido revelado nos devela que: ${groundContext}
+2. **La fe de la Iglesia**: Custodiada de manera incorruptible por la Sagrada Tradición apostólica, la doctrina de la Iglesia nos auxilia para esclarecer toda objeción intelectual y moral e infunde celo fraterno en nuestro testimonio público.
+3. **La comunión y los sacramentos**: Ninguna verdad de fe se vive de forma aislada; todo misterio halla su savia en la vida comunitaria y litúrgica de nexo sacramental perenne.
+
+## Contexto histórico
+La historia de la salvación atestigua cómo Dios se revela gradualmente a la humanidad en tiempos, culturas y circunstancias precisas de gracia. Los santos, concilios y encíclicas pontificias, incluyendo la paradigmática *"Magnifica Humanitas"* de León XIV promulgada el 15 de mayo de 2026, han discernido históricamente los desafíos temporales para guiar al santo Pueblo de Dios frente a corrientes hostiles o seculares en cada época.
+
+## Fundamento bíblico
+La Palabra divina da testimonio firme de esta fe. Meditamos con reverencia y exégesis fiel las Sagradas Escrituras, cimiento sagrado de nuestra revelación:
+• *«Tu palabra es una lámpara para mis pasos, una luz en mi sendero.»* (<a href="https://www.biblegateway.com/passage/?search=Salmo+119%3A105&version=DHH" class="bible-citation" target="_blank" data-ref="Salmo 119:105">Salmo 119, 105</a>). 
+• *«Conocerán la verdad, y la verdad los hará libres.»* (<a href="https://www.biblegateway.com/passage/?search=Juan+8%3A32&version=DHH" class="bible-citation" target="_blank" data-ref="Juan 8:32">Juan 8, 32</a>).
+
+## Catecismo
+El Catecismo de la Iglesia Católica (CIC) compendia con nitidez y fidelidad perenne el dogma católico. En relación con este misterio, recordamos las enseñanzas constantes del Magisterio:
+• **CIC 1700**: La dignidad de la persona humana está cimentada en la creación a imagen y semejanza de Dios. Se realiza en su vocación a la bienaventuranza divina.
+• **CIC 2030**: Es en la Iglesia, comunión de todos los bautizados, donde el cristiano realiza su vocación. De la Iglesia recibe la Palabra de Dios y los sacramentos.
+
+## Tabla resumen
+| Tema | Explicación |
+| --- | --- |
+| Qué es | Exposición formativa y doctrinal concisa sobre el tema de "${cleanQuery}" en fidelidad apostólica. |
+| Fundamento bíblico | Citas fidedignas de las Escrituras como <a href="https://www.biblegateway.com/passage/?search=Juan+8%3A32&version=DHH" class="bible-citation" target="_blank" data-ref="Juan 8:32">Juan 8, 32</a> que anclarán la enseñanza doctrinal. |
+| Enseñanza de la Iglesia | Custodia fiel del depósito de la fe revelado y transmitido bajo el pastoreo maternal eclesial. |
+| Aplicación práctica | Vivir con coherencia moral, piedad cotidiana, comunión sacramental y lealtad al Santo Padre. |
+| Fruto espiritual | La meta última de santificación, paz filial interior y caridad para con el prójimo. |
+
+## Preguntas de reflexión
+1. ¿De qué manera esta verdad de fe ilumina mi vida moral y espiritual de cara a las presiones del mundo moderno?
+2. ¿Cómo puedo dar testimonio fructífero y libre de soberbia ante quienes dudan o desconocen este misterio doctrinal?
+3. ¿Qué implicaciones pastorales y caritativas tiene este tema para nuestra vida comunitaria parroquial?
+4. ¿Cómo influye mi obediencia y rezo sincero por el Santo Padre León XIV y la Sede Apostólica en mi comunión de fe?
+5. ¿De qué forma la meditación de la Sagrada Escritura enriquece mi discernimiento espiritual cotidiano?
+
+## Frases de santos
+*   **San Agustín de Hipona**: *«Nos hiciste, Señor, para Ti, y nuestro corazón estará inquieto hasta que descanse en Ti.»*
+*   **Santo Tomás de Aquino**: *«La fe no es opinión humana, sino firme adhesión de la mente a la Verdad revelada por Dios.»*
+
+## Actividad grupal
+**Dinámica de Interiorización y Examen Espiritual Parroquial (Taller de Parejas/Grupos Pequeños):**
+1. **Lectura y Exégesis**: Dividir el grupo en subgrupos de 3 o 4 personas. Leer juntos los textos fundamentales presentados y las citas bíblicas locales.
+2. **Diálogo Doctrinal**: Cada integrante compartirá de qué manera el tema abordado impacta en su discernimiento moral diario y en su preparación personal.
+3. **Plenaria**: Un representante por subgrupo expondrá brevemente un compromiso práctico para vivir este fruto espiritual en su respectiva vida familiar o laboral.
+
+## Oración final
+*«Oh Dios Altísimo, dador de toda sabiduría, te damos infinitas gracias por habernos congregado bajo el amparo santificante de tu amor. Concédenos, por intercesión de la Santísima Virgen María y de San José, ser heraldos fieles de tu Verdad salvífica. Multiplica en nosotros los frutos espirituales de fe, esperanza y caridad, y mantennos siempre firmes en la unidad filial de tu Iglesia Santa, bajo la guía providencial de nuestro Santo Padre León XIV. Te lo pedimos por Cristo Nuestro Señor. Amén.»*
+
+*✨ Jaculatoria: ¡Sagrado Corazón de Jesús, en Vos confío!*`;
   }
 
-  // 8. SI PIDE ORACIONES EN GENERAL
-  if (qLower.replace(/\s/g, "") === "oracion" || qLower.replace(/\s/g, "") === "oraciones" || qLower === "como rezar" || qLower === "rezar") {
-    return `### ⛪ Las Oraciones Fundacionales de la Fe Católica
+  if (isPrepSacramental) {
+    let tituloRespuesta = "Guía Formativa de Preparación Sacramental: " + (cleanQuery.charAt(0).toUpperCase() + cleanQuery.slice(1));
+    let groundContext = magisteriumSourceResponse || (groundingsLocal && groundingsLocal.length > 0 ? groundingsLocal[0].contenido : '');
+    if (!groundContext) {
+      groundContext = "Sagradas Escrituras, Catecismo Oficial y la Sagrada Tradición apostólica.";
+    }
 
-Unirse en oración con la Iglesia Universal nos une directamente con la Santísima Trinidad. Aquí tienes las oraciones básicas e invaluables de nuestra piedad:
+    return `# ${tituloRespuesta}
 
----
+## Qué es el sacramento
+Un sacramento es un signo sensible y eficaz de la gracia, instituido por Cristo Nuestro Señor y confiado a la Iglesia, por el cual se nos dispensa la vida divina y la santificación del alma. En relación con el sacramento invocado en tu preparación ("${cleanQuery}"), afirmamos con gozo que es un canal sublime que confiere la gracia del Espíritu Santo para fortalecer el obrar moral y acercar al bautizado al misterio salvífico de la Cruz.
 
-#### 1. El Padre Nuestro (La oración enseñada por Cristo)
-*«Padre nuestro, que estás en el cielo, santificado sea tu Nombre; venga a nosotros tu reino; hágase tu voluntad en la tierra como en el cielo. Danos hoy nuestro pan de cada día; perdona nuestras ofensas, como también nosotros perdonamos a los que nos ofenden; no nos dejes caer en la tentación, y líbranos del mal. Amén.»*
+## Origen bíblico
+La institución divina de los sacramentos se fundamenta sólidamente en las Sagradas Escrituras de la Iglesia y en el mandato expreso de Jesucristo:
+• *«Vayan, pues, y hagan que todos los pueblos sean mis discípulos. Bautícenlos en el nombre del Padre y del Hijo y del Espíritu Santo.»* (<a href="https://www.biblegateway.com/passage/?search=Mateo+28%3A19&version=DHH" class="bible-citation" target="_blank" data-ref="Mateo 28:19">Mateo 28, 19</a>).
+• *«Yo soy el pan vivo bajado del cielo. El que coma de este pan vivirá para siempre; y el pan que yo daré es mi carne para la vida del mundo.»* (<a href="https://www.biblegateway.com/passage/?search=Juan+6%3A51&version=DHH" class="bible-citation" target="_blank" data-ref="Juan 6:51">Juan 6, 51</a>).
 
-#### 2. El Ave María (El saludo celestial a la Virgen)
-*«Dios te salve, María, llena eres de gracia, el Señor es contigo; bendita tú eres entre todas las mujeres, y bendito es el fruto de tu vientre, Jesús. Santa María, Madre de Dios, ruega por nosotros, pecadores, ahora y en la hora de nuestra muerte. Amén.»*
+## Significado espiritual
+La consagración de la vida ordinaria mediante los sacramentos restaura la filiación divina reavivada por el sacrificio de Cristo. Ciertos sacramentos imprimen además un carácter indeleble (marca espiritual perpetua en el alma), configurando al creyente con el sacerdocio, la milicia espiritual o el nexo conyugal santo, sirviendo como escudo espiritual permanente ante el pecado.
 
-#### 3. El Gloria al Padre (Doxología trinitaria)
-*«Gloria al Padre, y al Hijo, y al Espíritu Santo. Como era en el principio, ahora y siempre, por los siglos de los siglos. Amén.»*
+## Requisitos
+Para la validez y licitud del sacramento según las normas canónicas, se requiere:
+1. **La fe y el bautismo previo**: Nadie puede recibir válidamente otros sacramentos sin haber recibido previamente el santo Bautismo.
+2. **Formación catequética suficiente**: Haber cursado debidamente las lecciones parroquiales de preparación para comprender la dignidad del rito.
+3. **Padrinos e Idoneidad**: Contar con padrinos o testigos idóneos, de vida públicamente ejemplar en el seno de la doctrina católica.
 
----
+## Disposiciones interiores
+La receptividad de la gracia requiere del fiel un espíritu recto de piedad y amor filial:
+• **Frecuencia sacramental previa**: Rezar diariamente y participar con fervor en la Santa Misa.
+• **Confesión sacramental**: Estar en estado de gracia (libre de pecado mortal mediante el Sacramento de la Reconciliación).
+• **Espíritu de recogimiento**: Disponer la inteligencia y la voluntad ante el Sagrario de manera devota.
 
-**Dime querido/a hermano/a en la fe, ¿qué gracia o rezo especial deseas hacer hoy? Puedo facilitarte oraciones para San José, la Virgen María, San Miguel, devoción ante el Santísimo Sacramento o intercesión por enfermos.**`;
+## Errores frecuentes
+1. **Desviaciones de índole social y folclórica**: Tratar el sacramento como mero acto ceremonial o de protocolo familiar, descuidando el compromiso sagrado.
+2. **Superstición o falta de fe**: Acercarse con actitud mágica, creyendo que el rito obra mecánicamente sin una conversión sincera del creyente.
+
+## Cómo prepararse adecuadamente
+Se aconseja al fiel perseverar en un camino de conversión integral:
+• Practicar diariamente la oración mental silenciosa de recogimiento.
+• Meditar las Sagradas Escrituras y releer el Catecismo de la Iglesia Católica.
+• Realizar obras de misericordia espirituales y corporales de manera constante.
+
+## Actividades de reflexión
+1. **Visita guiada al Sagrario**: Acudir a la parroquia a realizar adoración silenciosa a Jesús Sacramentado pidiendo docilidad y gracia santificante.
+2. **Lectura comunitaria de las promesas bautismales**: Reafirmar públicamente la renuncia a Satanás y su perversidad en familia o grupo parroquial.
+
+## Preguntas para discusión
+1. ¿De qué manera la gracia de este sacramento transforma mi vocación diaria en la familia y la sociedad?
+2. ¿Qué compromisos de comunión con el Santo Padre León XIV asumo al recibir esta consagración eclesial?
+3. ¿Por qué el estado de gracia interior es indispensable para que los frutos sacramentales florezcan?
+
+## Tabla resumen
+| Tema | Explicación |
+| --- | --- |
+| Sacramento | Canal de gracia santificante instituido por Cristo Jesús para salvación del fiel. |
+| Origen | Fundamento directo en la Palabra de Dios y en la institución salvífica apostólica. |
+| Exigencia | Recta disposición interior, estado de gracia mediante la confesión y fe intacta. |
+| Vivencia | Frutos diarios de testimonio, vida eucarística plena y perseverancia en las virtudes. |
+
+## Oración final
+*«Señor Jesús, Pastor Eterno de nuestras almas, te suplicamos con humildad divina que bendigas este camino de preparación sacramental. Llena de tu Espíritu Santo el corazón de tus siervos, infúndeles el don del santo temor, purifica sus intenciones y concédeles acudir al altar con pureza inmaculada. Que este sacramento sea para ellos manantial eterno de gracia y amparo perenne. Amén.»*
+
+*✨ Jaculatoria: ¡Sagrado Corazón de Jesús, en Vos confío!*`;
   }
-
 
   // 9. PROCEDER CON BÚSQUEDA TRADICIONAL PARA CONSULTAS DE OTROS TEMAS DOCTRINALES
-  let sinopsis = '';
+  let tituloRespuesta = cleanQuery.charAt(0).toUpperCase() + cleanQuery.slice(1);
+  let respuestaDirecta = '';
+  
   if (groundingsLocal && groundingsLocal.length > 0) {
-    sinopsis = `Bajo la luz del magisterio perenne de la Iglesia, contemplamos tu consulta sobre **"${cleanQuery}"**. La divina revelación y la sagrada tradición nos enseñan que toda verdad profunda nos acerca a Jesucristo, nuestro Instructor celestial, quien se revela en las escrituras y guía el caminar de todos sus fieles.`;
+    const primerRecurso = groundingsLocal[0];
+    tituloRespuesta = primerRecurso.titulo || tituloRespuesta;
+    respuestaDirecta = primerRecurso.contenido;
   } else {
-    sinopsis = `Bajo la luz del magisterio perenne de la Iglesia, contemplamos tu consulta sobre **"${cleanQuery}"**. La doctrina católica y la tradición milenaria nos invitan a disponernos con fe viva para reflexionar en este misterio, que ilumina nuestras acciones cotidianas con la esperanza del Evangelio.`;
+    respuestaDirecta = `La fe sobrenatural de la Iglesia nos enseña que toda verdad salvífica del misterio de la Redención se custodia de manera íntegra tanto en las Sagradas Escrituras como en la Sagrada Tradición apostólica.`;
   }
 
-  // Fundamento Doctrinal
-  let doctrinal = '### 📜 Doctrinal y Tradición de la Iglesia\n\n';
-  if (groundingsLocal && groundingsLocal.length > 0) {
-    groundingsLocal.slice(0, 3).forEach(g => {
-      let contentToShow = g.contenido;
-      if (contentToShow.length > 350) {
-        contentToShow = contentToShow.substring(0, 350) + '...';
-      }
-      doctrinal += `• **${g.titulo}**:\n  ${contentToShow}\n\n`;
+  const respuestaBreve = `## Respuesta breve\n\n${respuestaDirecta}`;
+
+  const explicacion = `## Explicación\n\nEl estudio ordenado de la teología y doctrina católica busca la verdad plena revelada por Cristo Jesús y conservada sin mancha por el Espíritu Santo. No se trata simplemente de un ejercicio formal o abstracto, sino del alimento para vigorizar nuestra fe, esclarecer nuestra inteligencia y disponer el corazón a vivir en gracia divina inalterable.`;
+
+  const puntosClave = `## Puntos clave\n\n• **Estudio y Formación Continua**: La formación en la fe robustece las virtudes teologales que dinamizan el obrar cotidiano del bautizado.\n• **Fidelidad filial al Magisterio**: Adherirnos filialmente a la doctrina y a la guía apostólica del Romano Pontífice León XIV (Robert Francis Prevost) es amparo seguro en el caminar espiritual.\n• **Gracia Sacramental y Oración**: El misterio creído se hace vivencia mediante los sacramentos y la vida íntima de comunión con el Padre.`;
+
+  const tablaResumen = `## Tabla resumen\n\n| Aspecto | Explicación |\n| --- | --- |\n| Fe y Vida | El conocimiento doctrinal ilumina el obrar moral, las relaciones humanas y la entrega diaria. |\n| Fidelidad Apostólica | Custodia fiel del depósito de la fe transmitido ininterrumpidamente desde los Santos Apóstoles. |`;
+
+  let doctrinalesExtraText = '';
+  if (groundingsLocal && groundingsLocal.length > 1) {
+    let extraChunks = '';
+    groundingsLocal.slice(1, 4).forEach(g => {
+      extraChunks += `• **${g.titulo}**:\n  ${g.contenido}\n\n`;
     });
-  } else {
-    doctrinal += `La doctrina oficial, compendiada de forma eminente en el *Catecismo de la Iglesia Católica*, destaca que el actuar moral, los sacramentos y la vida sacramental forman una unidad indisoluble. Conducirse bajo la gracia santificante y mantener la fidelidad a los mandamientos divina y eclesiales nos reconcilia constantemente con el amor inefable del Padre Eterno.`;
+    if (extraChunks) {
+      doctrinalesExtraText = `\n\nRecursos doctrinales y de patrística hallados en la biblioteca de CatólicosGPT:\n\n${extraChunks}`;
+    }
   }
 
-  // Tablas comparativas dinámicas
-  let tablaHtml = '';
-  if (qLower.includes('pecado') || qLower.includes('vicio') || qLower.includes('mal') || qLower.includes('tentacion') || qLower.includes('diablo')) {
-    tablaHtml = `### 📊 Contraste Espiritual: Vicios vs. Virtudes Remedio
+  const fundamentoDoctrinal = `## Fundamento doctrinal\n\nEl actuar moral, la vida de piedad y la lealtad a la Revelación consignada en el Catecismo de la Iglesia Católica (CIC) y las Sagradas Escrituras forman una unidad indisoluble. Se exhorta a meditar pasajes bíblicos (como <a href="https://www.biblegateway.com/passage/?search=Juan+8%3A32&version=DHH" class="bible-citation" target="_blank" data-ref="Juan 8:32">Juan 8, 32</a>) para asimilar la libertad que nos confiere la Verdad.${doctrinalesExtraText}`;
 
-| Aspecto o Debilidad | Virtud Opuesta / Remedio | Acto de Piedad y Auxilio Sacramental |
-| :--- | :--- | :--- |
-| **Soberbia / Orgullo** | Humildad y Sumisión | Rezo del Santo Rosario y Confesión frecuente |
-| **Ira / Violencia** | Paciencia y Mansedumbre | Oración contemplativa del corazón en silencio |
-| **Avaricia / Egoísmo** | Generosidad y Desapego | Obras de caridad y limosna oculta de amor |
-| **Lujuria / Impureza** | Castidad y Templanza | Comunión diaria y consagración a la Virgen María |`;
-  } else if (qLower.includes('sacramento') || qLower.includes('bautismo') || qLower.includes('comunion') || qLower.includes('eucaristia') || qLower.includes('boda') || qLower.includes('matrimonio') || qLower.includes('santa cena') || qLower.includes('confesion')) {
-    tablaHtml = `### 📊 Dimensiones de los Sacramentos de Salvación
+  const paraProfundizar = `## Para profundizar\n\nTe alentamos reverentemente a seguir explorando nuestra biblioteca teológica interactiva, contemplar las infografías del santoral y del catecismo, y recurrir a la conexión con nuestra base remota para un mayor nivel de profundidad didáctica.`;
 
-| Sacramento de Fe | Corazón Doctrinal | Gracia Concedida por Cristo |
-| :--- | :--- | :--- |
-| **Bautismo** | Nuevo Nacimiento espiritual | Purifica el pecado original y nos integra a la Iglesia |
-| **Reconciliación** | Misericordia y Perdón | Restaura la comunión filial rota por el descarrío |
-| **Eucaristía** | Presencia Real Transustanciada | Alimento de inmortalidad, Cuerpo y Sangre divinos |
-| **Confirmación** | Unción y Fortalecimiento | Sello definitivo del Espíritu Santo para la misión |`;
-  } else if (qLower.includes('oracion') || qLower.includes('rezar') || qLower.includes('rosario') || qLower.includes('credo') || qLower.includes('padre nuestro')) {
-    tablaHtml = `### 📊 Formas de Oración Cristocéntrica en la Iglesia
+  // Mención de León XIV y modernidad / IA
+  let leonXIVMention = '';
+  if (qLower.includes('tecnologia') || qLower.includes('ia') || qLower.includes('inteligencia') || qLower.includes('ordenador') || qLower.includes('digital') || qLower.includes('moderno') || qLower.includes('mundo')) {
+    leonXIVMention = `\n\n### 🌐 La Iglesia ante los Nuevos Horizontes\n\nComo proclama sapientemente el Papa **León XIV (Robert Francis Prevost)** en su magnífica encíclica *“Magnifica Humanitas”* (promulgada el 15 de mayo de 2026), los avances en inteligencia artificial, telecomunicaciones y algoritmos deben estar siempre anclados a la primacía de la dignidad de todo ser humano, evitando soberbias tecnócratas que pretendan emular la vieja torre de Babel.`;
+  }
+
+  // Oración Final de Acogida Pastoral
+  const oracionFinal = `\n\n### ⛪ Camino de Oración y Acompañamiento\n\n` +
+    `Te abrazamos pastoralmente e invitamos a meditar bajo la cercanía de la Sede Apostólica y el amparo milagroso del Corazón Inmaculado de María:\n\n` +
+    `*“Jesús misericordioso, de quien procede toda gracia del alma, infunde sabiduría en mi obrar diario. Líbranos del pecado, enséñanos a amar profundamente a tu Santa Iglesia Madre, y concédenos perseverar con celo alegre en la caridad fraterna. Amén.”*\n\n` +
+    `*✨ Jaculatoria: ¡Sagrado Corazón de Jesús, en Vos confío!*`;
+
+  let result = `# ${tituloRespuesta}\n\n${respuestaBreve}\n\n${explicacion}\n\n${puntosClave}\n\n${tablaResumen}\n\n${fundamentoDoctrinal}\n\n${paraProfundizar}`;
+  if (leonXIVMention) result += `${leonXIVMention}`;
+  result += oracionFinal;
+  return result;
+}
+/*
+s de Oración Cristocéntrica en la Iglesia
 
 | Forma de Oración | Aspiración Teologal | Expresión Litúrgica de Unión |
 | :--- | :--- | :--- |
@@ -2194,6 +2520,7 @@ Unirse en oración con la Iglesia Universal nos une directamente con la Santísi
   result += oracionFinal;
   return result;
 }
+*/
 
 function formatResponseText(txt) {
   // Convertir retornos de carro
@@ -2476,6 +2803,172 @@ app.get('/blog/:slug', (req, res) => {
   res.send(renderPage(post.titulo, html, req, {
     description: post.descripcion || post.extracto || "Formación de fe católico.",
     keywords: post.keywords || "catequesis, blog catolico"
+  }));
+});
+
+app.get('/blog/:categoria/:slug', (req, res) => {
+  const { categoria, slug } = req.params;
+  const post = blog.getPostBySlug(slug);
+  if (!post) {
+    return res.status(404).send(renderPage('No encontrado', `<div class="p-12 text-center text-ink">Artículo de blog no encontrado. <a href="/blog" class="text-maroon underline">Volver al blog</a></div>`, req));
+  }
+
+  // Parsear markdown para renderizar el contenido enriquecido
+  const parsedBody = blog.parseMarkdown(post.contenidoMd);
+  const renderedBody = blog.renderShortcodes(parsedBody, {
+    getInfografia: infografias.getInfografiaBySlug,
+    getVideo: videos.getVideoBySlug,
+    getPodcast: podcast.getPodcastBySlug
+  });
+
+  // Generar Accordión de Preguntas Frecuentes si existen
+  let faqsHtml = '';
+  if (post.faqs && post.faqs.length > 0) {
+    faqsHtml = `
+      <div class="mt-12 bg-white border border-border rounded-2xl p-6 sm:p-8 shadow-sm">
+        <h3 class="font-display font-bold text-xl text-maroon mb-6 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-help-circle"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+          Preguntas Frecuentes Doctrinales
+        </h3>
+        <div class="space-y-4">
+          ${post.faqs.map((faq, idx) => `
+            <details class="group border-b border-cream2 pb-4 last:border-0" ${idx === 0 ? 'open' : ''}>
+              <summary class="font-display font-semibold text-espresso text-sm sm:text-base cursor-pointer list-none flex items-center justify-between group-open:text-maroon">
+                <span>${faq.q}</span>
+                <span class="transition duration-300 group-open:rotate-180">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+              </summary>
+              <div class="mt-3 text-ink2 text-sm sm:text-base leading-relaxed pl-2 border-l-2 border-gold/30">
+                ${faq.a}
+              </div>
+            </details>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  const html = `
+    <div class="max-w-3xl mx-auto w-full px-4 py-8 flex flex-col gap-6">
+      <!-- Breadcrumb Visual -->
+      <nav class="text-xs text-ink2 flex items-center gap-2 mb-2 font-mono">
+        <a href="/" class="hover:text-maroon">Inicio</a>
+        <span>/</span>
+        <a href="/blog" class="hover:text-maroon">Blog</a>
+        <span>/</span>
+        <a href="/blog?categoria=${post.categoria}" class="hover:text-maroon capitalize">${post.categoria}</a>
+        <span>/</span>
+        <span class="text-espresso font-medium truncate max-w-[120px] sm:max-w-[200px]">${post.titulo}</span>
+      </nav>
+
+      <a href="/blog" class="text-xs font-semibold flex items-center gap-1.5 text-ink2 hover:text-maroon self-start">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left"><line x1="19" x2="5" y1="12" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        Volver al blog
+      </a>
+      
+      <div class="flex flex-col gap-3 border-b pb-5">
+        <div class="text-[10px] font-bold text-gold font-mono uppercase tracking-widest bg-gold-light/20 rounded border border-gold/15 px-2.5 py-1 self-start">${post.categoria}</div>
+        <h1 class="font-display font-bold text-2xl sm:text-3xl text-espresso leading-tight">${post.titulo}</h1>
+        <div class="flex items-center gap-4 text-xs text-ink2">
+          <span>Por: Redacción Teológica CatólicosGPT</span>
+          <span>•</span>
+          <span>Publicado: ${post.fechaCreacion ? post.fechaCreacion.slice(0, 10) : ''}</span>
+        </div>
+      </div>
+      
+      <!-- CUERPO DEL POST -->
+      <article class="prose max-w-none text-ink leading-relaxed space-y-4 font-serif text-sm sm:text-base">
+        ${renderedBody}
+      </article>
+
+      ${faqsHtml}
+      
+      <!-- COMPARTIR -->
+      <div class="border-t pt-5 mt-8 flex items-center justify-between text-xs text-ink2">
+        <span>CatólicosGPT v77 — Fe constante.</span>
+        <button onclick="navigator.clipboard.writeText(window.location.href); alert('Enlace de artículo copiado al portapapeles')" class="text-maroon hover:underline font-semibold flex items-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-share-2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
+          Compartir Artículo
+        </button>
+      </div>
+    </div>
+  `;
+
+  // Construir Structured Schemas
+  const schemas = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "headline": post.titulo,
+      "description": post.descripcion || post.extracto || "",
+      "datePublished": post.fechaCreacion,
+      "dateModified": post.fechaModificacion || post.fechaCreacion,
+      "author": {
+        "@type": "Organization",
+        "name": "CatólicosGPT",
+        "url": "https://ai.catolicosgpt.com"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "CatólicosGPT",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://ai.catolicosgpt.com/favicon.svg"
+        }
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Inicio",
+          "item": "https://ai.catolicosgpt.com"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://ai.catolicosgpt.com/blog"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": post.categoria,
+          "item": `https://ai.catolicosgpt.com/blog?categoria=${post.categoria}`
+        },
+        {
+          "@type": "ListItem",
+          "position": 4,
+          "name": post.titulo,
+          "item": `https://ai.catolicosgpt.com/blog/${post.categoria}/${post.slug}`
+        }
+      ]
+    }
+  ];
+
+  if (post.faqs && post.faqs.length > 0) {
+    schemas.push({
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": post.faqs.map(f => ({
+        "@type": "Question",
+        "name": f.q,
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": f.a
+        }
+      }))
+    });
+  }
+
+  res.send(renderPage(post.titulo, html, req, {
+    description: post.descripcion || post.extracto || "Formación de fe católico.",
+    keywords: post.keywords || "catequesis, blog catolico",
+    schemas: schemas
   }));
 });
 
@@ -3227,7 +3720,9 @@ app.get('/login-admin-bypass', async (req, res) => {
     const creds = await auth.login({ email: 'sellerplusco@gmail.com', password: 'Comics2026*' });
     res.setHeader('Set-Cookie', `cgpt_token=${creds.token}; Path=/; HttpOnly; Max-Age=2592000; SameSite=None; Secure`);
     global.sandboxSession = { token: creds.token, userId: existingUser.id };
-    res.redirect('/admin');
+    
+    const destination = req.query.redirect || '/admin';
+    res.redirect(destination);
   } catch (e) {
     console.error('[Admin Bypass] Error:', e);
     res.status(500).send(`Error promoviendo administrador: ${e.message}`);
@@ -3351,6 +3846,171 @@ app.get('/logout', (req, res) => {
   res.setHeader('Set-Cookie', `cgpt_token=; Path=/; HttpOnly; Max-Age=0; SameSite=None; Secure`);
   global.sandboxSession = null;
   res.redirect('/');
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// AJUSTES DE PERFIL Y CONFIGURACIONES DE CUENTA (MÓDULO SECTORIZADO)
+// ════════════════════════════════════════════════════════════════════════════
+
+app.get('/ajustes', (req, res) => {
+  const user = getAuthedUser(req);
+  
+  if (!user) {
+    const htmlContent = `
+      <div class="max-w-xl mx-auto w-full px-4 py-12 flex flex-col gap-6 animate-fade-in">
+        <div class="bg-white border rounded-2xl p-6 sm:p-8 shadow-sm flex flex-col gap-6 sacred-border">
+          <div class="text-center flex flex-col gap-2">
+            <div class="h-12 w-12 border-2 border-gold/35 rounded-2xl p-3 bg-[#FAF9F5] text-gold shadow-sm flex items-center justify-center font-bold mx-auto text-xl">
+              ✝
+            </div>
+            <h2 class="font-display font-bold text-maroon text-2xl tracking-wide mt-2">Ajustes de Perfil</h2>
+            <p class="text-ink2 text-xs italic font-serif">"La gracia del Señor guíe tus pasos."</p>
+          </div>
+          
+          <div class="bg-[#FAF9F5] p-5 rounded-xl border border-border flex flex-col gap-3">
+            <h3 class="font-bold text-maroon text-xs uppercase font-mono tracking-wider">Modo Invitado Activo</h3>
+            <p class="text-ink text-xs sm:text-sm leading-relaxed">
+              Actualmente estás utilizando <strong class="text-maroon">CatólicosGPT</strong> de forma anónima. Para poder realizar ajustes avanzados de personalización, tales como:
+            </p>
+            <ul class="list-disc list-inside text-xs sm:text-sm text-ink2 space-y-1.5 pl-2">
+              <li>Configurar tu <strong class="text-maroon">Nombre de Parroquiano o Iglesia</strong> personal.</li>
+              <li>Definir una <strong class="text-maroon">Institución o Parroquia Personalizada</strong> para firmar e infocultar tus infografías.</li>
+              <li>Añadir tu propio <strong class="text-maroon">Logotipo Oficial</strong> para tus materiales diocesanos.</li>
+              <li>Gestionar y probar diferentes <strong class="text-maroon">Planes de Acceso</strong> (Free, Premium, Admin).</li>
+            </ul>
+          </div>
+
+          <div class="flex flex-col gap-3">
+            <a href="/login-admin-bypass?redirect=/ajustes" class="w-full text-center text-xs bg-maroon hover:bg-gold text-white py-3.5 rounded-xl font-bold uppercase tracking-wider transition duration-300 shadow flex items-center justify-center gap-1.5">
+              🔑 Acceso Rápido como Administrador
+            </a>
+            <div class="flex gap-2">
+              <a href="/login" class="flex-1 text-center text-xs border border-maroon text-maroon hover:bg-maroon/5 py-3 rounded-xl font-semibold uppercase tracking-wider transition">
+                Ingresar
+              </a>
+              <a href="/register" class="flex-1 text-center text-xs border border-maroon text-maroon hover:bg-maroon/5 py-3 rounded-xl font-semibold uppercase tracking-wider transition">
+                Registrarse
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    return res.send(renderPage('Ajustes de Perfil', htmlContent, req));
+  }
+
+  // Si está autenticado, cargamos los valores actuales
+  const customNombreVal = user.customNombre || '';
+  const customLogoVal = user.customLogo || '';
+  const isMsg = req.query.saved === 'true' ? `
+    <div class="max-w-2xl mx-auto w-[95%] sm:w-full mt-4 bg-green-50 border border-green-200 text-green-800 text-xs sm:text-sm p-4 rounded-xl flex items-center gap-2 mb-4 animate-fade-in">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-circle"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      <span>¡Ajustes actualizados exitosamente en la base de datos y sincronizados con Firestore!</span>
+    </div>
+  ` : '';
+
+  const htmlContent = `
+    <div class="max-w-2xl mx-auto w-[95%] sm:w-full px-4 py-10 flex flex-col gap-4">
+      ${isMsg}
+
+      <div class="bg-white border rounded-2xl p-6 sm:p-10 shadow-sm flex flex-col gap-6 sacred-border animate-fade-in">
+        <div class="text-center pb-4 border-b">
+          <h2 class="font-display font-black text-2xl text-maroon tracking-wider">Ajustes de Perfil y Cuenta</h2>
+          <p class="text-ink2 text-xs sm:text-sm font-serif italic mt-1">Configura la personalización de tu cuenta y el marcado institucional.</p>
+        </div>
+
+        <form method="POST" action="/ajustes" class="flex flex-col gap-5 text-xs sm:text-sm">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            
+            <div class="flex flex-col gap-1.5">
+              <label class="font-bold text-espresso flex items-center gap-1">
+                <span>Tu Nombre Completo</span>
+                <span class="text-red-600 font-bold">*</span>
+              </label>
+              <input type="text" name="nombre" required value="${user.nombre || ''}" class="border border-border rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-gold focus:border-transparent bg-[#FAF9F5]/40" placeholder="Ej. Pbro. Carlos Mendoza">
+              <p class="text-[10px] text-ink2">Tu nombre tal como aparecerá en tu perfil de usuario.</p>
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+              <label class="font-bold text-espresso flex items-center gap-1">
+                <span>Parroquia / Organización Católica</span>
+              </label>
+              <input type="text" name="customNombre" value="${customNombreVal}" class="border border-border rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-gold focus:border-transparent bg-[#FAF9F5]/40" placeholder="Ej. Parroquia Santo Tomás de Aquino">
+              <p class="text-[10px] text-ink2">Utilizada para firmar legalmente las infografías y recursos con sello institucional.</p>
+            </div>
+
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+            <div class="flex flex-col gap-1.5">
+              <label class="font-bold text-espresso flex items-center gap-1">
+                <span>Dirección URL de tu Logotipo</span>
+              </label>
+              <input type="url" name="customLogo" value="${customLogoVal}" class="border border-border rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-gold focus:border-transparent bg-[#FAF9F5]/40" placeholder="https://miwebparroquial.org/logo.png">
+              <p class="text-[10px] text-ink2">Enlace directo a la imagen (.png, .webp o .jpg) de tu escudo o logotipo parroquial.</p>
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+              <label class="font-bold text-espresso flex items-center gap-1">
+                <span>Plan de Acceso habilitado</span>
+              </label>
+              <select name="plan" class="border border-border rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-gold focus:border-transparent bg-white">
+                <option value="free" ${user.plan === 'free' ? 'selected' : ''}>Plan Gratuito (Límites diarios)</option>
+                <option value="premium" ${user.plan === 'premium' ? 'selected' : ''}>Plan Premium (Infografías ilimitadas)</option>
+                <option value="admin" ${user.plan === 'admin' ? 'selected' : ''}>Administrador (Control total)</option>
+              </select>
+              <p class="text-[10px] text-ink2">Alterna libremente tu plan para probar límites y cuotas en este entorno de desarrollo.</p>
+            </div>
+
+          </div>
+
+          <!-- DETALLES ADICIONALES DE LA CUENTA -->
+          <div class="bg-[#FAF9F5]/80 rounded-xl p-4 border border-border/80 flex flex-col gap-1 text-xs select-none">
+            <p class="font-bold text-espresso">Identificador de cuenta:</p>
+            <p class="font-mono text-[10px] text-ink2 truncate">${user.id}</p>
+            <p class="font-bold text-espresso mt-1.5">Correo Electrónico:</p>
+            <p class="text-[#594e46]">${user.email}</p>
+          </div>
+
+          <div class="flex gap-3 justify-end pt-4 border-t mt-2">
+            <a href="/" class="px-5 py-2.5 border border-[#e6dfd4] hover:bg-[#FAF9F5] text-[#2d241e] rounded-lg font-semibold transition text-xs sm:text-sm text-center">
+              Volver al asistente
+            </a>
+            <button type="submit" class="px-6 py-2.5 bg-maroon hover:bg-gold text-white font-bold rounded-lg transition text-xs sm:text-sm shadow flex items-center justify-center gap-1">
+              Guardar Ajustes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+  return res.send(renderPage('Ajustes de Perfil', htmlContent, req));
+});
+
+// ── POST /ajustes (Procesar cambios en el Perfil) ──
+app.post('/ajustes', (req, res) => {
+  const user = getAuthedUser(req);
+  if (!user) return res.status(401).send('No autorizado');
+
+  const { nombre, customNombre, customLogo, plan } = req.body;
+  
+  if (!nombre || nombre.trim() === '') {
+    return res.status(400).send('El nombre completo es un campo obligatorio.');
+  }
+
+  try {
+    auth.updateUser(user.id, {
+      nombre: nombre.trim(),
+      customNombre: customNombre && customNombre.trim() !== '' ? customNombre.trim() : null,
+      customLogo: customLogo && customLogo.trim() !== '' ? customLogo.trim() : null,
+      plan: plan || user.plan
+    });
+
+    res.redirect('/ajustes?saved=true');
+  } catch(e) {
+    res.status(500).send(`Error al actualizar ajustes: ${e.message}`);
+  }
 });
 
 // ════════════════════════════════════════════════════════════════════════════

@@ -283,8 +283,169 @@ function upsertPost(post) {
   return idx >= 0 ? catalog.posts[idx] : catalog.posts[0];
 }
 
+// ── SISTEMA SEO AUTÓNOMO DETECTOR Y GENERADOR DE CONTENIDO ──
+async function evaluarYCrearArticuloSEO(query, aiInstance) {
+  if (!aiInstance) {
+    console.log('[SEO-Auto] No hay rastro de la IA.');
+    return null;
+  }
+  
+  const qClean = (query || '').trim();
+  if (qClean.length < 8) {
+    console.log('[SEO-Auto] Consulta demasiado corta para ser un artículo de valor.');
+    return null;
+  }
+
+  // Descartar si es off-topic o conversacional simple
+  const conversacionales = ['hola', 'buenos dias', 'buenas tardes', 'gracias', 'adios', 'como estas', 'quien eres', 'ayuda', 'ok', 'entendido'];
+  const inferiorQuery = qClean.toLowerCase();
+  for (const c of conversacionales) {
+    if (inferiorQuery.startsWith(c) && inferiorQuery.length < 25) {
+      console.log('[SEO-Auto] Consulta puramente conversacional descartada.');
+      return null;
+    }
+  }
+
+  const catalog = loadBlog();
+  const posts = catalog.posts || [];
+  
+  const targetSlug = slugify(qClean);
+  const exactPost = posts.find(p => p.slug === targetSlug);
+  if (exactPost) {
+    console.log('[SEO-Auto] Encontrado post exacto por slug:', targetSlug);
+    return exactPost;
+  }
+
+  // Deduplicación inteligente por IA (Preguntar si ya está cubierto semánticamente)
+  if (posts.length > 0) {
+    try {
+      const titulosYSlugs = posts.slice(0, 35).map(p => `- "${p.titulo}" (slug: ${p.slug})`).join('\n');
+      const deduplicationPrompt = `Actúa como un validador de taxonomía doctrinal católico para CatólicosGPT.
+Queremos saber si la consulta del usuario se refiere y responde semánticamente a los mismos temas que alguno de nuestros artículos existentes del blog.
+
+CONSULTA DEL USUARIO: "${query}"
+
+LISTA DE ARTÍCULOS EXISTENTES:
+${titulosYSlugs}
+
+Por favor, analiza si la consulta ya está totalmente cubierta por alguno de los artículos existentes (por ejemplo, si preguntan "En qué consiste el sacramento de la confirmación" y ya hay un artículo de "El Sacramento de la Confirmación").
+Responde estrictamente "SI: slug-del-articulo-existente" (por ejemplo: "SI: sacramento-confirmacion-sello-espiritu").
+De lo contrario, responde estrictamente "NO".
+Tu única respuesta debe ser "SI: slug" o "NO", sin rodeos ni texto extra.`;
+
+      const checkResponse = await aiInstance.models.generateContent({
+        model: 'gemini-3.5-flash',
+        contents: deduplicationPrompt
+      });
+
+      const checkText = (checkResponse.text || '').trim();
+      console.log('[SEO-Auto] Deduplicador Gemini respondió:', checkText);
+      if (checkText.toUpperCase().startsWith('SI:')) {
+        const parts = checkText.split(':');
+        if (parts[1]) {
+          const matchedSlug = parts[1].trim();
+          const matchedPost = posts.find(p => p.slug === matchedSlug);
+          if (matchedPost) {
+            console.log('[SEO-Auto] Redirección semántica a post existente:', matchedSlug);
+            return matchedPost;
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[SEO-Auto] Error en deduplicación por IA, procediendo por heurística local:', e.message);
+    }
+  }
+
+  // Heurística local de keywords si falló la IA o no dio positivo
+  const stopWords = new Set(['que', 'es', 'la', 'el', 'un', 'una', 'en', 'de', 'para', 'lo', 'los', 'las', 'por', 'significado', 'significa', 'al', 'con', 'del']);
+  const wordsNorm = qClean.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ').trim().split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
+  if (wordsNorm.length > 0) {
+    for (const p of posts) {
+      const pTitleNorm = (p.titulo || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ');
+      let overlap = 0;
+      for (const w of wordsNorm) {
+        if (pTitleNorm.includes(w)) overlap++;
+      }
+      if (overlap / wordsNorm.length >= 0.8) {
+        console.log('[SEO-Auto] Heurística local detectó solapamiento alto, reusando:', p.slug);
+        return p;
+      }
+    }
+  }
+
+  // 2. Generación del nuevo artículo indexable para enriquecer la biblioteca doctrinal
+  try {
+    console.log(`[SEO-Auto] Generando nuevo artículo indexable para la biblioteca: "${query}"...`);
+    const prompt = `Actúa como un teólogo católico y estratega de contenido SEO principal de CatólicosGPT, la enciclopedia y asistente católica #1 en español.
+Debes crear un artículo doctrinal o formativo de altísima calidad, profundo, de oratoria hermosa y profunda en español de la Iglesia Católica, de al menos 800-1200 palabras para responder a la consulta: "${query}".
+El artículo debe basarse fielmente en el Catecismo de la Iglesia Católica (CIC) y las Sagradas Escrituras, y ser reverente con el Papa León XIV (Robert Francis Prevost).
+
+Devuelve EXCLUSIVAMENTE un objeto JSON válido, sin bloques markdown ni texto adicional:
+{
+  "titulo": "Título de fe completo, hermoso e inspirador, p. ej., 'El Sacramento del Bautismo: Puerta y Fundamento de la Gracia'",
+  "seoTitle": "Título SEO ultra-optimizado de menos de 65 caracteres",
+  "metaDescription": "Meta Description irresistible de menos de 155 caracteres destacando que somos la biblioteca católica de mayor fidelidad",
+  "extracto": "Un párrafo de resumen atrapante de 30 a 50 palabras",
+  "keywords": "fielmente separadas por comas, palabras clave relevantes como catecismo, doctrina, biblia, etc",
+  "categoria": "Una sola estrictamente de: sacramentos, eucaristia, dogmas, biblia, oracion, santos, virgen-maria, sacerdotes, moral, liturgia, apologetica",
+  "contenidoMd": "Contenido teológicamente impecable en formato Markdown con encabezados (##), listas con viñetas, citas completas del Catecismo y exégesis bíblica de gran renombre. Incluye también enlaces internos simulados que enlacen a otros recursos de CatólicosGPT, p. ej. referenciando a '/blog/sacramentos/que-es-la-confirmacion' si viene al caso.",
+  "faqs": [
+    { "q": "Pregunta frecuente práctica 1 sobre el tema", "a": "Respuesta doctrinalmente perfecta..." },
+    { "q": "Pregunta frecuente práctica 2 sobre el tema", "a": "Respuesta doctrinalmente perfecta..." },
+    { "q": "Pregunta frecuente práctica 3 sobre el tema", "a": "Respuesta doctrinalmente perfecta..." }
+  ]
+}`;
+
+    const generateResponse = await aiInstance.models.generateContent({
+      model: 'gemini-3.5-flash',
+      contents: prompt
+    });
+
+    let text = (generateResponse.text || '').trim();
+    text = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+    
+    // Auto-recuperar si hay caracteres extra antes o después del bracket
+    const firstBracket = text.indexOf('{');
+    const lastBracket = text.lastIndexOf('}');
+    if (firstBracket >= 0 && lastBracket > firstBracket) {
+      text = text.slice(firstBracket, lastBracket + 1);
+    }
+
+    const parsed = JSON.parse(text);
+    
+    if (!parsed.titulo || !parsed.contenidoMd || !parsed.categoria) {
+      throw new Error('Faltan campos obligatorios en el JSON generado por IA');
+    }
+
+    const cleanSlug = slugify(parsed.titulo);
+    const resolvedCat = slugify(parsed.categoria);
+
+    const newPost = {
+      slug: cleanSlug,
+      titulo: parsed.titulo,
+      seoTitle: parsed.seoTitle || `${parsed.titulo} — CatólicosGPT`,
+      descripcion: parsed.metaDescription || parsed.extracto || '',
+      extracto: parsed.extracto || '',
+      keywords: parsed.keywords || 'catecismo, fe, doctrina',
+      categoria: resolvedCat,
+      contenidoMd: parsed.contenidoMd,
+      faqs: parsed.faqs || [],
+      fechaCreacion: new Date().toISOString(),
+      publicado: true
+    };
+
+    const saved = upsertPost(newPost);
+    console.log('[SEO-Auto] ¡NUEVO ARTÍCULO CREADO Y GUARDADO EXITOSAMENTE! Slug:', cleanSlug);
+    return saved;
+
+  } catch (error) {
+    console.error('[SEO-Auto] Error en generación automática de artículo:', error.message);
+    return null;
+  }
+}
+
 module.exports = {
   loadBlog, saveBlog, slugify, enrichBlogWithAI,
   parseMarkdown, renderShortcodes, escapeHtml, upsertPost,
-  getPosts, getPostBySlug, deletePost
+  getPosts, getPostBySlug, deletePost, evaluarYCrearArticuloSEO
 };
