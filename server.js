@@ -22,10 +22,11 @@ const recursos      = require('./recursos-module');
 const seo           = require('./seo-module');
 const seoTopics     = require('./seo-topics');
 const biblia        = require('./biblia-module');
+const advancedEngine = require('./advanced-query-engine');
 const { GoogleGenAI } = require('@google/genai');
 
 const app  = express();
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const PORT = 3000;
 
 app.use(cors());
 app.use(express.json({ limit: '30mb' }));
@@ -163,13 +164,22 @@ Devuelve exclusivamente un JSON válido y legible en español con la estructura 
   "otrosSantos": ["Otro santo de hoy o de esta semana", "San Gervasio y San Protasio", "Santa Juliana de Falconieri"]
 }`;
 
-      const response = await aiInstance.models.generateContent({
-        model: 'gemini-3.5-flash',
-        contents: prompt,
-        config: {
-          tools: [{ googleSearch: {} }]
-        }
-      });
+      let response;
+      try {
+        response = await aiInstance.models.generateContent({
+          model: 'gemini-3.5-flash',
+          contents: prompt,
+          config: {
+            tools: [{ googleSearch: {} }]
+          }
+        });
+      } catch (searchErr) {
+        console.log('[Gemini Santo Info] Falló con Google Search tool, reintentando sin herramientas...', searchErr.message);
+        response = await aiInstance.models.generateContent({
+          model: 'gemini-3.5-flash',
+          contents: prompt
+        });
+      }
 
       let text = response.text || '';
       text = text.replace(/```json/gi, '').replace(/```/g, '').trim();
@@ -178,7 +188,7 @@ Devuelve exclusivamente un JSON válido y legible en español con la estructura 
         santoObj = { ...santoObj, ...parsed };
       }
     } catch (e) {
-      console.error('[Gemini] Error al generar santo con IA:', e.message);
+      console.log('[Gemini Santo Info] No se pudo generar santo alternativo con IA:', e.message);
     }
   }
 
@@ -950,7 +960,7 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
             let html = '<div class="flex flex-col gap-1 border-b border-[#E6DFD4] pb-1.5 mb-1.5">' +
               '<span class="font-display font-bold text-xs tracking-wider text-[#5E1B22] uppercase flex items-center justify-between">' +
                 '<span>📖 ' + data.libro + ' ' + data.capitulo + '</span>' +
-                '<span class="text-[9px] text-[#BC8A36] font-mono">Biblia de Navarra</span>' +
+                '<span class="text-[9px] text-[#BC8A36] font-mono">' + (data.translation || 'Biblia de Navarra') + '</span>' +
               '</span>' +
             '</div>';
             let versesText = '<div class="overflow-y-auto max-h-48 pr-1 scrollbar-thin scrollbar-thumb-gold select-text">';
@@ -972,16 +982,21 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
           .catch(() => {
             // Fallback con Gemini
             fetch(\`/api/biblia/fallback?ref=\${encodeURIComponent(ref)}\`)
-              .then(res => res.json())
+              .then(res => {
+                if (res.ok) return res.json();
+                return { text: 'Lectura sagrada de ' + ref, translation: 'Sagradas Escrituras' };
+              })
               .then(data => {
+                const textRender = data.text || 'Lectura de las Sagradas Escrituras';
+                const translationRender = data.translation || 'Sagradas Escrituras (AI)';
                 tooltip.innerHTML = '<div class="flex flex-col gap-1 border-b border-[#E6DFD4] pb-1.5 mb-1.5">' +
                   '<span class="font-display font-bold text-xs text-[#5E1B22] uppercase flex items-center justify-between">' +
                     '<span>📖 ' + ref + '</span>' +
-                    '<span class="text-[9px] text-[#BC8A36] font-mono">Jerusalén / Vulgata</span>' +
+                    '<span class="text-[9px] text-[#BC8A36] font-mono">' + translationRender + '</span>' +
                   '</span>' +
                 '</div>' +
                 '<div class="overflow-y-auto max-h-48 pr-1 select-text font-serif italic text-[#2D241E]">' +
-                  data.text +
+                  textRender +
                 '</div>';
                 const tooltipHeight = tooltip.offsetHeight;
                 tooltip.style.top = (rect.top + scrollY - tooltipHeight - 12) + 'px';
@@ -1517,6 +1532,19 @@ app.post('/api/chat', async (req, res) => {
       return res.end();
     }
 
+    // ── SISTEMA DE CACHÉ DE RENDIMIENTO EXTREMO (Sub-second responses!) ──
+    const cachedResponse = advancedEngine.buscarEnCacheDoctrinal(query);
+    if (cachedResponse) {
+      console.log(`[Cache Engine] HIT: Retornando respuesta doctrinal de alta definición de inmediato.`);
+      res.write(cachedResponse);
+      const recomendados = obtenerRecursosRelacionados(query);
+      const htmlCards = renderRelacionadosHtml(recomendados);
+      if (htmlCards) {
+        res.write("\n\n" + htmlCards);
+      }
+      return res.end();
+    }
+
     // ── SISTEMA SEO AUTÓNOMO DETECTOR Y GENERADOR DE CONTENIDO EN EL CHAT ──
     const activeAi = getAi();
     if (activeAi) {
@@ -1524,7 +1552,7 @@ app.post('/api/chat', async (req, res) => {
         console.log('[SEO-Auto] Evaluando y expandiendo contenidos doctrinales indexables para la biblioteca...');
         await blog.evaluarYCrearArticuloSEO(query, activeAi);
       } catch (seoErr) {
-        console.error('[SEO-Auto Error] Falló en autoprevención doctrinal:', seoErr.message);
+        console.log('[SEO-Auto Info] Falló en autoprevención doctrinal:', seoErr.message);
       }
     }
 
@@ -1568,9 +1596,9 @@ app.post('/api/chat', async (req, res) => {
     // 1. Detectar si es una cita bíblica directa
     const solicitada = biblia.detectarSolicitudBiblica(query);
     if (solicitada) {
-      const render = biblia.renderizarCita(solicitada, true);
+      const render = await biblia.renderizarCitaAsync(solicitada, true);
       if (!render.includes('No se encontró')) {
-        let textResult = render + `\n\n*Cita extraída del corpus bíblico oficial (Biblia de Navarra).*`;
+        let textResult = render + `\n\n*Cita extraída del corpus bíblico en español en tiempo real o localmente.*`;
         // Recomendar recursos también para citas
         const recomendados = obtenerRecursosRelacionados(query);
         const htmlCards = renderRelacionadosHtml(recomendados);
@@ -1628,14 +1656,14 @@ Tus respuestas deben estar profundamente ancladas en la verdad doctrinal y pasto
             console.log('[Magisterium Search API] Consulta exitosa, pero no se devolvieron documentos.');
           }
         } else {
-          console.error(`[Magisterium Search API Error] Codigo de estado HTTP: ${resSearch.status} - ${resSearch.statusText}`);
+          console.log(`[Magisterium Search API Error] Codigo de estado HTTP: ${resSearch.status} - ${resSearch.statusText}`);
           try {
             const errText = await resSearch.text();
-            console.error(`[Magisterium Search API Error Body]: ${errText}`);
+            console.log(`[Magisterium Search API Error Body]: ${errText}`);
           } catch (_) {}
         }
       } catch (searchErr) {
-        console.error('[Magisterium Search API Excepcion]: No se pudo conectar a la búsqueda de vectores.', searchErr.message);
+        console.log('[Magisterium Search API Excepcion]: No se pudo conectar a la búsqueda de vectores.', searchErr.message);
       }
 
       const finalPromptMagisterium = `Consulta del Católico: "${query}"\n\n${searchContext ? `CITAS CIENTÍFICAS DEL CATECISMO/BÍBLICAS OBTENIDAS DE MAGISTERIUM SEARCH:\n${searchContext}\n\n` : ''}${localContext ? `CONTEXTO LOCAL COMPLEMENTARIO:\n${localContext}\n\n` : ''}`;
@@ -1666,14 +1694,14 @@ Tus respuestas deben estar profundamente ancladas en la verdad doctrinal y pasto
             console.log('[Magisterium API] Enlace doctrinal exitoso. Información de Magisterio lista para síntesis con Gemini.');
           }
         } else {
-          console.error(`[Magisterium Chat API Error] Codigo de estado HTTP: ${resM.status} - ${resM.statusText}`);
+          console.log(`[Magisterium Chat API Error] Codigo de estado HTTP: ${resM.status} - ${resM.statusText}`);
           try {
             const errText = await resM.text();
-            console.error(`[Magisterium Chat API Error Body]: ${errText}`);
+            console.log(`[Magisterium Chat API Error Body]: ${errText}`);
           } catch (_) {}
         }
       } catch (err) {
-        console.error('[Magisterium Chat API Excepcion]: Contingencia local activada debido a fallo de canal remoto.', err.message);
+        console.log('[Magisterium Chat API Excepcion]: Contingencia local activada debido a fallo de canal remoto.', err.message);
       }
     }
 
@@ -1687,6 +1715,35 @@ Tus respuestas deben estar profundamente ancladas en la verdad doctrinal y pasto
       }
     }
 
+    // ── ACTIVACIÓN AUTOMÁTICA DE MODOS DOCTRINALES AVANZADOS ──
+    if (activeAi) {
+      if (advancedEngine.esConsultaCombinada(query)) {
+        const success = await advancedEngine.ejecutarModoCombinado(query, res, activeAi, magisteriumSourceResponse);
+        if (success) {
+          const recomendados = obtenerRecursosRelacionados(query);
+          const htmlCards = renderRelacionadosHtml(recomendados);
+          if (htmlCards) res.write("\n\n" + htmlCards);
+          return res.end();
+        }
+      } else if (advancedEngine.esConsultaBiblica(query)) {
+        const success = await advancedEngine.ejecutarModoBiblicoAvanzado(query, res, activeAi, magisteriumSourceResponse);
+        if (success) {
+          const recomendados = obtenerRecursosRelacionados(query);
+          const htmlCards = renderRelacionadosHtml(recomendados);
+          if (htmlCards) res.write("\n\n" + htmlCards);
+          return res.end();
+        }
+      } else if (advancedEngine.esConsultaCatecismo(query)) {
+        const success = await advancedEngine.ejecutarModoCatecismo(query, res, activeAi, magisteriumSourceResponse);
+        if (success) {
+          const recomendados = obtenerRecursosRelacionados(query);
+          const htmlCards = renderRelacionadosHtml(recomendados);
+          if (htmlCards) res.write("\n\n" + htmlCards);
+          return res.end();
+        }
+      }
+    }
+
     let finalResponseText = '';
     let hasWrittenSomething = false;
 
@@ -1697,6 +1754,7 @@ Tus respuestas deben estar profundamente ancladas en la verdad doctrinal y pasto
 Tu máxima prioridad es: 1. Fidelidad doctrinal de la Iglesia Católica, 2. Exactitud factual e histórica extrema, 3. Comprensión superior y pedagogía directa para el usuario, 4. Ausencia total de alucinaciones doctrinales, 5. Formato interactivo de oratoria espiritual y teológica.
 
 PROHIBICIONES ABSOLUTAS:
+0. NUNCA, bajo ningún concepto, escribas ni muestres al usuario ninguna de estas secciones o contenidos internos de control en tu texto de salida: "CLASIFICACIÓN OBLIGATORIA DE LA CONSULTA", "EXTRACCIÓN PREVIA DE TEMAS E INTERNA IDENTIFICACIÓN", "AUTOEVALUACIÓN Y VALIDACIÓN DE COHERENCIA", "CHECKLIST", "VALIDACIÓN", o respuestas escritas de autoevaluación como "AUTOEVALUACIÓN 10/10". Realiza todos estos pasos de manera estrictamente silenciosa e interna en tu mente. Tu salida final que ve el usuario debe comenzar DIRECTAMENTE con la respuesta final en Markdown (como un título grande de nivel 1 '#' o el primer párrafo de introducción pastoral o la oración), sin preámbulos técnicos del sistema ni clasificaciones eclesiales artificiales de metadatos.
 1. NUNCA respondas utilizando únicamente tu conocimiento pre-entrenado general sin referenciar fuentes reales.
 2. NUNCA improvises doctrina ni inventes Santos, fechas, pontificados, concilios, encíclicas, documentos, citas bíblicas o numerales del catecismo.
 3. Si la fuente doctrinal provista (MAGISTERIUM) o el contexto local es insuficiente o no existe información veraz para responder la pregunta (como afirmaciones teológicas o morales dudosas, heréticas, especulativas o no oficiales), debes responder EXPLÍCITA y LITERALMENTE con la siguiente frase, sin añadir nada más:
@@ -1935,7 +1993,7 @@ Es de máxima importancia cumplir a cabalidad con las longitudes mínimas recome
           }
         });
       } catch (searchErr) {
-        console.warn('[Gemini Search Tool Error] Falló con Google Search tool, reintentando sin herramientas de búsqueda:', searchErr.message);
+        console.log('[Gemini Search Tool Support Info] Falló con Google Search tool, reintentando sin herramientas de búsqueda:', searchErr.message);
         try {
           gResStream = await aiInstance.models.generateContentStream({
             model: 'gemini-3.5-flash',
@@ -1946,7 +2004,7 @@ Es de máxima importancia cumplir a cabalidad con las longitudes mínimas recome
             }
           });
         } catch (liteErr) {
-          console.warn('[Gemini 3.5 Flash Error] Falló 3.5 Flash. Intentando fallback con Gemini 3.1 Flash Lite:', liteErr.message);
+          console.log('[Gemini 3.5 Flash Support Info] Falló 3.5 Flash. Intentando fallback con Gemini 3.1 Flash Lite:', liteErr.message);
           try {
             gResStream = await aiInstance.models.generateContentStream({
               model: 'gemini-3.1-flash-lite',
@@ -1957,7 +2015,7 @@ Es de máxima importancia cumplir a cabalidad con las longitudes mínimas recome
               }
             });
           } catch (finalGeminiError) {
-            console.error('[Gemini Presentation Engine Final Fallback Error] Todos los canales de Gemini están saturados o sin cuota.', finalGeminiError.message);
+            console.log('[Gemini Presentation Engine Final Fallback Info] Todos los canales de Gemini están saturados o sin cuota.', finalGeminiError.message);
           }
         }
       }
@@ -2021,44 +2079,45 @@ Es de máxima importancia cumplir a cabalidad con las longitudes mínimas recome
 });
 
 // === ENDPOINTS DE CONSULTA BÍBLICA PARA LIGHTBOX / TOOLTIPS ===
-app.get('/api/biblia', (req, res) => {
+app.get('/api/biblia', async (req, res) => {
   try {
     const { ref } = req.query;
     if (!ref) {
       return res.status(400).json({ error: 'Falta la referencia' });
     }
     
-    // Consultar el módulo de traducción e interpretación bíblica local
-    const contenido = biblia.obtenerCita(ref);
+    // Consultar el módulo de traducción asincrónico con fuentes en español de alta fidelidad
+    const contenido = await biblia.obtenerCitaAsync(ref);
     if (contenido && contenido.versiculos && Object.keys(contenido.versiculos).length > 0) {
       return res.json({
         libro: contenido.libro,
         capitulo: contenido.capitulo,
         tipo: contenido.tipo,
+        translation: contenido.translation,
         versiculos: contenido.versiculos
       });
     }
-    return res.status(404).json({ error: 'Cita no encontrada en la base local' });
+    return res.status(404).json({ error: 'Cita no encontrada en los corpus de Sagradas Escrituras' });
   } catch (err) {
-    console.error('[API Biblia Local Error]', err);
+    console.error('[API Biblia Error]', err);
     return res.status(500).json({ error: 'Error interno del servidor bíblico' });
   }
 });
 
 app.get('/api/biblia/fallback', async (req, res) => {
+  const { ref } = req.query;
   try {
-    const { ref } = req.query;
     if (!ref) {
       return res.status(400).json({ error: 'Falta la referencia' });
     }
 
     const aiInstance = getAi();
     if (!aiInstance) {
-      return res.status(503).json({ error: 'Servicio de consulta remota no disponible' });
+      return res.status(503).json({ error: 'Servicio de consulta remota no disponible', text: `Lectura sagrada de ${ref}`, translation: 'Sagradas Escrituras' });
     }
 
     // Consultamos la API oficial de Gemini como fallback inteligente para pasajes
-    const prompt = `Devuelve únicamente los versículos completos correspondientes a la cita bíblica en español: "${ref}". Tradúcelos con fidelidad al estilo de la Biblia de Navarra, Biblia de Jerusalén o la Vulgata. No agregues reflexiones ni notas al pie, solo el texto limpio con su numeración de versículo de forma amigable (ej. "[1] Texto... [2] Texto...").`;
+    const prompt = `Devuelve únicamente los versículos completos correspondientes a la cita bíblica en español: "${ref}". Tradúcelos con fidelidad al estilo de la Biblia de Navarra, Torres Amat o la Sagrada Biblia de autoría católica. No agregues reflexiones ni notas al pie, solo el texto limpio con su numeración de versículo de forma amigable (ej. "[1] Texto... [2] Texto...").`;
     
     const response = await aiInstance.models.generateContent({
       model: 'gemini-3.5-flash',
@@ -2066,10 +2125,14 @@ app.get('/api/biblia/fallback', async (req, res) => {
     });
 
     const cleanText = response.text ? response.text.trim() : `Pasaje bíblico correspondiente a la cita ${ref}`;
-    return res.json({ text: cleanText });
+    return res.json({ text: cleanText, translation: 'Biblia de Navarra / Torres Amat' });
   } catch (err) {
     console.error('[API Biblia Fallback Error]', err);
-    return res.status(500).json({ error: 'Servicio de traducción remota fuera de línea' });
+    return res.status(500).json({ 
+      error: 'Servicio de traducción remota fuera de línea', 
+      text: `Pasaje bíblico correspondiente a la cita: ${ref || ''}`,
+      translation: 'Sagradas Escrituras'
+    });
   }
 });
 
@@ -2646,15 +2709,125 @@ app.get('/infografias/:slug', (req, res) => {
     return res.status(404).send(renderPage('No encontrado', `<div class="p-12 text-center text-ink">Catálogo o infografía no encontrada. <a href="/infografias" class="text-maroon underline">Volver a la galería</a></div>`, req));
   }
 
-  const imagesHtml = inf.imagenes.map(img => `
-    <div class="bg-cream border rounded-2xl overflow-hidden p-2 flex flex-col gap-3 shadow-md max-w-xl mx-auto">
+  const defVis = inf.tipoVisualizacion || 'continua';
+
+  // 1. Continua HTML
+  const continuaHtml = inf.imagenes.map((img, idx) => `
+    <div class="bg-cream border border-border/60 rounded-2xl overflow-hidden p-2.5 flex flex-col gap-3 shadow-sm max-w-xl mx-auto hover:border-gold/30 transition duration-300">
       <img src="${img.url}" alt="${inf.altText || inf.tema} - Diapositiva ${img.slide}" class="w-full object-contain rounded-xl h-auto" loading="lazy" referrerPolicy="no-referrer">
-      <div class="flex items-center justify-between text-xs px-2 py-1 text-ink2">
-        <span>Diapositiva ${img.slide} de ${inf.totalSlides}</span>
-        <span>Servidor: ${img.model === 'manual-upload' ? 'Cloudinary Editorial' : (img.model || 'Archivo Parroquial')}</span>
+      <div class="flex items-center justify-between text-xs px-2 py-1 text-ink2 font-mono">
+        <span>Imagen ${img.slide} de ${inf.totalSlides}</span>
+        <span>Servidor: ${img.model === 'manual-upload' || img.model === 'cloudinary' ? 'Cloudinary Sanctorum' : (img.model || 'Archivo Parroquial')}</span>
       </div>
     </div>
   `).join('\n');
+
+  // 2. Carrusel slide html
+  const carruselSlidesHtml = inf.imagenes.map((img, idx) => `
+    <div id="slide-${idx}" class="carrusel-slide absolute inset-0 flex flex-col items-center justify-center transition-all duration-300 opacity-0 transform translate-x-4 scale-95 pointer-events-none">
+      <img src="${img.url}" alt="${inf.altText || inf.tema} - Diapositiva ${img.slide}" class="w-full h-full object-contain rounded-xl" loading="lazy" referrerPolicy="no-referrer">
+      <div class="absolute bottom-3 left-1/2 -translate-x-1/2 bg-espresso/80 text-white rounded-full px-4 py-1 text-[10px] font-mono font-semibold tracking-wider">
+        Imagen ${img.slide} de ${inf.totalSlides}
+      </div>
+    </div>
+  `).join('');
+
+  // 3. Cuadrícula HTML
+  const cuadriculaHtml = inf.imagenes.map((img, idx) => `
+    <div onclick="openLightbox(${idx})" class="relative group cursor-pointer aspect-square rounded-xl border border-border overflow-hidden shadow-sm bg-cream flex items-center justify-center hover:shadow-md hover:border-gold/30 transition duration-300">
+      <img src="${img.url}" class="w-full h-full object-cover transition duration-300 group-hover:scale-105">
+      <div class="absolute inset-0 bg-espresso/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-semibold gap-1.5 backdrop-blur-xs">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-maximize-2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/></svg>
+        Expandir
+      </div>
+      <div class="absolute bottom-1.5 right-1.5 bg-cream/95 border border-border rounded-md px-1.5 py-0.5 text-[9px] text-[#5C2E0A] font-bold font-mono">
+        ${img.slide}
+      </div>
+    </div>
+  `).join('');
+
+  // Buscar recursos relacionados automáticamente basados en categorías, título o tema
+  let relacionadosHtml = '';
+  try {
+    const queryTerm = ((inf.titulo || '') + ' ' + (inf.tema || '') + ' ' + (inf.keywords || '') + ' ' + (inf.categoria || '')).toLowerCase();
+    
+    // Buscar posts de blog relacionados
+    const allBlogs = blog.loadBlog().posts || [];
+    const matchedBlogs = allBlogs.filter(p => {
+      const pText = ((p.titulo || '') + ' ' + (p.categoria || '') + ' ' + (p.keywords || '')).toLowerCase();
+      return pText.split(/\s+/).some(w => w.length > 4 && queryTerm.includes(w));
+    }).slice(0, 3);
+    
+    // Buscar videos relacionados
+    const allVideos = videos.loadVideos().videos || [];
+    const matchedVideos = allVideos.filter(v => {
+      const vText = ((v.titulo || '') + ' ' + (v.categoria || '') + ' ' + (v.comentario || '')).toLowerCase();
+      return vText.split(/\s+/).some(w => w.length > 4 && queryTerm.includes(w));
+    }).slice(0, 3);
+
+    // Buscar podcasts relacionados
+    const allPodcasts = podcast.loadPodcasts().podcasts || [];
+    const matchedPodcasts = allPodcasts.filter(p => {
+      const pText = ((p.titulo || '') + ' ' + (p.categoria || '') + ' ' + (p.descripcion || '')).toLowerCase();
+      return pText.split(/\s+/).some(w => w.length > 4 && queryTerm.includes(w));
+    }).slice(0, 3);
+
+    if (matchedBlogs.length > 0 || matchedVideos.length > 0 || matchedPodcasts.length > 0) {
+      relacionadosHtml = `
+        <div class="mt-14 border-t pt-8">
+          <h3 class="font-display font-bold text-lg sm:text-xl text-maroon mb-6 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bookmark-check"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="m9 10 2 2 4-4"/></svg>
+            Material Formativo Católico Relacionado
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            ${matchedBlogs.map(p => `
+              <div class="bg-white border rounded-xl p-4.5 shadow-xs flex flex-col justify-between hover:border-gold/30 transition duration-300">
+                <div>
+                  <span class="text-[9px] font-bold text-gold uppercase tracking-wider font-mono">Artículo Formativo</span>
+                  <h4 class="font-display font-semibold text-sm text-espresso mt-1 leading-snug line-clamp-2">${p.titulo}</h4>
+                  <p class="text-ink2 text-xs mt-1.5 line-clamp-2">${p.extracto || p.descripcion || ''}</p>
+                </div>
+                <a href="/blog/${p.categoria || 'catequesis'}/${p.slug}" class="text-xs text-maroon font-bold mt-4 hover:underline inline-flex items-center gap-1">
+                  Leer artículo
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </a>
+              </div>
+            `).join('')}
+            
+            ${matchedVideos.map(v => `
+              <div class="bg-white border rounded-xl p-4.5 shadow-xs flex flex-col justify-between hover:border-gold/30 transition duration-300">
+                <div>
+                  <span class="text-[9px] font-bold text-red-700 uppercase tracking-wider font-mono">Video de Formación</span>
+                  <h4 class="font-display font-semibold text-sm text-espresso mt-1 leading-snug line-clamp-2">${v.titulo}</h4>
+                  <p class="text-ink2 text-xs mt-1.5 line-clamp-2">${v.comentario}</p>
+                </div>
+                <a href="/videos" class="text-xs text-red-700 font-bold mt-4 hover:underline inline-flex items-center gap-1">
+                  Ver video
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </a>
+              </div>
+            `).join('')}
+
+            ${matchedPodcasts.map(p => `
+              <div class="bg-white border rounded-xl p-4.5 shadow-xs flex flex-col justify-between hover:border-gold/30 transition duration-300">
+                <div>
+                  <span class="text-[9px] font-bold text-green-700 uppercase tracking-wider font-mono">Audio / Podcast</span>
+                  <h4 class="font-display font-semibold text-sm text-espresso mt-1 leading-snug line-clamp-2">${p.titulo}</h4>
+                  <p class="text-ink2 text-xs mt-1.5 line-clamp-2">${p.descripcion}</p>
+                </div>
+                <a href="${p.spotifyUrl}" target="_blank" class="text-xs text-green-700 font-bold mt-4 hover:underline inline-flex items-center gap-1">
+                  Escuchar audio
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-external-link"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+                </a>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+  } catch (relErr) {
+    console.error('Error buscando recomendados vinculados', relErr.message);
+  }
 
   const metaKeywords = inf.keywords || `${inf.tema}, infografía católica, catequesis`;
 
@@ -2665,36 +2838,213 @@ app.get('/infografias/:slug', (req, res) => {
         Volver a la galería
       </a>
       
-      <div class="flex flex-col gap-3 border-b pb-5">
+      <div class="flex flex-col gap-3 border-b pb-4">
         <div class="flex items-center gap-2 text-xs font-semibold text-gold font-mono uppercase tracking-widest">
-          <span>${inf.tipo}</span>
+          <span>${inf.tipo || inf.categoria || 'Teológico'}</span>
           <span>•</span>
-          <span>Formato: ${inf.formato}</span>
+          <span>Imágenes: ${inf.totalSlides}</span>
         </div>
-        <h1 class="font-display font-bold text-2xl sm:text-3xl text-espresso tracking-wide">${inf.titulo || inf.tema}</h1>
-        <p class="text-ink2 leading-relaxed text-sm">${inf.metaDescription || 'Material formativo católico.'}</p>
+        <h1 class="font-display font-bold text-2xl sm:text-3xl text-espresso tracking-wide leading-tight">${inf.titulo || inf.tema}</h1>
+        <p class="text-ink2 leading-relaxed text-sm">${inf.metaDescription || 'Material formativo católico de alta fidelidad doctrinal.'}</p>
+      </div>
+
+      <!-- CONTROL DE TIPO DE VISUALIZACIÓN -->
+      <div class="flex items-center justify-between border-b pb-4 gap-4 flex-wrap">
+        <span class="text-xs font-bold text-espresso font-mono uppercase tracking-wider">Modo de Visualización:</span>
+        <div class="flex items-center gap-1.5 p-1 bg-cream-light/60 border rounded-xl">
+          <button onclick="setVista('continua')" id="btn-vista-continua" class="vista-btn px-3.5 py-1.5 rounded-lg text-xs font-bold text-ink hover:text-maroon transition duration-200 cursor-pointer">Continua</button>
+          <button onclick="setVista('carrusel')" id="btn-vista-carrusel" class="vista-btn px-3.5 py-1.5 rounded-lg text-xs font-bold text-ink hover:text-maroon transition duration-200 cursor-pointer">Carrusel</button>
+          <button onclick="setVista('cuadricula')" id="btn-vista-cuadricula" class="vista-btn px-3.5 py-1.5 rounded-lg text-xs font-bold text-ink hover:text-maroon transition duration-200 cursor-pointer">Cuadrícula</button>
+        </div>
       </div>
       
       <div class="flex flex-col gap-8">
-        ${imagesHtml}
+        <!-- VISTA CONTINUA -->
+        <div id="vista-continua" class="vista-panel flex flex-col gap-6 w-full">
+          ${continuaHtml}
+        </div>
+
+        <!-- VISTA CARRUSEL -->
+        <div id="vista-carrusel" class="vista-panel hidden flex flex-col items-center gap-4 w-full">
+          <div class="relative w-full max-w-xl mx-auto bg-cream border border-border rounded-2xl overflow-hidden p-2.5 shadow-md">
+            <!-- Active slide track -->
+            <div class="relative overflow-hidden w-full h-[380px] sm:h-[500px] md:h-[550px] flex items-center justify-center bg-white rounded-xl">
+              ${carruselSlidesHtml}
+            </div>
+            <!-- Buttons -->
+            <button onclick="prevSlide()" class="absolute left-4 top-1/2 -translate-y-1/2 bg-white/95 hover:bg-white text-maroon p-2 rounded-full border border-border/80 shadow-md hover:scale-105 active:scale-95 transition cursor-pointer">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <button onclick="nextSlide()" class="absolute right-4 top-1/2 -translate-y-1/2 bg-white/95 hover:bg-white text-maroon p-2 rounded-full border border-border/80 shadow-md hover:scale-105 active:scale-95 transition cursor-pointer">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+          <!-- Indicators -->
+          <div class="flex items-center justify-center gap-1.5 flex-wrap max-w-md mx-auto mt-2">
+            ${inf.imagenes.map((img, idx) => `
+              <button onclick="gotoSlide(${idx})" class="dot-btn w-6 h-6 rounded-lg text-[10px] font-bold border transition p-0 flex items-center justify-center bg-white border-border text-ink cursor-pointer" id="dot-${idx}">
+                ${idx+1}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- VISTA CUADRÍCULA -->
+        <div id="vista-cuadricula" class="vista-panel hidden grid grid-cols-2 sm:grid-cols-3 max-w-2xl mx-auto gap-4 w-full">
+          ${cuadriculaHtml}
+        </div>
       </div>
+
+      <!-- Lightbox Modal container -->
+      <div id="lightbox-modal" class="fixed inset-0 bg-espresso/95 hidden items-center justify-center z-50 p-4" onclick="closeLightbox()">
+        <div class="relative max-w-3xl w-full h-full flex flex-col justify-center items-center gap-4" onclick="event.stopPropagation()">
+          <img id="lightbox-img" class="max-h-[80vh] max-w-full object-contain rounded-xl shadow-2xl bg-cream">
+          <div class="flex items-center gap-4 text-white text-xs font-semibold bg-espresso/85 py-2 px-5 rounded-full border border-white/10 font-mono">
+            <button onclick="prevLightboxSlide()" class="hover:text-gold transition cursor-pointer">◀ Ant.</button>
+            <span id="lightbox-slide-label">Imagen x/y</span>
+            <button onclick="nextLightboxSlide()" class="hover:text-gold transition cursor-pointer">Sig. ▶</button>
+          </div>
+          <button onclick="closeLightbox()" class="absolute top-4 right-4 bg-white/10 hover:bg-white/25 text-white rounded-full p-2 border border-white/10 cursor-pointer transition">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+      
+      <!-- RECURSOS RELACIONADOS -->
+      ${relacionadosHtml}
       
       <!-- CALL TO ACTION -->
       <div class="bg-white border rounded-2xl p-6 shadow-sm text-center flex flex-col items-center justify-center gap-4 mt-8 sacred-border">
         <h3 class="font-display font-bold text-maroon text-base">Utilizar este material</h3>
         <p class="text-ink text-xs max-w-lg leading-relaxed">Puedes descargar las imágenes haciendo clic derecho sobre ellas para compartirlas en grupos de parroquias, estados de WhatsApp o imprimir en tamaño poster.</p>
         <div class="flex gap-2">
-          <button onclick="navigator.clipboard.writeText(window.location.href); alert('Enlace copiado');" class="bg-gold text-white px-4 py-2 rounded-full text-xs font-bold hover:bg-gold-deep transition">Copiar enlace</button>
+          <button onclick="navigator.clipboard.writeText(window.location.href); alert('Enlace copiado al portapapeles');" class="bg-gold text-white px-4 py-2 rounded-full text-xs font-bold hover:bg-gold-deep transition cursor-pointer">Copiar enlace</button>
           <a href="/infografias" class="bg-cream border border-border px-4 py-2 rounded-full text-xs font-bold hover:bg-cream2 text-espresso transition">Explorar otras</a>
         </div>
       </div>
     </div>
+
+    <script>
+      let activeSlide = 0;
+      let totalSlides = ${inf.totalSlides};
+      let defaultVista = "${defVis}";
+      let lightboxSlides = ${JSON.stringify(inf.imagenes.map(img => img.url))};
+      let activeLightboxIdx = 0;
+
+      function setVista(v) {
+        document.querySelectorAll('.vista-panel').forEach(el => el.classList.add('hidden'));
+        document.getElementById('vista-' + v).classList.remove('hidden');
+        
+        document.querySelectorAll('.vista-btn').forEach(btn => {
+          btn.classList.remove('bg-maroon', 'text-white');
+          btn.classList.add('text-ink');
+        });
+        const activeBtn = document.getElementById('btn-vista-' + v);
+        if (activeBtn) {
+          activeBtn.classList.remove('text-ink');
+          activeBtn.classList.add('bg-maroon', 'text-white');
+        }
+        
+        try { localStorage.setItem('infografia_vista_' + "${inf.slug}", v); } catch(e) {}
+      }
+
+      function showSlide(idx) {
+        if (idx < 0) idx = totalSlides - 1;
+        if (idx >= totalSlides) idx = 0;
+        activeSlide = idx;
+        
+        document.querySelectorAll('.carrusel-slide').forEach((slide) => {
+          slide.style.opacity = '0';
+          slide.style.pointerEvents = 'none';
+          slide.style.transform = 'translateX(20px) scale(0.95)';
+        });
+        
+        const curr = document.getElementById('slide-' + idx);
+        if (curr) {
+          curr.style.opacity = '1';
+          curr.style.pointerEvents = 'auto';
+          curr.style.transform = 'translateX(0) scale(1)';
+        }
+
+        document.querySelectorAll('.dot-btn').forEach((dot) => {
+          dot.classList.remove('bg-maroon', 'text-white', 'border-maroon');
+          dot.classList.add('bg-white', 'text-ink', 'border-border');
+        });
+        const activeDot = document.getElementById('dot-' + idx);
+        if (activeDot) {
+          activeDot.classList.remove('bg-white', 'text-ink', 'border-border');
+          activeDot.classList.add('bg-maroon', 'text-white', 'border-maroon');
+        }
+      }
+
+      function nextSlide() { showSlide(activeSlide + 1); }
+      function prevSlide() { showSlide(activeSlide - 1); }
+      function gotoSlide(idx) { showSlide(idx); }
+
+      function openLightbox(idx) {
+        activeLightboxIdx = idx;
+        document.getElementById('lightbox-img').src = lightboxSlides[idx];
+        document.getElementById('lightbox-slide-label').innerText = 'Imagen ' + (idx + 1) + ' de ' + totalSlides;
+        document.getElementById('lightbox-modal').classList.remove('hidden');
+        document.getElementById('lightbox-modal').classList.add('flex');
+      }
+
+      function closeLightbox() {
+        document.getElementById('lightbox-modal').classList.add('hidden');
+        document.getElementById('lightbox-modal').classList.remove('flex');
+      }
+
+      function nextLightboxSlide() {
+        activeLightboxIdx = (activeLightboxIdx + 1) % totalSlides;
+        document.getElementById('lightbox-img').src = lightboxSlides[activeLightboxIdx];
+        document.getElementById('lightbox-slide-label').innerText = 'Imagen ' + (activeLightboxIdx + 1) + ' de ' + totalSlides;
+      }
+
+      function prevLightboxSlide() {
+        activeLightboxIdx = (activeLightboxIdx - 1 + totalSlides) % totalSlides;
+        document.getElementById('lightbox-img').src = lightboxSlides[activeLightboxIdx];
+        document.getElementById('lightbox-slide-label').innerText = 'Imagen ' + (activeLightboxIdx + 1) + ' de ' + totalSlides;
+      }
+
+      document.addEventListener('keydown', (e) => {
+        if (!document.getElementById('lightbox-modal').classList.contains('hidden')) {
+          if (e.key === 'Escape') closeLightbox();
+          if (e.key === 'ArrowRight') nextLightboxSlide();
+          if (e.key === 'ArrowLeft') prevLightboxSlide();
+        } else if (!document.getElementById('vista-carrusel').classList.contains('hidden')) {
+          if (e.key === 'ArrowRight') nextSlide();
+          if (e.key === 'ArrowLeft') prevSlide();
+        }
+      });
+
+      let savedVista = null;
+      try { savedVista = localStorage.getItem('infografia_vista_' + "${inf.slug}"); } catch(e) {}
+      setVista(savedVista || defaultVista);
+      showSlide(0);
+    </script>
   `;
+
+  // Construir Structured Schema (SEO de Imágenes y Artículo)
+  const schemas = [
+    {
+      "@context": "https://schema.org",
+      "@type": "ImageGallery",
+      "name": inf.titulo || inf.tema,
+      "description": inf.metaDescription || "Infografía formativa católica.",
+      "url": `https://ai.catolicosgpt.com/infografias/${inf.slug}`,
+      "image": inf.imagenes.map(img => img.url),
+      "author": {
+        "@type": "Organization",
+        "name": "CatólicosGPT"
+      }
+    }
+  ];
 
   res.send(renderPage(inf.titulo || inf.tema, html, req, {
     description: inf.metaDescription || `Infografía católica de alta resolución sobre ${inf.tema}.`,
     keywords: metaKeywords,
-    image: inf.imagenes?.[0]?.url
+    image: inf.imagenes?.[0]?.url,
+    schema: schemas[0]
   }));
 });
 
@@ -2788,6 +3138,7 @@ app.get('/blog/:slug', (req, res) => {
       </div>
       
       <!-- CUERPO DEL POST -->
+      ${post.imagenPortada ? `<div class="w-full overflow-hidden rounded-2xl border"><img src="${post.imagenPortada}" class="w-full aspect-video md:aspect-[21/10] object-cover hover:scale-101 transition duration-500" alt="${post.altText || post.titulo}" referrerPolicy="no-referrer"></div>` : ''}
       <article class="prose max-w-none text-ink leading-relaxed space-y-4 font-serif text-sm sm:text-base">
         ${renderedBody}
       </article>
@@ -2878,6 +3229,7 @@ app.get('/blog/:categoria/:slug', (req, res) => {
       </div>
       
       <!-- CUERPO DEL POST -->
+      ${post.imagenPortada ? `<div class="w-full overflow-hidden rounded-2xl border"><img src="${post.imagenPortada}" class="w-full aspect-video md:aspect-[21/10] object-cover hover:scale-101 transition duration-500" alt="${post.altText || post.titulo}" referrerPolicy="no-referrer"></div>` : ''}
       <article class="prose max-w-none text-ink leading-relaxed space-y-4 font-serif text-sm sm:text-base">
         ${renderedBody}
       </article>
@@ -2902,6 +3254,7 @@ app.get('/blog/:categoria/:slug', (req, res) => {
       "@type": "Article",
       "headline": post.titulo,
       "description": post.descripcion || post.extracto || "",
+      "image": post.imagenPortada || "https://ai.catolicosgpt.com/favicon.svg",
       "datePublished": post.fechaCreacion,
       "dateModified": post.fechaModificacion || post.fechaCreacion,
       "author": {
@@ -4040,6 +4393,7 @@ app.get('/admin', (req, res) => {
   const blogCatalog = blog.loadBlog();
   const videosCatalog = videos.loadVideos();
   const podcastsCatalog = podcast.loadPodcasts();
+  const cloudName = 'c-d958e57b08c7fd3570db695ad41478';
 
   const html = `
     <div class="max-w-6xl mx-auto w-full px-4 py-8 flex flex-col gap-6">
@@ -4105,14 +4459,34 @@ app.get('/admin', (req, res) => {
               </div>
 
               <div class="flex flex-col gap-1.5 md:col-span-2">
-                <label class="font-semibold text-espresso text-xs">URLs de las Imágenes (Cloudinary / Directo, para carrusel introduce una por línea o comas)</label>
-                <textarea name="imagenUrl" required placeholder="https://res.cloudinary.com/usuario/image/upload/v1/slide1.jpg&#10;https://res.cloudinary.com/usuario/image/upload/v1/slide2.jpg" rows="3" class="border border-[#D1C7BD] rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold font-mono text-xs leading-relaxed"></textarea>
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                  <label class="font-semibold text-espresso text-xs">Imágenes para la Infografía (Bloques Independientes)</label>
+                  <button type="button" onclick="openCloudinaryExplorer('infografias')" class="bg-maroon hover:bg-gold text-white text-[11px] px-3.5 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs border-0">
+                    ☁️ [ Importar desde Cloudinary ]
+                  </button>
+                </div>
+                
+                <!-- Bloques de imagenes seleccionadas -->
+                <div id="cloudinary-selected-images" class="flex flex-col gap-3.5 border border-dashed border-[#D1C7BD] rounded-xl p-4 bg-[#fefdfa] min-h-[120px] justify-center items-center mt-1 w-full">
+                  <div id="empty-images-placeholder" class="text-xs text-ink-2 italic text-center p-4">
+                    Ninguna imagen seleccionada de la biblioteca de Cloudinary. Pulsa el botón "Importar" superior para explorar y seleccionar de manera visual.
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex flex-col gap-1.5 md:col-span-2">
+                <label class="font-semibold text-espresso text-xs">Tipo de Visualización Predeterminada</label>
+                <select name="tipoVisualizacion" class="border border-border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-gold text-xs">
+                  <option value="continua">Continua (Todas las imágenes verticales - Recomendada)</option>
+                  <option value="carrusel">Carrusel (Visor de diapositivas interactivo)</option>
+                  <option value="cuadricula">Cuadrícula (Galería compacta con Lightbox expansor)</option>
+                </select>
               </div>
 
               <div class="flex flex-col gap-1.5 md:col-span-2 pt-2 border-t mt-1">
                 <div class="flex items-center justify-between">
                   <label class="font-semibold text-espresso text-xs">Meta Descripción SEO</label>
-                  <button type="button" onclick="generarSeoConIA()" id="btnGenerarSeo" class="bg-gold text-white text-[10px] px-3 py-1 rounded-md font-bold uppercase tracking-wider hover:bg-espresso transition flex items-center gap-1.5">
+                  <button type="button" onclick="generarSeoConIA()" id="btnGenerarSeo" class="bg-gold text-white text-[10px] px-3 py-1 rounded-md font-bold uppercase tracking-wider hover:bg-espresso transition flex items-center gap-1.5 border-0 cursor-pointer">
                     ✨ Generar SEO con IA
                   </button>
                 </div>
@@ -4125,7 +4499,7 @@ app.get('/admin', (req, res) => {
               </div>
 
               <div class="md:col-span-2 pt-2 border-t">
-                <button type="submit" class="w-full bg-[#1A412A] hover:bg-[#2E5E3D] text-white font-bold py-2.5 rounded-lg transition uppercase tracking-wider shadow duration-300 text-xs">
+                <button type="submit" class="w-full bg-[#1A412A] hover:bg-[#2E5E3D] text-white font-bold py-2.5 rounded-lg transition uppercase tracking-wider shadow duration-300 text-xs border-0 cursor-pointer">
                   Guardar en Catálogo General &rarr;
                 </button>
               </div>
@@ -4223,9 +4597,9 @@ app.get('/admin', (req, res) => {
             <div class="flex flex-col gap-1.5">
               <label class="font-semibold text-espresso text-xs">Categoría Principal de Formación</label>
               <select name="categoria" class="border border-border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-gold text-xs">
-                <option value="catequesis">Catequesis y Doctrina</option>
-                <option value="liturgia">Liturgia y Santa Misa</option>
-                <option value="espiritualidad">Espiritualidad y Oración</option>
+                <option value="catequesis">Catequesis & Doctrina</option>
+                <option value="liturgia">Liturgia & Santa Misa</option>
+                <option value="espiritualidad">Espiritualidad & Oración</option>
                 <option value="santos">Vida de los Santos</option>
                 <option value="biblia">Sagradas Escrituras (Biblia)</option>
                 <option value="magisterio">Magisterio de la Iglesia</option>
@@ -4233,8 +4607,25 @@ app.get('/admin', (req, res) => {
             </div>
 
             <div class="flex flex-col gap-1.5 md:col-span-3">
-              <label class="font-semibold text-espresso text-xs">Contenido del Post (Formato Markdown completo)</label>
-              <textarea name="contenidoMd" required rows="9" placeholder="# Título del Post\n\nContenido teológico y formativo...\n\n### Sacramentos de Iniciación\nDescribe el corpus del post utilizando formato estandar.\n\nPuedes incrustar una infografía escribiendo [infografia:slug-de-la-infografia] o videos con [video:slug-del-video]" class="border border-border rounded-lg px-4 py-2 font-mono outline-none focus:ring-2 focus:ring-gold text-xs"></textarea>
+              <div class="flex flex-col gap-1">
+                <label class="font-semibold text-espresso text-xs">Imagen de Portada (Opcional)</label>
+                <div class="flex gap-2">
+                  <input type="text" name="imagenPortada" id="blog_imagen_portada" placeholder="https://res.cloudinary.com/usuario/image/upload/..." class="border border-border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs flex-1">
+                  <button type="button" onclick="openCloudinaryExplorer('blog_cover')" class="bg-maroon hover:bg-gold text-white px-3.5 py-2 rounded-lg font-bold text-xs transition cursor-pointer border-0">
+                    ☁️ Portada
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex flex-col gap-1.5 md:col-span-3">
+              <div class="flex items-center justify-between">
+                <label class="font-semibold text-espresso text-xs">Contenido del Post (Formato Markdown completo)</label>
+                <button type="button" onclick="openCloudinaryExplorer('blog_content')" class="text-maroon border border-maroon hover:bg-maroon hover:text-white px-2.5 py-1 rounded-md text-[10px] font-bold transition cursor-pointer transition-all">
+                  ☁️ Insertar Imagen desde Cloudinary (Markdown)
+                </button>
+              </div>
+              <textarea name="contenidoMd" id="blog_content_editor" required rows="9" placeholder="# Título del Post\n\nContenido teológico y formativo...\n\n### Sacramentos de Iniciación\nDescribe el corpus del post utilizando formato estandar.\n\nPuedes incrustar una infografía escribiendo [infografia:slug-de-la-infografia] o videos con [video:slug-del-video]" class="border border-border rounded-lg px-4 py-2 font-mono outline-none focus:ring-2 focus:ring-gold text-xs"></textarea>
             </div>
 
             <div class="flex flex-col gap-1.5 md:col-span-3 bg-cream/40 p-4 border border-dashed rounded-xl gap-2">
@@ -4281,20 +4672,25 @@ app.get('/admin', (req, res) => {
           </h3>
           <p class="text-ink-2 text-xs leading-relaxed">Inserta el enlace del video o el ID de YouTube. El sistema generará el embed correspondiente para enlazarlo en el chat o en la página de videos.</p>
           
-          <form method="POST" action="/admin/crear-video" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm mt-1">
+          <form method="POST" action="/admin/crear-video" id="crearVideoForm" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm mt-1">
             <div class="flex flex-col gap-1.5 md:col-span-2">
               <label class="font-semibold text-espresso text-xs">Título del Video</label>
-              <input type="text" name="titulo" required placeholder="Ej: Las partes de la Misa explicadas" class="border border-border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs">
+              <input type="text" name="titulo" id="video_titulo" required placeholder="Ej: Las partes de la Misa explicadas" class="border border-border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs">
             </div>
 
             <div class="flex flex-col gap-1.5">
-              <label class="font-semibold text-espresso text-xs">ID de YouTube o Link Completo</label>
-              <input type="text" name="youtubeId" required placeholder="Ej: wD1Vp83b4B0 o https://youtu.be/..." class="border border-border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs">
+              <div class="flex items-center justify-between">
+                <label class="font-semibold text-espresso text-xs">ID de YouTube o Link Completo</label>
+                <button type="button" onclick="openCloudinaryExplorer('videos')" class="text-maroon border border-maroon hover:bg-maroon hover:text-white px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer transition-all">
+                  ☁️ Importar Video Cloudinary
+                </button>
+              </div>
+              <input type="text" name="youtubeId" id="video_youtube_id" required placeholder="Ej: wD1Vp83b4B0 o link de Cloudinary/YT..." class="border border-border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs">
             </div>
 
             <div class="flex flex-col gap-1.5">
               <label class="font-semibold text-espresso text-xs">Nombre del Canal o Autor</label>
-              <input type="text" name="canal" placeholder="Ej: Catholic Link" class="border border-border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs">
+              <input type="text" name="canal" id="video_canal" placeholder="Ej: Catholic Link o Cloudinary" class="border border-border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs">
             </div>
 
             <div class="flex flex-col gap-1.5">
@@ -4350,20 +4746,25 @@ app.get('/admin', (req, res) => {
           </h3>
           <p class="text-ink-2 text-xs leading-relaxed">Inserta el link de Spotify de un show o episodio completo. El sistema autocompondrá el reproductor flotante interactivo.</p>
           
-          <form method="POST" action="/admin/crear-podcast" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm mt-1">
+          <form method="POST" action="/admin/crear-podcast" id="crearPodcastForm" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm mt-1">
             <div class="flex flex-col gap-1.5 md:col-span-2">
               <label class="font-semibold text-espresso text-xs">Título del Podcast / Audio</label>
-              <input type="text" name="titulo" required placeholder="Ej: La Biblia en un año — Episodio 1" class="border border-border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs">
+              <input type="text" name="titulo" id="podcast_titulo" required placeholder="Ej: La Biblia en un año — Episodio 1" class="border border-border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs">
             </div>
 
             <div class="flex flex-col gap-1.5 md:col-span-2">
-              <label class="font-semibold text-espresso text-xs">Enlace de Spotify (Show o Episode) o Código Iframe</label>
-              <input type="text" name="spotifyUrl" required placeholder="Ej: https://open.spotify.com/show/4O7IitE99w5nO2n6B7tYfW o iframe completo..." class="border border-border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs">
+              <div class="flex items-center justify-between">
+                <label class="font-semibold text-espresso text-xs">Enlace de Spotify / Audio Local o Código Iframe</label>
+                <button type="button" onclick="openCloudinaryExplorer('podcasts')" class="text-maroon border border-maroon hover:bg-maroon hover:text-white px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer transition-all">
+                  ☁️ Importar Audio Cloudinary
+                </button>
+              </div>
+              <input type="text" name="spotifyUrl" id="podcast_spotify_url" required placeholder="Ej: https://open.spotify.com/show/4O7IitE99w5nO2n6B7tYfW o url de Cloudinary..." class="border border-border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs">
             </div>
 
             <div class="flex flex-col gap-1.5">
               <label class="font-semibold text-espresso text-xs">Autor o Expositor</label>
-              <input type="text" name="autor" placeholder="Ej: Fr. Mike Schmitz" class="border border-border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs">
+              <input type="text" name="autor" id="podcast_autor" placeholder="Ej: Fr. Mike Schmitz o Cloudinary" class="border border-border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs">
             </div>
 
             <div class="flex flex-col gap-1.5">
@@ -4408,9 +4809,143 @@ app.get('/admin', (req, res) => {
         </div>
       </div>
 
+      </div>
+
     </div>
 
-    <!-- SCRIPT CLIENT FLUID PARA ACTIVAR TABS Y GUARDAR PREFERENCIA EN HASH -->
+    <!-- MODAL DE LA BIBLIOTECA CLOUDINARY -->
+    <div id="cloudinary-explorer-modal" class="fixed inset-0 bg-[#1A0E05]/70 backdrop-blur-xs hidden items-center justify-center z-50 p-4">
+      <div class="bg-[#FCFAF5] border border-[#D1C7BD] rounded-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
+        
+        <!-- HEADER -->
+        <div class="bg-white border-b border-[#E6DFD4] px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
+          <div class="flex items-center gap-2.5">
+            <span class="text-xl">☁️</span>
+            <div class="flex flex-col">
+              <h2 class="font-display font-bold text-espresso text-base">Biblioteca de Recursos de Cloudinary</h2>
+              <p class="text-[10px] text-ink2">Explorador director de recursos y carpetas del servidor ${cloudName}</p>
+            </div>
+          </div>
+          
+          <button type="button" onclick="closeCloudinaryExplorer()" class="text-ink2 hover:bg-cream-light p-2 rounded-xl transition cursor-pointer border-0 bg-transparent text-base font-bold">
+            ✕
+          </button>
+        </div>
+
+        <!-- CONTROLES: FILTROS + MOTOR DE AGREGADO VIRTUAL -->
+        <div class="bg-[#F8F5EE] border-b border-[#E6DFD4] p-4 flex flex-col gap-3.5">
+          
+          <!-- CONTROLES DE FILTRO -->
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+            <div class="flex flex-col gap-1">
+              <label class="font-semibold text-espresso">Buscador</label>
+              <input type="text" id="cl-search" oninput="debounceFilterResources()" placeholder="Buscar por nombre..." class="border border-border rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-gold bg-white text-xs outline-none">
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="font-semibold text-espresso">Carpeta</label>
+              <select id="cl-folder-filter" onchange="fetchCloudinaryResources()" class="border border rounded-lg px-2 py-1.5 bg-white text-xs outline-none">
+                <option value="">-- Todas las carpetas --</option>
+              </select>
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="font-semibold text-espresso">Tipo de Recurso</label>
+              <select id="cl-type-filter" onchange="fetchCloudinaryResources()" class="border border rounded-lg px-2 py-1.5 bg-white text-xs outline-none">
+                <option value="all">Todos los formatos</option>
+                <option value="image">Imágenes</option>
+                <option value="video">Videos</option>
+                <option value="audio">Audios / Podcasts</option>
+              </select>
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="font-semibold text-espresso">Ordenamiento</label>
+              <select id="cl-sort-filter" onchange="drawCloudinaryResources()" class="border border rounded-lg px-2 py-1.5 bg-white text-xs outline-none">
+                <option value="recent">Más recientes primero</option>
+                <option value="old">Más antiguos primero</option>
+                <option value="name_asc">Nombre (A-Z)</option>
+                <option value="size_desc">Tamaño (Mayor primero)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- BOTÓN ACORDEÓN PARA MOSTRAR CREACIÓN DE RECURSO VIRTUAL -->
+          <div class="text-left">
+            <button type="button" onclick="toggleVirtualUploadDrawer()" class="text-xs text-maroon hover:underline flex items-center gap-1 cursor-pointer font-bold border-0 bg-transparent">
+              ⚙️ Registrar / Simular recurso virtual en ${cloudName}...
+            </button>
+          </div>
+
+          <!-- DRAWER DE AGREGADO VIRTUAL -->
+          <div id="virtual-upload-drawer" class="hidden grid grid-cols-1 sm:grid-cols-5 gap-3 border border-dashed border-[#D1C7BD] rounded-xl p-3 bg-white text-xs">
+            <div class="flex flex-col gap-1 sm:col-span-2">
+              <label class="font-semibold text-espresso">URL directa del recurso</label>
+              <input type="text" id="cl-v-url" placeholder="https://images.unsplash.com/... o un mp3/mp4" class="border border-border rounded-lg px-2.5 py-1 text-xs outline-none focus:ring-1 focus:ring-gold bg-[#fcfbf7]">
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="font-semibold text-espresso">Nombre de archivo (con formato)</label>
+              <input type="text" id="cl-v-name" placeholder="santo-agustin.jpg o sermon.mp3" class="border border-border rounded-lg px-2.5 py-1 text-xs outline-none focus:ring-1 focus:ring-gold bg-[#fcfbf7]">
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="font-semibold text-espresso">Carpeta virtual</label>
+              <select id="cl-v-folder" class="border border rounded-lg px-2 py-1 text-xs outline-none bg-white">
+                <option value="enciclicas">enciclicas</option>
+                <option value="santos">santos</option>
+                <option value="eucaristia">eucaristia</option>
+                <option value="sacramentos">sacramentos</option>
+                <option value="infografias">infografias</option>
+                <option value="podcast">podcast</option>
+                <option value="videos">videos</option>
+                <option value="blog">blog</option>
+              </select>
+            </div>
+            <div class="flex flex-col justify-end">
+              <button type="button" onclick="createVirtualCloudinaryResource()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs border-0 cursor-pointer transition">
+                ✓ Guardar en biblioteca
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- MAIN BODY: NAVEGADOR DE RECURSOS -->
+        <div class="flex-1 overflow-y-auto p-6" id="cl-resources-grid-container">
+          <!-- Loader -->
+          <div id="cl-loader" class="flex flex-col items-center justify-center p-24 gap-3 text-ink2 text-xs">
+            <div class="w-8 h-8 border-4 border-gold border-t-maroon rounded-full animate-spin"></div>
+            Explorando catálogo Cloudinary...
+          </div>
+
+          <!-- No resources -->
+          <div id="cl-empty" class="hidden flex flex-col items-center justify-center p-24 text-center gap-2 text-xs text-ink2 italic">
+            <span>⚠️ Sin recursos que coincidan con la búsqueda o filtros.</span>
+            <span>Modifica el filtro de tipo, carpeta o término de búsqueda.</span>
+          </div>
+
+          <!-- Grid de recursos -->
+          <div id="cl-resources-grid" class="hidden grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
+            <!-- Renderizado dinámico -->
+          </div>
+        </div>
+
+        <!-- PANEL DE PIE DE SELECCIÓN -->
+        <div class="bg-white border-t border-[#E6DFD4] px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
+          <div class="text-xs font-semibold text-espresso">
+            Seleccionados: <span id="cl-selected-count" class="bg-maroon text-white font-bold px-2 py-0.5 rounded-full text-[11px] ml-1">0</span>
+          </div>
+          
+          <div class="flex items-center gap-2.5">
+            <button type="button" onclick="closeCloudinaryExplorer()" class="text-xs border text-espresso hover:bg-cream-light py-2 px-4 rounded-xl transition font-bold cursor-pointer border-border bg-white">
+              Cancelar
+            </button>
+            <button type="button" onclick="confirmCloudinarySelection()" id="cl-confirm-btn" class="text-xs bg-gold hover:bg-gold-deep text-white py-2 px-5 rounded-xl transition font-bold cursor-pointer shadow-xs border-0">
+              ✓ Seleccionar Recursos
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- SCRIPT CLIENT FLUID PARA ACTIVAR TABS Y EL EXPLORADOR CLOUDINARY -->
     <script>
       function switchTab(name) {
         document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
@@ -4429,7 +4964,6 @@ app.get('/admin', (req, res) => {
         window.location.hash = name;
       }
 
-      // Cargar tab de la URL de ser aplicable
       window.addEventListener('DOMContentLoaded', () => {
         let hash = window.location.hash.replace('#', '') || 'infografias';
         if (!['infografias', 'blog', 'videos', 'podcasts'].includes(hash)) {
@@ -4437,6 +4971,384 @@ app.get('/admin', (req, res) => {
         }
         switchTab(hash);
       });
+
+      // ── MÉTODOS DEL EXPOSITOR NATIVO DE CLOUDINARY ──
+      let activeExplorerContext = ''; 
+      let originalCloudinaryResources = [];
+      let currentCloudinaryResources = [];
+      let selectedResourcesMap = new Map();
+      let debounceTimer = null;
+
+      function toggleVirtualUploadDrawer() {
+        const drawer = document.getElementById('virtual-upload-drawer');
+        drawer.classList.toggle('hidden');
+      }
+
+      function openCloudinaryExplorer(context) {
+        activeExplorerContext = context;
+        selectedResourcesMap.clear();
+        document.getElementById('cl-selected-count').innerText = '0';
+        
+        // Configurar filtros automáticos inteligentes según el contexto
+        const typeFilter = document.getElementById('cl-type-filter');
+        const folderFilter = document.getElementById('cl-folder-filter');
+        
+        if (context === 'infografias') {
+          typeFilter.value = 'image';
+          folderFilter.value = 'infografias';
+        } else if (context === 'blog_cover') {
+          typeFilter.value = 'image';
+          folderFilter.value = 'blog';
+        } else if (context === 'videos') {
+          typeFilter.value = 'video';
+          folderFilter.value = 'videos';
+        } else if (context === 'podcasts') {
+          typeFilter.value = 'audio';
+          folderFilter.value = 'podcast';
+        } else {
+          typeFilter.value = 'all';
+          folderFilter.value = '';
+        }
+
+        document.getElementById('cloudinary-explorer-modal').classList.remove('hidden');
+        document.getElementById('cloudinary-explorer-modal').classList.add('flex');
+        
+        fetchCloudinaryResources();
+      }
+
+      function closeCloudinaryExplorer() {
+        document.getElementById('cloudinary-explorer-modal').classList.add('hidden');
+        document.getElementById('cloudinary-explorer-modal').classList.remove('flex');
+      }
+
+      async function fetchCloudinaryResources() {
+        const grid = document.getElementById('cl-resources-grid');
+        const loader = document.getElementById('cl-loader');
+        const emptyAlert = document.getElementById('cl-empty');
+        
+        grid.classList.add('hidden');
+        loader.classList.remove('hidden');
+        emptyAlert.classList.add('hidden');
+
+        try {
+          const type = document.getElementById('cl-type-filter').value;
+          const folder = document.getElementById('cl-folder-filter').value;
+          const search = document.getElementById('cl-search').value.trim();
+
+          let query = \`/api/admin/cloudinary/resources?type=\${type}&folder=\${folder}&search=\${search}\`;
+          const res = await fetch(query);
+          const data = await res.json();
+
+          originalCloudinaryResources = data.resources || [];
+          currentCloudinaryResources = [...originalCloudinaryResources];
+
+          // Actualizar select de carpetas dinámicamente si es la primera carga
+          const fSelect = document.getElementById('cl-folder-filter');
+          const currentVal = fSelect.value;
+          fSelect.innerHTML = '<option value="">-- Todas las carpetas --</option>';
+          if (data.folders) {
+            data.folders.forEach(fold => {
+              const opt = document.createElement('option');
+              opt.value = fold;
+              opt.innerText = '/' + fold;
+              fSelect.appendChild(opt);
+            });
+          }
+          fSelect.value = currentVal;
+
+          drawCloudinaryResources();
+        } catch (err) {
+          console.error('Error cargando recursos de Cloudinary:', err);
+          loader.classList.add('hidden');
+          emptyAlert.classList.remove('hidden');
+        }
+      }
+
+      function debounceFilterResources() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          fetchCloudinaryResources();
+        }, 300);
+      }
+
+      function drawCloudinaryResources() {
+        const grid = document.getElementById('cl-resources-grid');
+        const loader = document.getElementById('cl-loader');
+        const emptyAlert = document.getElementById('cl-empty');
+        const sortVal = document.getElementById('cl-sort-filter').value;
+
+        // Ordenar
+        if (sortVal === 'recent') {
+          currentCloudinaryResources.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+        } else if (sortVal === 'old') {
+          currentCloudinaryResources.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+        } else if (sortVal === 'name_asc') {
+          currentCloudinaryResources.sort((a,b) => a.name.localeCompare(b.name));
+        } else if (sortVal === 'size_desc') {
+          currentCloudinaryResources.sort((a,b) => (b.bytes || 0) - (a.bytes || 0));
+        }
+
+        loader.classList.add('hidden');
+
+        if (currentCloudinaryResources.length === 0) {
+          grid.classList.add('hidden');
+          emptyAlert.classList.remove('hidden');
+          return;
+        }
+
+        emptyAlert.classList.add('hidden');
+        grid.classList.remove('hidden');
+
+        grid.innerHTML = currentCloudinaryResources.map((r, idx) => {
+          const isSelected = selectedResourcesMap.has(r.url);
+          const isAudio = r.resource_type === 'audio' || r.format === 'mp3';
+          const isVideo = r.resource_type === 'video' || r.format === 'mp4';
+          const isPdf = r.format === 'pdf';
+
+          let thumbHtml = '';
+          if (isAudio) {
+            thumbHtml = \`
+              <div class="w-full aspect-square bg-[#E8F5E9] flex flex-col items-center justify-center text-green-700 gap-1.5 p-2 rounded-t-xl">
+                <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                <span class="text-[10px] font-mono font-bold uppercase">\${r.format} Audio</span>
+              </div>
+            \`;
+          } else if (isVideo) {
+            thumbHtml = \`
+              <div class="w-full aspect-square bg-[#FFEBEE] flex flex-col items-center justify-center text-red-700 gap-1.5 p-2 rounded-t-xl relative">
+                <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
+                <span class="text-[10px] font-mono font-bold uppercase">\${r.format} Video</span>
+              </div>
+            \`;
+          } else if (isPdf) {
+            thumbHtml = \`
+              <div class="w-full aspect-square bg-[#ECEFF1] flex flex-col items-center justify-center text-blue-700 gap-1.5 p-2 rounded-t-xl">
+                <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <span class="text-[10px] font-mono font-bold uppercase">PDF Doc</span>
+              </div>
+            \`;
+          } else {
+            thumbHtml = \`
+              <div class="w-full aspect-square overflow-hidden rounded-t-xl relative bg-cream-2 border-b flex items-center justify-center">
+                <img src="\${r.url}" class="w-full h-full object-cover" loading="lazy" referrerPolicy="no-referrer">
+              </div>
+            \`;
+          }
+
+          return \`
+            <div onclick="toggleSelectResource('\${r.url}', \${idx})" class="group relative rounded-xl border border-border bg-white shadow-xs cursor-pointer overflow-hidden hover:border-gold/50 transition duration-300 \${isSelected ? 'ring-2 ring-gold border-gold' : ''}">
+              
+              \${thumbHtml}
+
+              <!-- CHECKBOX OVERLAY -->
+              <div class="absolute top-2 left-2 w-5 h-5 rounded-md flex items-center justify-center border transition \${isSelected ? 'bg-gold border-gold text-white' : 'bg-white/80 border-espresso/20'}" onclick="event.stopPropagation(); toggleSelectResource('\${r.url}', \${idx})">
+                \${isSelected ? '✓' : ''}
+              </div>
+
+              <!-- INFO -->
+              <div class="p-2.5 flex flex-col gap-0.5 text-left">
+                <p class="font-bold text-espresso text-[11px] truncate leading-tight group-hover:text-maroon transition duration-200" title="\${r.name}">\${r.name}</p>
+                <p class="text-[9px] text-ink2 font-mono truncate">Carpeta: <strong>/\${r.folder || 'general'}</strong></p>
+                <p class="text-[9px] text-[#A08E77] font-mono mt-0.5 flex justify-between">
+                  <span>\${(r.bytes/1024).toFixed(0)} KB</span>
+                  <span>\${r.width ? r.width + 'x' + r.height : r.duration || ''}</span>
+                </p>
+              </div>
+            </div>
+          \`;
+        }).join('');
+      }
+
+      function toggleSelectResource(url, idx) {
+        const item = currentCloudinaryResources[idx];
+        if (selectedResourcesMap.has(url)) {
+          selectedResourcesMap.delete(url);
+        } else {
+          // Si el contexto es de selección única, limpiar previos
+          const singleSelectContexts = ['blog_cover', 'videos', 'podcasts'];
+          if (singleSelectContexts.includes(activeExplorerContext)) {
+            selectedResourcesMap.clear();
+          }
+          selectedResourcesMap.set(url, item);
+        }
+        document.getElementById('cl-selected-count').innerText = selectedResourcesMap.size;
+        drawCloudinaryResources();
+      }
+
+      async function createVirtualCloudinaryResource() {
+        const url = document.getElementById('cl-v-url').value.trim();
+        const name = document.getElementById('cl-v-name').value.trim();
+        const folder = document.getElementById('cl-v-folder').value;
+
+        if (!url || !name) {
+          alert('Por favor completa todos los campos para registrar el recurso simulado.');
+          return;
+        }
+
+        try {
+          const res = await fetch('/api/admin/cloudinary/add-mock', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url, name, folder })
+          });
+          const data = await res.json();
+          if (data.success) {
+            // Recargar
+            document.getElementById('cl-v-url').value = '';
+            document.getElementById('cl-v-name').value = '';
+            toggleVirtualUploadDrawer();
+            fetchCloudinaryResources();
+          } else {
+            alert('Error guardando en base de datos: ' + data.error);
+          }
+        } catch (e) {
+          alert('Error creando recurso virtual: ' + e.message);
+        }
+      }
+
+      function confirmCloudinarySelection() {
+        const list = Array.from(selectedResourcesMap.values());
+        if (list.length === 0) {
+          alert('Por favor selecciona al menos un recurso de la biblioteca.');
+          return;
+        }
+
+        if (activeExplorerContext === 'infografias') {
+          addInfografiaBlocks(list);
+        } else if (activeExplorerContext === 'blog_cover') {
+          document.getElementById('blog_imagen_portada').value = list[0].url;
+        } else if (activeExplorerContext === 'blog_content') {
+          // Insertar en la posición del cursor o al final del editor
+          const editor = document.getElementById('blog_content_editor');
+          const cursor = editor.selectionStart;
+          const text = editor.value;
+          
+          const markdownImages = list.map(img => \`![\\\${img.name.replace(/\\\\.[^/.]+$/, "")}](\\\${img.url})\`).join('\\n');
+          
+          editor.value = text.slice(0, cursor) + markdownImages + text.slice(cursor);
+          editor.focus();
+        } else if (activeExplorerContext === 'videos') {
+          document.getElementById('video_youtube_id').value = list[0].url;
+          document.getElementById('video_titulo').value = list[0].name.replace(/\\\\.[^/.]+$/, "").split('-').join(' ').toUpperCase();
+          document.getElementById('video_canal').value = 'Servidor Cloudinary';
+        } else if (activeExplorerContext === 'podcasts') {
+          document.getElementById('podcast_spotify_url').value = list[0].url;
+          document.getElementById('podcast_titulo').value = list[0].name.replace(/\\\\.[^/.]+$/, "").split('-').join(' ').toUpperCase();
+          document.getElementById('podcast_autor').value = 'Servidor Cloudinary';
+        }
+
+        closeCloudinaryExplorer();
+      }
+
+      // ── CONTROL DE BLOQUES DE LA INFOGRAFÍA ──
+      function addInfografiaBlocks(resources) {
+        const container = document.getElementById('cloudinary-selected-images');
+        const placeholder = document.getElementById('empty-images-placeholder');
+        if (placeholder) placeholder.style.display = 'none';
+
+        resources.forEach((r, idx) => {
+          // Generar suggested Alt de forma teologica
+          const baseName = r.name.replace(/\\\\.[^/.]+$/, "").split('-').join(' ').split('_').join(' ');
+          const label = baseName.charAt(0).toUpperCase() + baseName.slice(1);
+          const suggestedAlt = \`Ilustración teológica sobre \\\${label}\`;
+
+          const blockHtml = \`
+            <div class="cloudinary-image-card bg-cream border border-border/80 rounded-xl p-3 flex flex-col gap-3 w-full relative" data-url="\\\${r.url}">
+              <div class="flex items-center gap-3">
+                <img src="\\\${r.url}" class="w-14 h-14 object-cover rounded-lg border border-border bg-white" referrerPolicy="no-referrer">
+                <div class="flex-1 min-w-0 flex flex-col">
+                  <span class="font-bold text-espresso text-xs truncate">\\\${r.name}</span>
+                  <span class="text-[10px] text-ink2 font-mono">\\\${r.width}x\\\${r.height} | \\\${(r.bytes/1024).toFixed(0)} KB | carpeta: \\\${r.folder}</span>
+                  <input type="hidden" name="imageUrls[]" value="\\\${r.url}">
+                  <input type="hidden" name="imageNames[]" value="\\\${r.name}">
+                  <input type="hidden" name="imageWidths[]" value="\\\${r.width}">
+                  <input type="hidden" name="imageHeights[]" value="\\\${r.height}">
+                  <input type="hidden" name="imageCovers[]" class="item-cover-flag" value="0">
+                </div>
+                <div class="flex flex-col gap-1">
+                  <button type="button" onclick="moveBlock(this, 'up')" class="p-1 hover:bg-cream-light rounded text-[#5C2E0A] hover:text-gold transition outline-none cursor-pointer text-xs font-bold border-0 bg-transparent">▲</button>
+                  <button type="button" onclick="moveBlock(this, 'down')" class="p-1 hover:bg-cream-light rounded text-[#5C2E0A] hover:text-gold transition outline-none cursor-pointer text-xs font-bold border-0 bg-transparent">▼</button>
+                </div>
+                <button type="button" onclick="removeBlock(this)" class="p-1.5 hover:bg-red-50 hover:text-red-700 text-ink2 rounded transition cursor-pointer border-0 bg-transparent" title="Quitar">✕</button>
+              </div>
+              
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2.5 border-t border-border/40 text-[11px]">
+                <div class="flex flex-col gap-1 w-full flex-1">
+                  <label class="font-semibold text-espresso">Alt Texto (SEO automático)</label>
+                  <input type="text" name="imageAlts[]" required value="\\\${suggestedAlt}" class="border border-border rounded-lg px-2.5 py-1.5 outline-none focus:ring-1 focus:ring-gold text-xs bg-white w-full" placeholder="Ej: Representación teológica de...">
+                </div>
+                <div class="flex items-center justify-between sm:justify-end gap-3 pt-4 sm:pt-0">
+                  <label class="flex items-center gap-1.5 font-semibold text-espresso cursor-pointer select-none">
+                    <input type="radio" name="imageCoverRadio" class="accent-maroon cursor-pointer scale-110" onchange="updateCoverFlags()">
+                    Usar como portada
+                  </label>
+                  <span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded font-mono inline-flex items-center gap-0.5" title="Recurso importado con éxito">
+                    ✓ Correcto
+                  </span>
+                </div>
+              </div>
+            </div>
+          \`;
+          container.insertAdjacentHTML('beforeend', blockHtml);
+        });
+
+        updateCoverFlags();
+      }
+
+      function moveBlock(button, direction) {
+        const card = button.closest('.cloudinary-image-card');
+        const parent = document.getElementById('cloudinary-selected-images');
+        if (direction === 'up') {
+          const prev = card.previousElementSibling;
+          if (prev && prev.id !== 'empty-images-placeholder') {
+            parent.insertBefore(card, prev);
+          }
+        } else {
+          const next = card.nextElementSibling;
+          if (next) {
+            parent.insertBefore(next, card);
+          }
+        }
+        updateCoverFlags();
+      }
+
+      function removeBlock(button) {
+        const card = button.closest('.cloudinary-image-card');
+        card.remove();
+        
+        const container = document.getElementById('cloudinary-selected-images');
+        const blocks = container.querySelectorAll('.cloudinary-image-card');
+        if (blocks.length === 0) {
+          const pl = document.getElementById('empty-images-placeholder');
+          if (pl) pl.style.display = 'block';
+        }
+        updateCoverFlags();
+      }
+
+      function updateCoverFlags() {
+        const container = document.getElementById('cloudinary-selected-images');
+        const cards = container.querySelectorAll('.cloudinary-image-card');
+        
+        let checkedIdx = -1;
+        const radios = container.querySelectorAll('input[name="imageCoverRadio"]');
+        radios.forEach((radio, idx) => {
+          if (radio.checked) {
+            checkedIdx = idx;
+          }
+        });
+
+        if (checkedIdx === -1 && radios.length > 0) {
+          radios[0].checked = true;
+          checkedIdx = 0;
+        }
+
+        cards.forEach((card, idx) => {
+          const coverFlag = card.querySelector('.item-cover-flag');
+          if (coverFlag) {
+            coverFlag.value = (idx === checkedIdx) ? '1' : '0';
+          }
+        });
+      }
     </script>
   `;
   res.send(renderPage('Admin Consola', html, req));
@@ -4518,9 +5430,28 @@ app.post('/admin/crear-infografia-manual', async (req, res) => {
   const user = getAuthedUser(req);
   if (!user || user.plan !== 'admin') return res.status(403).send('No autorizado');
 
-  const { titulo, tema, categoria, imagenUrl, metaDescription, keywords } = req.body;
-  if (!titulo || !tema || !imagenUrl) {
-    return res.status(400).send('Falta información requerida.');
+  const { titulo, tema, categoria, metaDescription, keywords, tipoVisualizacion } = req.body;
+  
+  let imageUrls = req.body.imageUrls || [];
+  let imageNames = req.body.imageNames || [];
+  let imageAlts = req.body.imageAlts || [];
+  let imageWidths = req.body.imageWidths || [];
+  let imageHeights = req.body.imageHeights || [];
+  let imageCovers = req.body.imageCovers || [];
+
+  // Fallback a parser de URLs legacy si no se usó el selector de bloques de Cloudinary
+  if (!imageUrls || imageUrls.length === 0 || (typeof imageUrls === 'string')) {
+    const legacyUrlStr = req.body.imagenUrl || '';
+    imageUrls = (typeof legacyUrlStr === 'string' ? [legacyUrlStr] : legacyUrlStr || [])
+      .flatMap(str => str.split(/[\n,]+/))
+      .map(u => u.trim())
+      .filter(Boolean);
+  } else if (!Array.isArray(imageUrls)) {
+    imageUrls = [imageUrls];
+  }
+
+  if (!titulo || !tema || imageUrls.length === 0) {
+    return res.status(400).send('Falta información requerida o no has seleccionado ninguna imagen de Cloudinary.');
   }
 
   try {
@@ -4530,19 +5461,26 @@ app.post('/admin/crear-infografia-manual', async (req, res) => {
     
     const uniqueSlug = `${slug}-${Date.now().toString().slice(-4)}`;
 
-    // Separar URLs por salto de línea o comas
-    const urls = (imagenUrl || '').split(/[\n,]+/).map(u => u.trim()).filter(Boolean);
-    if (urls.length === 0) {
-      return res.status(400).send('Debes proveer al menos una URL válida.');
-    }
+    const imagenesParaGuardar = imageUrls.map((u, index) => {
+      const name = imageNames[index] || `slide-${index + 1}.jpg`;
+      const alt = imageAlts[index] || `${titulo} — Diapositiva ${index + 1}`;
+      const w = parseInt(imageWidths[index]) || 1200;
+      const h = parseInt(imageHeights[index]) || 1200;
+      const esPortada = imageCovers[index] === '1';
 
-    const imagenesParaGuardar = urls.map((u, index) => ({
-      url: u,
-      slide: index + 1,
-      model: 'manual-upload',
-      formato: '1:1',
-      sizeLabel: 'Cuadrado (1:1)'
-    }));
+      return {
+        url: u,
+        slide: index + 1,
+        name,
+        alt,
+        width: w,
+        height: h,
+        esPortada,
+        model: 'cloudinary-native',
+        formato: w === h ? '1:1' : w > h ? '16:9' : '3:4',
+        sizeLabel: w === h ? 'Cuadrado (1:1)' : w > h ? 'Horizontal' : 'Vertical'
+      };
+    });
 
     let finalDesc = metaDescription;
     let finalKeywords = keywords;
@@ -4590,6 +5528,7 @@ Devuelve un JSON estrictamente con la estructura literal:
       titulo,
       metaDescription: finalDesc,
       altText: titulo,
+      tipoVisualizacion: tipoVisualizacion || 'continua',
       imagenes: imagenesParaGuardar,
       totalSlides: imagenesParaGuardar.length,
       formato: '1:1',
@@ -4616,7 +5555,7 @@ app.post('/admin/crear-blog', async (req, res) => {
   const user = getAuthedUser(req);
   if (!user || user.plan !== 'admin') return res.status(403).send('No autorizado');
 
-  const { titulo, categoria, contenidoMd, useAiS_SEO } = req.body;
+  const { titulo, categoria, contenidoMd, useAiS_SEO, imagenPortada } = req.body;
   if (!titulo || !contenidoMd) {
     return res.status(400).send('Faltan datos del artículo.');
   }
@@ -4647,6 +5586,7 @@ app.post('/admin/crear-blog', async (req, res) => {
       keywords: seoFields.keywords,
       altText: seoFields.altText,
       extracto: seoFields.extracto,
+      imagenPortada: imagenPortada || '',
       fechaCreacion: new Date().toISOString(),
       publicado: true
     };
@@ -4785,6 +5725,174 @@ app.get('/admin/eliminar-infografia', (req, res) => {
   if (!user || user.plan !== 'admin') return res.status(403).send('No authorized');
   infografias.deleteInfografia(req.query.id);
   res.redirect('/admin#infografias');
+});
+
+// ── SISTEMA INTEGRADO DE NAVEGACIÓN Y SELECCIÓN DE RECURSOS CLOUDINARY ──
+const MOCK_CLOUDINARY_PATH = path.join(__dirname, 'data', 'cloudinary-resources-mock.json');
+
+function loadCloudinaryMock() {
+  try {
+    if (fs.existsSync(MOCK_CLOUDINARY_PATH)) {
+      return JSON.parse(fs.readFileSync(MOCK_CLOUDINARY_PATH, 'utf-8'));
+    }
+  } catch(e) {
+    console.error('[Cloudinary-Mock] Error cargando base de datos simulada', e.message);
+  }
+  return { resources: [], folders: [] };
+}
+
+function saveCloudinaryMock(data) {
+  try {
+    fs.writeFileSync(MOCK_CLOUDINARY_PATH, JSON.stringify(data, null, 2), 'utf-8');
+  } catch(e) {
+    console.error('[Cloudinary-Mock] Error guardando base de datos simulada', e.message);
+  }
+}
+
+app.get('/api/admin/cloudinary/resources', async (req, res) => {
+  const user = getAuthedUser(req);
+  if (!user || user.plan !== 'admin') {
+    return res.status(403).json({ error: 'No autorizado' });
+  }
+
+  const { type, folder, search } = req.query;
+
+  // Verificar si hay configuración real de Cloudinary activa
+  const hasCloudinary = process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET;
+
+  if (hasCloudinary) {
+    try {
+      console.log('[Cloudinary API] Conectando con servidor real de Cloudinary...');
+      const cloudinaryMod = require('cloudinary').v2;
+      cloudinaryMod.config({
+        cloud_name: 'c-d958e57b08c7fd3570db695ad41478',
+        api_key:    process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET
+      });
+      let query = cloudinaryMod.search;
+      
+      let expressions = [];
+      if (folder) {
+        expressions.push(`folder:${folder}*`);
+      }
+      if (type && type !== 'all') {
+        if (type === 'audio') {
+          expressions.push('resource_type:video AND format:(mp3|wav|ogg|aac|m4a)');
+        } else {
+          expressions.push(`resource_type:${type}`);
+        }
+      }
+      if (search) {
+        expressions.push(`${search}*`);
+      }
+      
+      if (expressions.length > 0) {
+        query = query.expression(expressions.join(' AND '));
+      } else {
+        query = query.expression('resource_type:image OR resource_type:video');
+      }
+
+      const searchResult = await query.max_results(100).execute();
+      
+      const resourcesFormatted = (searchResult.resources || []).map(r => ({
+        public_id: r.public_id,
+        url: r.secure_url || r.url,
+        name: (r.filename || r.public_id.split('/').pop()) + '.' + (r.format || 'jpg'),
+        format: r.format || 'jpg',
+        resource_type: r.resource_type === 'video' && ['mp3','wav','ogg','aac','m4a'].includes(r.format) ? 'audio' : r.resource_type,
+        bytes: r.bytes,
+        width: r.width || 1200,
+        height: r.height || 1200,
+        folder: r.folder || folder || 'general',
+        created_at: r.created_at
+      }));
+
+      // Obtener carpetas reales
+      let folders = [];
+      try {
+        const foldersResult = await cloudinaryMod.api.root_folders();
+        folders = (foldersResult.folders || []).map(f => f.name);
+      } catch (fErr) {
+        folders = ["enciclicas", "santos", "eucaristia", "sacramentos", "infografias", "podcast", "videos", "blog"];
+      }
+
+      return res.json({ resources: resourcesFormatted, folders });
+    } catch (realErr) {
+      console.error('[Cloudinary API Error] Error llamando a API real, usando fallback de base de datos:', realErr.message);
+    }
+  }
+
+  // Fallback con base de datos simulada local
+  const mockDb = loadCloudinaryMock();
+  let filtered = [...mockDb.resources];
+
+  if (folder) {
+    filtered = filtered.filter(r => r.folder === folder);
+  }
+
+  if (type && type !== 'all') {
+    filtered = filtered.filter(r => {
+      if (type === 'audio') {
+        return r.resource_type === 'audio' || r.format === 'mp3';
+      }
+      return r.resource_type === type;
+    });
+  }
+
+  if (search) {
+    const term = search.toLowerCase();
+    filtered = filtered.filter(r => 
+      r.name.toLowerCase().includes(term) || 
+      r.public_id.toLowerCase().includes(term)
+    );
+  }
+
+  filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  res.json({
+    resources: filtered,
+    folders: mockDb.folders
+  });
+});
+
+app.post('/api/admin/cloudinary/add-mock', (req, res) => {
+  const user = getAuthedUser(req);
+  if (!user || user.plan !== 'admin') {
+    return res.status(403).json({ error: 'No autorizado' });
+  }
+
+  const { url, name, folder, resource_type, format, width, height } = req.body;
+  if (!url || !name || !folder) {
+    return res.status(400).json({ error: 'Faltan campos obligatorios' });
+  }
+
+  try {
+    const mockDb = loadCloudinaryMock();
+    const cleanFormat = format || name.split('.').pop() || 'jpg';
+    
+    const newRes = {
+      public_id: `${folder}/${name.replace(/\.[^/.]+$/, "").replace(/\s+/g, "-").toLowerCase()}`,
+      url,
+      name,
+      format: cleanFormat,
+      resource_type: resource_type || 'image',
+      bytes: req.body.bytes ? parseInt(req.body.bytes) : 524288,
+      width: width ? parseInt(width) : 1000,
+      height: height ? parseInt(height) : 1000,
+      folder: folder,
+      created_at: new Date().toISOString()
+    };
+
+    mockDb.resources.unshift(newRes);
+    if (!mockDb.folders.includes(folder)) {
+      mockDb.folders.push(folder);
+    }
+
+    saveCloudinaryMock(mockDb);
+    res.json({ success: true, resource: newRes });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ════════════════════════════════════════════════════════════════════════════

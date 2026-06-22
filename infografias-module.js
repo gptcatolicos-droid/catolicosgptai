@@ -9,7 +9,7 @@ const path = require('path');
 
 // ── Cloudinary config ──
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  cloud_name: 'c-d958e57b08c7fd3570db695ad41478',
   api_key:    process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
@@ -394,7 +394,8 @@ CRÍTICO:
 
 async function uploadToCloudinary(imageData, slug, index = 0, meta = {}) {
   // Safe default background or return if no credentials configured
-  if (!process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET || !process.env.CLOUDINARY_CLOUD_NAME) {
+  const cloudName = 'c-d958e57b08c7fd3570db695ad41478';
+  if (!process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
     console.warn('[Cloudinary] No configured credentials, returning source image direct.');
     return imageData;
   }
