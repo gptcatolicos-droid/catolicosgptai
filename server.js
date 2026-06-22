@@ -4458,18 +4458,63 @@ app.get('/admin', (req, res) => {
                 </select>
               </div>
 
-              <div class="flex flex-col gap-1.5 md:col-span-2">
-                <div class="flex items-center justify-between flex-wrap gap-2">
-                  <label class="font-semibold text-espresso text-xs">Imágenes para la Infografía (Bloques Independientes)</label>
-                  <button type="button" onclick="openCloudinaryExplorer('infografias')" class="bg-maroon hover:bg-gold text-white text-[11px] px-3.5 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs border-0">
-                    ☁️ [ Importar desde Cloudinary ]
-                  </button>
-                </div>
+              <div class="flex flex-col gap-2.5 md:col-span-2">
+                <label class="font-semibold text-espresso text-xs flex items-center justify-between">
+                  <span>Imágenes / Carrusel de Diapositivas (Máximo 10 imágenes)</span>
+                  <span class="text-xs text-ink-2 font-mono">Total añadidas: <span id="manual-images-count" class="text-maroon font-bold bg-[#E6DFD4]/50 px-2 py-0.5 rounded">1</span> / 10</span>
+                </label>
                 
-                <!-- Bloques de imagenes seleccionadas -->
-                <div id="cloudinary-selected-images" class="flex flex-col gap-3.5 border border-dashed border-[#D1C7BD] rounded-xl p-4 bg-[#fefdfa] min-h-[120px] justify-center items-center mt-1 w-full">
-                  <div id="empty-images-placeholder" class="text-xs text-ink-2 italic text-center p-4">
-                    Ninguna imagen seleccionada de la biblioteca de Cloudinary. Pulsa el botón "Importar" superior para explorar y seleccionar de manera visual.
+                <div id="manual-images-container" class="flex flex-col gap-3.5">
+                  <!-- Primera fila estática para asegurar visualización el 100% de las veces en carga limpia -->
+                  <div class="manual-image-row bg-cream/40 border border-border/60 rounded-xl p-3 flex flex-col gap-3 w-full" id="manual-row-1">
+                    <div class="flex items-center justify-between border-b border-border/40 pb-1.5">
+                      <span class="text-xs font-bold text-espresso font-mono">Imagen #<span class="row-number">1</span></span>
+                      <span class="text-[10px] text-ink-2 font-serif bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">✓ Portada inicial</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                      <div class="flex flex-col gap-1 w-full">
+                        <label class="font-semibold text-espresso">URL de la Imagen Cloudinary</label>
+                        <input type="text" name="imageUrls[]" required placeholder="https://res.cloudinary.com/..." class="border border-[#D1C7BD] rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-gold text-xs bg-white w-full" oninput="previewImage('manual-row-1')">
+                      </div>
+                      <div class="flex flex-col gap-1 w-full">
+                        <label class="font-semibold text-espresso">Texto Alt de la Imagen (SEO)</label>
+                        <input type="text" name="imageAlts[]" required placeholder="Ej: Diapositiva sobre la teología de este tema" class="border border-[#D1C7BD] rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-gold text-xs bg-white w-full">
+                      </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
+                      <div class="flex flex-col gap-1">
+                        <label class="font-semibold text-espresso">Nombre de archivo (opcional)</label>
+                        <input type="text" name="imageNames[]" placeholder="ej: slide-1.jpg" class="border border-[#D1C7BD] rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-gold text-xs bg-white w-full">
+                      </div>
+                      <div class="flex items-center justify-between sm:justify-end gap-3 pt-4 sm:pt-0 pb-0.5">
+                        <input type="hidden" name="imageWidths[]" value="1200">
+                        <input type="hidden" name="imageHeights[]" value="1200">
+                        <input type="hidden" name="imageCovers[]" class="row-cover-flag" value="1">
+                        <label class="flex items-center gap-1.5 font-semibold text-espresso cursor-pointer select-none">
+                          <input type="radio" name="imageCoverRadio" class="accent-maroon cursor-pointer scale-110" checked onchange="updateCoverFlagsManual('manual-row-1')">
+                          Usar como portada
+                        </label>
+                        <div class="image-preview-container hidden ml-auto border border-border rounded bg-white p-0.5">
+                          <img class="image-preview-img w-9 h-9 object-cover rounded" referrerPolicy="no-referrer">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Controladores de adición rápida y limpia -->
+                <div class="flex items-center justify-between flex-wrap gap-2.5 mt-1 border border-dashed border-gold/30 p-3 rounded-xl bg-[#fefdfa]">
+                  <span class="text-xs text-espresso font-bold">⚡ Agregar más imágenes/diapositivas:</span>
+                  <div class="flex items-center gap-2">
+                    <button type="button" onclick="addMultipleImages(1)" class="text-xs bg-[#1A412A] hover:bg-[#2E5E3D] text-white py-1.5 px-3.5 rounded-lg font-bold transition flex items-center gap-1 cursor-pointer">
+                      ➕ Añadir +1
+                    </button>
+                    <button type="button" onclick="addMultipleImages(3)" class="text-xs bg-[#BC8A36] hover:bg-[#a6792f] text-white py-1.5 px-3.5 rounded-lg font-bold transition flex items-center gap-1 cursor-pointer">
+                      ➕ Añadir +3
+                    </button>
+                    <button type="button" onclick="addMultipleImages(5)" class="text-xs bg-[#5E1B22] hover:bg-[#4d141a] text-white py-1.5 px-3.5 rounded-lg font-bold transition flex items-center gap-1 cursor-pointer">
+                      ➕ Añadir +5
+                    </button>
                   </div>
                 </div>
               </div>
@@ -4477,7 +4522,7 @@ app.get('/admin', (req, res) => {
               <div class="flex flex-col gap-1.5 md:col-span-2">
                 <label class="font-semibold text-espresso text-xs">Tipo de Visualización Predeterminada</label>
                 <select name="tipoVisualizacion" class="border border-border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-gold text-xs">
-                  <option value="continua">Continua (Todas las imágenes verticales - Recomendada)</option>
+                  <option value="continua" selected>Continua (Todas las imágenes verticales - Recomendada)</option>
                   <option value="carrusel">Carrusel (Visor de diapositivas interactivo)</option>
                   <option value="cuadricula">Cuadrícula (Galería compacta con Lightbox expansor)</option>
                 </select>
@@ -4508,6 +4553,137 @@ app.get('/admin', (req, res) => {
         </div>
 
         <script>
+          let manualRowIndex = 1; // Ya iniciamos con la fila 1 estática cargada
+          function addManualImageRow(url = '') {
+            const container = document.getElementById('manual-images-container');
+            if (!container) return;
+            
+            // Validar límite manual máximo de 10 imágenes
+            const existingRows = document.querySelectorAll('.manual-image-row');
+            if (existingRows.length >= 10) {
+              alert('⚠️ Se ha alcanzado el límite máximo recomendado de 10 imágenes por carrusel / infografía.');
+              return;
+            }
+
+            const rowId = 'manual-row-' + (++manualRowIndex);
+            
+            const blockHtml = \`
+              <div class="manual-image-row bg-cream/40 border border-border/60 rounded-xl p-3 flex flex-col gap-3 w-full" id="\${rowId}">
+                <div class="flex items-center justify-between border-b border-border/40 pb-1.5">
+                  <span class="text-xs font-bold text-espresso font-mono">Imagen #<span class="row-number"></span></span>
+                  <button type="button" onclick="removeManualImageRow('\${rowId}')" class="text-red-700 hover:text-red-900 text-xs font-bold cursor-pointer transition border-0 bg-transparent">✕ Eliminar</button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  <div class="flex flex-col gap-1 w-full">
+                    <label class="font-semibold text-espresso">URL de la Imagen Cloudinary</label>
+                    <input type="text" name="imageUrls[]" required value="\${url}" placeholder="https://res.cloudinary.com/..." class="border border-[#D1C7BD] rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-gold text-xs bg-white w-full" oninput="previewImage('\${rowId}')">
+                  </div>
+                  <div class="flex flex-col gap-1 w-full">
+                    <label class="font-semibold text-espresso">Texto Alt de la Imagen (SEO)</label>
+                    <input type="text" name="imageAlts[]" required placeholder="Ej: Diapositiva sobre la teología de este tema" class="border border-[#D1C7BD] rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-gold text-xs bg-white w-full">
+                  </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
+                  <div class="flex flex-col gap-1">
+                    <label class="font-semibold text-espresso">Nombre de archivo (opcional)</label>
+                    <input type="text" name="imageNames[]" placeholder="ej: slide-1.jpg" class="border border-[#D1C7BD] rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-gold text-xs bg-white w-full">
+                  </div>
+                  <div class="flex items-center justify-between sm:justify-end gap-3 pt-4 sm:pt-0">
+                    <input type="hidden" name="imageWidths[]" value="1200">
+                    <input type="hidden" name="imageHeights[]" value="1200">
+                    <input type="hidden" name="imageCovers[]" class="row-cover-flag" value="0">
+                    <label class="flex items-center gap-1.5 font-semibold text-espresso cursor-pointer select-none">
+                      <input type="radio" name="imageCoverRadio" class="accent-maroon cursor-pointer scale-110" onchange="updateCoverFlagsManual('\${rowId}')">
+                      Usar como portada
+                    </label>
+                    <div class="image-preview-container hidden ml-auto border border-border rounded bg-white p-0.5">
+                      <img class="image-preview-img w-9 h-9 object-cover rounded" referrerPolicy="no-referrer">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            \`;
+
+            container.insertAdjacentHTML('beforeend', blockHtml);
+            reindexManualRows();
+            previewImage(rowId);
+          }
+
+          function removeManualImageRow(rowId) {
+            const row = document.getElementById(rowId);
+            if (row) {
+              row.remove();
+              reindexManualRows();
+            }
+          }
+
+          function addMultipleImages(count) {
+            const existingRows = document.querySelectorAll('.manual-image-row');
+            const currentCount = existingRows.length;
+            if (currentCount >= 10) {
+              alert('⚠️ Ya alcanzaste el límite absoluto de 10 imágenes por carrusel / diapositiva.');
+              return;
+            }
+            if (currentCount + count > 10) {
+              const allowed = 10 - currentCount;
+              alert('⚠️ Solo se agregarán ' + allowed + ' imágenes más para no exceder el límite máximo de 10 diapositivas por infografía.');
+              count = allowed;
+            }
+            for (let i = 0; i < count; i++) {
+              addManualImageRow();
+            }
+          }
+
+          function reindexManualRows() {
+            const allRows = document.querySelectorAll('.manual-image-row');
+            
+            // Actualizar contador del banner superior en tiempo real
+            const countLabel = document.getElementById('manual-images-count');
+            if (countLabel) {
+              countLabel.innerText = allRows.length;
+            }
+
+            allRows.forEach((row, index) => {
+              const numSpan = row.querySelector('.row-number');
+              if (numSpan) numSpan.innerText = index + 1;
+              
+              const altInput = row.querySelector('input[name="imageAlts[]"]');
+              if (altInput && !altInput.placeholder) {
+                altInput.placeholder = 'Ej: Diapositiva ' + (index + 1) + ' — Imagen formativa';
+              }
+              const nameInput = row.querySelector('input[name="imageNames[]"]');
+              if (nameInput && !nameInput.placeholder) {
+                nameInput.placeholder = 'slide-' + (index + 1) + '.jpg';
+              }
+            });
+          }
+
+          function updateCoverFlagsManual(activeRowId) {
+            const rows = document.querySelectorAll('.manual-image-row');
+            rows.forEach(row => {
+              const flag = row.querySelector('.row-cover-flag');
+              if (flag) {
+                flag.value = row.id === activeRowId ? '1' : '0';
+              }
+            });
+          }
+
+          function previewImage(rowId) {
+            const row = document.getElementById(rowId);
+            if (!row) return;
+            const urlInput = row.querySelector('input[name="imageUrls[]"]');
+            const url = urlInput ? urlInput.value.trim() : '';
+            const previewContainer = row.querySelector('.image-preview-container');
+            const previewImg = row.querySelector('.image-preview-img');
+            
+            if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+              if (previewImg) previewImg.src = url;
+              if (previewContainer) previewContainer.classList.remove('hidden');
+            } else {
+              if (previewContainer) previewContainer.classList.add('hidden');
+            }
+          }
+
           async function generarSeoConIA() {
             const titulo = document.getElementById('seo_titulo').value.trim();
             const tema = document.getElementById('seo_tema').value.trim();
@@ -4644,22 +4820,22 @@ app.get('/admin', (req, res) => {
           </form>
         </div>
 
-        <div class="bg-white border rounded-2xl p-6 shadow-sm flex flex-col gap-3">
-          <h3 class="font-display font-semibold text-espresso text-base">📋 Artículos de Blog Publicados</h3>
-          <div class="max-h-[300px] overflow-y-auto border border-border rounded-xl divide-y text-xs">
-            ${blogCatalog.posts.length === 0 ? '<div class="p-4 text-center text-ink-2 italic">Sin posts de blog creados. Escribe el primero arriba.</div>' : 
-              blogCatalog.posts.map(p => `
-                <div class="p-3 flex items-center justify-between hover:bg-cream/10">
-                  <div class="flex flex-col gap-0.5 truncate max-w-xl">
-                    <span class="font-bold text-espresso">${p.titulo}</span>
-                    <span class="text-[10px] text-ink-2 truncate">Slug: <strong class="text-gold-deep">${p.slug}</strong> | Cat: ${p.categoria} | Metadescripción SEO: ${p.descripcion || 'Sin optimización IA'}</span>
-                  </div>
-                  <div class="flex items-center gap-3">
-                    <a href="/blog/${p.slug}" target="_blank" class="text-maroon font-bold hover:underline">Ver</a>
-                    <a href="/admin/eliminar-blog?slug=${p.slug}" onclick="return confirm('¿Eliminar definitivamente el artículo?')" class="text-red-700 hover:underline">Eliminar</a>
-                  </div>
-                </div>
-              `).join('')}
+        <div class="bg-white border rounded-2xl p-6 shadow-sm flex flex-col gap-4">
+          <div class="flex flex-col sm:flex-row items-baseline sm:items-center justify-between gap-2 border-b pb-2">
+            <h3 class="font-display font-semibold text-espresso text-base flex items-center gap-2">
+              📋 Artículos de Blog Publicados (<span id="total-blog-count">-</span>)
+            </h3>
+            <div class="w-full sm:w-auto flex items-center gap-2">
+              <span class="text-xs text-espresso font-semibold">🔍 Buscar:</span>
+              <input type="text" id="blog-search-input" oninput="filterAdminBlogs()" placeholder="Buscar por título o categoría..." class="border border-border rounded-lg px-3 py-1 text-xs outline-none focus:ring-1 focus:ring-gold bg-[#fefdfa] w-full sm:w-60">
+            </div>
+          </div>
+          
+          <div id="admin-blog-list-container" class="max-h-[500px] overflow-y-auto border border-border rounded-xl divide-y text-xs bg-white">
+            <div class="p-8 text-center text-ink-2 italic flex items-center justify-center gap-2.5">
+              <div class="animate-spin rounded-full h-4.5 w-4.5 border-2 border-maroon border-t-transparent"></div>
+              <span>Cargando artículos formativos de la biblioteca teológica...</span>
+            </div>
           </div>
         </div>
       </div>
@@ -4964,12 +5140,116 @@ app.get('/admin', (req, res) => {
         window.location.hash = name;
       }
 
+      // ── SISTEMA DINÁMICO CLIENT-SIDE DE BLOGS DE FORMACIÓN ──
+      let cachedAdminBlogs = [];
+
+      async function loadAdminBlogs() {
+        const container = document.getElementById('admin-blog-list-container');
+        if (!container) return;
+        
+        try {
+          const res = await fetch('/api/admin/blogs');
+          const data = await res.json();
+          if (data.error) {
+            container.innerHTML = '<div class="p-4 text-center text-red-700 italic">Error de autenticación o acceso: ' + data.error + '</div>';
+            return;
+          }
+          cachedAdminBlogs = data.posts || [];
+          document.getElementById('total-blog-count').innerText = cachedAdminBlogs.length;
+          filterAdminBlogs();
+        } catch (e) {
+          container.innerHTML = '<div class="p-4 text-center text-red-700 italic">Error de conexión: ' + e.message + '</div>';
+        }
+      }
+
+      function filterAdminBlogs() {
+        const query = (document.getElementById('blog-search-input')?.value || '').toLowerCase().trim();
+        const container = document.getElementById('admin-blog-list-container');
+        if (!container) return;
+
+        let filtered = cachedAdminBlogs;
+        if (query) {
+          filtered = cachedAdminBlogs.filter(p => 
+            (p.titulo || '').toLowerCase().includes(query) || 
+            (p.slug || '').toLowerCase().includes(query) || 
+            (p.categoria || '').toLowerCase().includes(query) ||
+            (p.descripcion || '').toLowerCase().includes(query)
+          );
+        }
+
+        renderAdminBlogsList(filtered);
+      }
+
+      function renderAdminBlogsList(posts) {
+        const container = document.getElementById('admin-blog-list-container');
+        if (!container) return;
+
+        if (posts.length === 0) {
+          container.innerHTML = '<div class="p-6 text-center text-ink-2 italic">No se hallaron artículos con esos términos.</div>';
+          return;
+        }
+
+        const escape = s => (s || '').toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+        let listHtml = "";
+        for (let i = 0; i < posts.length; i++) {
+          const p = posts[i];
+          const escapedSlug = escape(p.slug);
+          const escapedTitulo = escape(p.titulo);
+          const escapedCategoria = escape(p.categoria);
+          const escapedDesc = escape(p.descripcion || 'Sin optimización IA');
+          
+          listHtml += '<div class="p-3 flex items-center justify-between hover:bg-cream/10 gap-4">';
+          listHtml += '  <div class="flex flex-col gap-0.5 truncate max-w-xl">';
+          listHtml += '    <span class="font-bold text-espresso">' + escapedTitulo + '</span>';
+          listHtml += '    <span class="text-[10px] text-ink-2 truncate">Slug: <strong class="text-gold-deep">' + escapedSlug + '</strong> | Cat: <span class="bg-[#E6DFD4] text-espresso px-2 py-0.5 rounded-sm font-semibold">' + escapedCategoria + '</span> | SEO: ' + escapedDesc + '</span>';
+          listHtml += '  </div>';
+          listHtml += '  <div class="flex items-center gap-3 shrink-0">';
+          listHtml += '    <a href="/blog/' + escapedSlug + '" target="_blank" class="text-maroon font-bold hover:underline">Ver</a>';
+          listHtml += '    <button data-slug="' + escapedSlug + '" onclick="deleteAdminBlogEvent(this)" class="text-red-700 hover:text-red-900 hover:underline cursor-pointer transition font-semibold border-0 bg-transparent">Eliminar</button>';
+          listHtml += '  </div>';
+          listHtml += '</div>';
+        }
+        container.innerHTML = listHtml;
+      }
+
+      async function deleteAdminBlogEvent(btn) {
+        const slug = btn.getAttribute('data-slug');
+        if (!slug) return;
+        if (!confirm('¿Estás seguro de que deseas eliminar definitivamente este artículo doctrinal?')) return;
+        
+        try {
+          const res = await fetch('/api/admin/blogs/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug: slug })
+          });
+          const data = await res.json();
+          if (data.success) {
+            loadAdminBlogs();
+          } else {
+            alert('Error al intentar eliminar el post: ' + (data.error || 'Desconocido'));
+          }
+        } catch (e) {
+          alert('Error conectando con el servidor teológico: ' + e.message);
+        }
+      }
+
       window.addEventListener('DOMContentLoaded', () => {
         let hash = window.location.hash.replace('#', '') || 'infografias';
         if (!['infografias', 'blog', 'videos', 'podcasts'].includes(hash)) {
           hash = 'infografias';
         }
         switchTab(hash);
+        loadAdminBlogs();
+
+        // Add first manual image row for infographics on load only if empty
+        if (typeof addManualImageRow === 'function') {
+          const container = document.getElementById('manual-images-container');
+          if (container && container.querySelectorAll('.manual-image-row').length === 0) {
+            addManualImageRow();
+          }
+        }
       });
 
       // ── MÉTODOS DEL EXPOSITOR NATIVO DE CLOUDINARY ──
@@ -5388,6 +5668,38 @@ function extractSpotifyInfo(url) {
   return { spotifyUrl, embedUrl, embedHtml };
 }
 
+// API endpoints to list and delete blog posts for admin asynchronously
+app.get('/api/admin/blogs', (req, res) => {
+  const user = getAuthedUser(req);
+  if (!user || user.plan !== 'admin') {
+    return res.status(403).json({ error: 'No autorizado' });
+  }
+  try {
+    const blogCatalog = blog.loadBlog();
+    res.json({ posts: blogCatalog.posts || [] });
+  } catch (e) {
+    res.status(500).json({ error: 'Error cargando artículos: ' + e.message });
+  }
+});
+
+app.post('/api/admin/blogs/delete', (req, res) => {
+  const user = getAuthedUser(req);
+  if (!user || user.plan !== 'admin') {
+    return res.status(403).json({ error: 'No autorizado' });
+  }
+  try {
+    const { slug } = req.body;
+    const targetSlug = slug || req.query.slug;
+    if (!targetSlug) {
+      return res.status(400).json({ error: 'Slug de post requerido' });
+    }
+    blog.deletePost(targetSlug);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Error al eliminar post: ' + e.message });
+  }
+});
+
 // API: GENERAR SEO PARA INFOGRAFÍA USANDO GEMINI (AJAX)
 app.post('/api/seo/generar-seo-infografia', async (req, res) => {
   const { titulo, tema, categoria } = req.body;
@@ -5439,15 +5751,21 @@ app.post('/admin/crear-infografia-manual', async (req, res) => {
   let imageHeights = req.body.imageHeights || [];
   let imageCovers = req.body.imageCovers || [];
 
-  // Fallback a parser de URLs legacy si no se usó el selector de bloques de Cloudinary
+  // Asegurar que todas las colecciones paralelas son arrays, incluso con un solo elemento enviado
+  if (imageUrls && !Array.isArray(imageUrls)) imageUrls = [imageUrls];
+  if (imageNames && !Array.isArray(imageNames)) imageNames = [imageNames];
+  if (imageAlts && !Array.isArray(imageAlts)) imageAlts = [imageAlts];
+  if (imageWidths && !Array.isArray(imageWidths)) imageWidths = [imageWidths];
+  if (imageHeights && !Array.isArray(imageHeights)) imageHeights = [imageHeights];
+  if (imageCovers && !Array.isArray(imageCovers)) imageCovers = [imageCovers];
+
+  // Fallback a parser de URLs legacy si no se envió nada
   if (!imageUrls || imageUrls.length === 0 || (typeof imageUrls === 'string')) {
     const legacyUrlStr = req.body.imagenUrl || '';
     imageUrls = (typeof legacyUrlStr === 'string' ? [legacyUrlStr] : legacyUrlStr || [])
       .flatMap(str => str.split(/[\n,]+/))
       .map(u => u.trim())
       .filter(Boolean);
-  } else if (!Array.isArray(imageUrls)) {
-    imageUrls = [imageUrls];
   }
 
   if (!titulo || !tema || imageUrls.length === 0) {
@@ -5455,11 +5773,12 @@ app.post('/admin/crear-infografia-manual', async (req, res) => {
   }
 
   try {
-    const slug = infografias.detectarTipo(titulo); // Generar slug
+    let slug = infografias.generateSlug(titulo); // Generar slug basado en el título real!
     const catalog = infografias.loadCatalog();
     catalog.infografias = catalog.infografias || [];
     
-    const uniqueSlug = `${slug}-${Date.now().toString().slice(-4)}`;
+    const exists = catalog.infografias.some(i => i.slug === slug);
+    const uniqueSlug = exists ? `${slug}-${Date.now().toString().slice(-4)}` : slug;
 
     const imagenesParaGuardar = imageUrls.map((u, index) => {
       const name = imageNames[index] || `slide-${index + 1}.jpg`;

@@ -576,4 +576,4 @@ function getInfografias({ categoria, q, page=1, limit=20 } = {}) {
 function getInfografiaBySlug(slug) { return loadCatalog().infografias.find(i => i.slug===slug) || null; }
 function deleteInfografia(id)      { const c=loadCatalog(); c.infografias=c.infografias.filter(i=>i.id!==id); c.total=c.infografias.length; saveCatalog(c); }
 
-module.exports = { generarInfografia, detectarTipo, getInfografias, getInfografiaBySlug, deleteInfografia, loadCatalog, saveCatalog, SIZES };
+module.exports = { generarInfografia, detectarTipo, generateSlug, getInfografias, getInfografiaBySlug, deleteInfografia, loadCatalog, saveCatalog, SIZES };
