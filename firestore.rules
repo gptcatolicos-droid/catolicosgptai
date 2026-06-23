@@ -49,5 +49,25 @@ service cloud.firestore {
     match /admins/{adminId} {
       allow read, write: if true;
     }
+
+    // Infografias collection rules
+    match /infografias/{infografiaId} {
+      allow read, write: if true;
+    }
+
+    // Videos collection rules
+    match /videos/{videoId} {
+      allow read, write: if true;
+    }
+
+    // Podcasts collection rules
+    match /podcasts/{podcastId} {
+      allow read, write: if true;
+    }
+
+    // Posts (Blog) collection rules
+    match /posts/{postId} {
+      allow read, write: if true;
+    }
   }
 }

@@ -54,6 +54,21 @@ function saveCatalog(c) {
   if (nuevoTotal > 0) {
     try { fs.writeFileSync(CATALOG_BACKUP, json, 'utf-8'); } catch(e) {}
   }
+
+  // Sincronización asincrónica de fondo hacia Firestore
+  try {
+    const firebaseSync = require('./firebase-module');
+    if (c && Array.isArray(c.infografias)) {
+      c.infografias.forEach(item => {
+        firebaseSync.syncUploadInfografia(item).catch(err => {
+          console.error('[Firebase Sync] Error al sincronizar infografia:', err.message);
+        });
+      });
+    }
+  } catch (fsErr) {
+    console.error('[Firebase Sync] Error de carga diferida:', fsErr.message);
+  }
+
   return true;
 }
 
@@ -574,6 +589,18 @@ function getInfografias({ categoria, q, page=1, limit=20 } = {}) {
 }
 
 function getInfografiaBySlug(slug) { return loadCatalog().infografias.find(i => i.slug===slug) || null; }
-function deleteInfografia(id)      { const c=loadCatalog(); c.infografias=c.infografias.filter(i=>i.id!==id); c.total=c.infografias.length; saveCatalog(c); }
+function deleteInfografia(id) {
+  const c = loadCatalog();
+  c.infografias = c.infografias.filter(i => i.id !== id);
+  c.total = c.infografias.length;
+  saveCatalog(c);
+
+  try {
+    const firebaseSync = require('./firebase-module');
+    firebaseSync.syncDeleteInfografia(id).catch(err => {
+      console.error('[Firebase Sync] Error al eliminar infografia de Firestore:', err.message);
+    });
+  } catch(e) {}
+}
 
 module.exports = { generarInfografia, detectarTipo, generateSlug, getInfografias, getInfografiaBySlug, deleteInfografia, loadCatalog, saveCatalog, SIZES };

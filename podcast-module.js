@@ -69,6 +69,31 @@ function savePodcasts(c) {
   const json = JSON.stringify(c, null, 2);
   try { fs.writeFileSync(PODCAST_PATH, json); } catch(e) { console.error('[Podcasts save]', e.message); }
   try { fs.writeFileSync(PODCAST_BACKUP, json); } catch(e) {}
+
+  try {
+    const firebaseSync = require('./firebase-module');
+    if (c && Array.isArray(c.podcasts)) {
+      c.podcasts.forEach(item => {
+        firebaseSync.syncUploadPodcast(item).catch(err => {
+          console.error('[Firebase Sync] Error al sincronizar podcast:', err.message);
+        });
+      });
+    }
+  } catch(e) {}
+}
+
+function deletePodcast(id) {
+  const c = loadPodcasts();
+  c.podcasts = (c.podcasts || []).filter(p => p.id !== id);
+  c.total = c.podcasts.length;
+  savePodcasts(c);
+
+  try {
+    const firebaseSync = require('./firebase-module');
+    firebaseSync.syncDeletePodcast(id).catch(err => {
+      console.error('[Firebase Sync] Error al eliminar podcast de Firestore:', err.message);
+    });
+  } catch(e) {}
 }
 
 function getPodcasts({ categoria = null, q = null } = {}) {
@@ -86,4 +111,4 @@ function getPodcastBySlug(slug) {
   return loadPodcasts().podcasts.find(p => p.slug === slug);
 }
 
-module.exports = { loadPodcasts, savePodcasts, getPodcasts, getPodcastBySlug };
+module.exports = { loadPodcasts, savePodcasts, getPodcasts, getPodcastBySlug, deletePodcast };

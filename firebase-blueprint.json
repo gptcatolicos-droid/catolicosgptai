@@ -101,6 +101,83 @@
         }
       },
       "required": ["id", "code", "plan", "maxUses", "uses", "activo", "createdAt"]
+    },
+    "infografia": {
+      "title": "Infografia",
+      "description": "Catholic infographic graphic slide metadata and CDN links",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "slug": { "type": "string" },
+        "tema": { "type": "string" },
+        "tipo": { "type": "string" },
+        "categoria": { "type": "string" },
+        "titulo": { "type": "string" },
+        "metaDescription": { "type": "string" },
+        "altText": { "type": "string" },
+        "imagenes": { "type": "array" },
+        "totalSlides": { "type": "integer" },
+        "formato": { "type": "string" },
+        "userPlan": { "type": "string" },
+        "userId": { "type": "string" },
+        "fechaCreacion": { "type": "string" },
+        "fechaISO": { "type": "string" },
+        "publicado": { "type": "boolean" },
+        "keywords": { "type": "string" }
+      },
+      "required": ["id", "slug", "tema", "imagenes", "totalSlides", "fechaCreacion"]
+    },
+    "video": {
+      "title": "Video",
+      "description": "Curated YouTube cathodic video training resource",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "slug": { "type": "string" },
+        "titulo": { "type": "string" },
+        "canal": { "type": "string" },
+        "youtubeId": { "type": "string" },
+        "comentario": { "type": "string" },
+        "categoria": { "type": "string" },
+        "publicado": { "type": "boolean" }
+      },
+      "required": ["id", "slug", "titulo", "youtubeId"]
+    },
+    "podcast": {
+      "title": "Podcast",
+      "description": "Curated audio episode or podcast link with iframe HTML",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "slug": { "type": "string" },
+        "titulo": { "type": "string" },
+        "autor": { "type": "string" },
+        "descripcion": { "type": "string" },
+        "embedUrl": { "type": "string" },
+        "embedHtml": { "type": "string" },
+        "spotifyUrl": { "type": "string" },
+        "categoria": { "type": "string" },
+        "publicado": { "type": "boolean" }
+      },
+      "required": ["id", "slug", "titulo", "spotifyUrl"]
+    },
+    "post": {
+      "title": "Post",
+      "description": "SEO-optimized catechetical blog article with markdown body",
+      "type": "object",
+      "properties": {
+        "slug": { "type": "string" },
+        "titulo": { "type": "string" },
+        "descripcion": { "type": "string" },
+        "extracto": { "type": "string" },
+        "keywords": { "type": "string" },
+        "categoria": { "type": "string" },
+        "contenidoMd": { "type": "string" },
+        "fechaCreacion": { "type": "string" },
+        "imagenPortada": { "type": "string" },
+        "publicado": { "type": "boolean" }
+      },
+      "required": ["slug", "titulo", "contenidoMd", "fechaCreacion"]
     }
   },
   "firestore": {
@@ -111,6 +188,22 @@
     "/coupons/{couponId}": {
       "schema": "coupon",
       "description": "Sync collection of platform reward and tier upgraders"
+    },
+    "/infografias/{infografiaId}": {
+      "schema": "infografia",
+      "description": "Sync collection for durable persistence of custom and generated infographics"
+    },
+    "/videos/{videoId}": {
+      "schema": "video",
+      "description": "Sync collection for curated formative videos list"
+    },
+    "/podcasts/{podcastId}": {
+      "schema": "podcast",
+      "description": "Sync collection for curated audio and Spotify programs list"
+    },
+    "/posts/{postId}": {
+      "schema": "post",
+      "description": "Sync collection for custom, enriched, and default search-engine optimized blog posts"
     }
   }
 }

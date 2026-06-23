@@ -281,6 +281,304 @@ async function syncUploadCoupon(coupon) {
   }
 }
 
+// ── 4. Sincronización de Infografías en la Nube ──
+async function syncDownloadInfografias(localList) {
+  if (!isFirebaseEnabled) {
+    console.log('[Firebase Sync] Descarga de infografías omitida (Firebase desactivado).');
+    return localList;
+  }
+  const path = 'infografias';
+  try {
+    const querySnapshot = await getDocs(collection(db, path));
+    const cloudItems = [];
+    querySnapshot.forEach((doc) => {
+      cloudItems.push(doc.data());
+    });
+    
+    if (cloudItems.length === 0) {
+      return localList;
+    }
+
+    const merged = [...localList];
+    cloudItems.forEach((ci) => {
+      const idx = merged.findIndex(i => i.id === ci.id || (i.slug && i.slug === ci.slug));
+      if (idx === -1) {
+        merged.push(ci);
+      } else {
+        const localTime = new Date(merged[idx].fechaCreacion || 0).getTime();
+        const cloudTime = new Date(ci.fechaCreacion || 0).getTime();
+        if (cloudTime >= localTime) {
+          merged[idx] = { ...merged[idx], ...ci };
+        }
+      }
+    });
+
+    console.log(`[Firebase Sync] Infografías sincronizadas desde la nube. Total: ${merged.length}`);
+    return merged;
+  } catch (err) {
+    console.error('[Firebase Sync] Error sincronizando infografías de la nube:', err.message);
+    return localList;
+  }
+}
+
+async function syncUploadInfografia(item) {
+  if (!isFirebaseEnabled) return;
+  const path = `infografias/${item.id}`;
+  try {
+    const sanitizedItem = {
+      id: item.id || '',
+      slug: item.slug || '',
+      tema: item.tema || '',
+      tipo: item.tipo || '',
+      categoria: item.categoria || '',
+      titulo: item.titulo || '',
+      metaDescription: item.metaDescription || '',
+      altText: item.altText || '',
+      imagenes: Array.isArray(item.imagenes) ? item.imagenes : [],
+      totalSlides: Number(item.totalSlides) || 1,
+      formato: item.formato || '9:16',
+      userPlan: item.userPlan || 'free',
+      userId: item.userId || 'cron',
+      fechaCreacion: item.fechaCreacion || new Date().toISOString(),
+      fechaISO: item.fechaISO || new Date().toISOString().slice(0, 10),
+      publicado: typeof item.publicado === 'boolean' ? item.publicado : true,
+      keywords: item.keywords || ''
+    };
+
+    await setDoc(doc(db, 'infografias', sanitizedItem.id), sanitizedItem);
+    console.log(`[Firebase Sync] Infografía "${sanitizedItem.titulo || sanitizedItem.tema}" guardada en Firestore.`);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+async function syncDeleteInfografia(id) {
+  if (!isFirebaseEnabled) return;
+  const path = `infografias/${id}`;
+  try {
+    await deleteDoc(doc(db, 'infografias', id));
+    console.log(`[Firebase Sync] Infografía ${id} eliminada de Firestore.`);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
+// ── 5. Sincronización de Videos en la Nube ──
+async function syncDownloadVideos(localList) {
+  if (!isFirebaseEnabled) {
+    console.log('[Firebase Sync] Descarga de videos omitida (Firebase desactivado).');
+    return localList;
+  }
+  const path = 'videos';
+  try {
+    const querySnapshot = await getDocs(collection(db, path));
+    const cloudItems = [];
+    querySnapshot.forEach((doc) => {
+      cloudItems.push(doc.data());
+    });
+    
+    if (cloudItems.length === 0) {
+      return localList;
+    }
+
+    const merged = [...localList];
+    cloudItems.forEach((cv) => {
+      const idx = merged.findIndex(i => i.id === cv.id || (i.slug && i.slug === cv.slug));
+      if (idx === -1) {
+        merged.push(cv);
+      } else {
+        merged[idx] = { ...merged[idx], ...cv };
+      }
+    });
+
+    console.log(`[Firebase Sync] Videos sincronizados desde la nube. Total: ${merged.length}`);
+    return merged;
+  } catch (err) {
+    console.error('[Firebase Sync] Error sincronizando videos de la nube:', err.message);
+    return localList;
+  }
+}
+
+async function syncUploadVideo(item) {
+  if (!isFirebaseEnabled) return;
+  const path = `videos/${item.id}`;
+  try {
+    const sanitizedItem = {
+      id: item.id || '',
+      slug: item.slug || '',
+      titulo: item.titulo || '',
+      canal: item.canal || '',
+      youtubeId: item.youtubeId || '',
+      comentario: item.comentario || '',
+      categoria: item.categoria || '',
+      publicado: typeof item.publicado === 'boolean' ? item.publicado : true
+    };
+
+    await setDoc(doc(db, 'videos', sanitizedItem.id), sanitizedItem);
+    console.log(`[Firebase Sync] Video "${sanitizedItem.titulo}" guardado en Firestore.`);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+async function syncDeleteVideo(id) {
+  if (!isFirebaseEnabled) return;
+  const path = `videos/${id}`;
+  try {
+    await deleteDoc(doc(db, 'videos', id));
+    console.log(`[Firebase Sync] Video ${id} eliminado de Firestore.`);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
+// ── 6. Sincronización de Podcasts en la Nube ──
+async function syncDownloadPodcasts(localList) {
+  if (!isFirebaseEnabled) {
+    console.log('[Firebase Sync] Descarga de podcasts omitida (Firebase desactivado).');
+    return localList;
+  }
+  const path = 'podcasts';
+  try {
+    const querySnapshot = await getDocs(collection(db, path));
+    const cloudItems = [];
+    querySnapshot.forEach((doc) => {
+      cloudItems.push(doc.data());
+    });
+    
+    if (cloudItems.length === 0) {
+      return localList;
+    }
+
+    const merged = [...localList];
+    cloudItems.forEach((cp) => {
+      const idx = merged.findIndex(i => i.id === cp.id || (i.slug && i.slug === cp.slug));
+      if (idx === -1) {
+        merged.push(cp);
+      } else {
+        merged[idx] = { ...merged[idx], ...cp };
+      }
+    });
+
+    console.log(`[Firebase Sync] Podcasts sincronizados desde la nube. Total: ${merged.length}`);
+    return merged;
+  } catch (err) {
+    console.error('[Firebase Sync] Error sincronizando podcasts de la nube:', err.message);
+    return localList;
+  }
+}
+
+async function syncUploadPodcast(item) {
+  if (!isFirebaseEnabled) return;
+  const path = `podcasts/${item.id}`;
+  try {
+    const sanitizedItem = {
+      id: item.id || '',
+      slug: item.slug || '',
+      titulo: item.titulo || '',
+      autor: item.autor || '',
+      descripcion: item.descripcion || '',
+      embedUrl: item.embedUrl || '',
+      embedHtml: item.embedHtml || '',
+      spotifyUrl: item.spotifyUrl || '',
+      categoria: item.categoria || '',
+      publicado: typeof item.publicado === 'boolean' ? item.publicado : true
+    };
+
+    await setDoc(doc(db, 'podcasts', sanitizedItem.id), sanitizedItem);
+    console.log(`[Firebase Sync] Podcast "${sanitizedItem.titulo}" guardado en Firestore.`);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+async function syncDeletePodcast(id) {
+  if (!isFirebaseEnabled) return;
+  const path = `podcasts/${id}`;
+  try {
+    await deleteDoc(doc(db, 'podcasts', id));
+    console.log(`[Firebase Sync] Podcast ${id} eliminado de Firestore.`);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
+// ── 7. Sincronización de Blog Posts en la Nube ──
+async function syncDownloadPosts(localList) {
+  if (!isFirebaseEnabled) {
+    console.log('[Firebase Sync] Descarga de blog posts omitida (Firebase desactivado).');
+    return localList;
+  }
+  const path = 'posts';
+  try {
+    const querySnapshot = await getDocs(collection(db, path));
+    const cloudItems = [];
+    querySnapshot.forEach((doc) => {
+      cloudItems.push(doc.data());
+    });
+    
+    if (cloudItems.length === 0) {
+      return localList;
+    }
+
+    const merged = [...localList];
+    cloudItems.forEach((cp) => {
+      const idx = merged.findIndex(i => i.slug === cp.slug);
+      if (idx === -1) {
+        merged.push(cp);
+      } else {
+        const localTime = new Date(merged[idx].fechaCreacion || 0).getTime();
+        const cloudTime = new Date(cp.fechaCreacion || 0).getTime();
+        if (cloudTime >= localTime) {
+          merged[idx] = { ...merged[idx], ...cp };
+        }
+      }
+    });
+
+    console.log(`[Firebase Sync] Blog posts sincronizados desde la nube. Total: ${merged.length}`);
+    return merged;
+  } catch (err) {
+    console.error('[Firebase Sync] Error sincronizando blog posts de la nube:', err.message);
+    return localList;
+  }
+}
+
+async function syncUploadPost(item) {
+  if (!isFirebaseEnabled) return;
+  const docId = item.slug;
+  const path = `posts/${docId}`;
+  try {
+    const sanitizedItem = {
+      slug: item.slug || '',
+      titulo: item.titulo || '',
+      descripcion: item.descripcion || '',
+      extracto: item.extracto || '',
+      keywords: item.keywords || '',
+      categoria: item.categoria || '',
+      contenidoMd: item.contenidoMd || '',
+      fechaCreacion: item.fechaCreacion || new Date().toISOString(),
+      imagenPortada: item.imagenPortada || '',
+      publicado: typeof item.publicado === 'boolean' ? item.publicado : true
+    };
+
+    await setDoc(doc(db, 'posts', docId), sanitizedItem);
+    console.log(`[Firebase Sync] Blog post "${sanitizedItem.titulo}" guardado en Firestore.`);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+async function syncDeletePost(slug) {
+  if (!isFirebaseEnabled) return;
+  const path = `posts/${slug}`;
+  try {
+    await deleteDoc(doc(db, 'posts', slug));
+    console.log(`[Firebase Sync] Blog post "${slug}" eliminado de Firestore.`);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
 module.exports = {
   db,
   auth,
@@ -290,5 +588,17 @@ module.exports = {
   syncDownloadUsers,
   syncUploadUser,
   syncDownloadCoupons,
-  syncUploadCoupon
+  syncUploadCoupon,
+  syncDownloadInfografias,
+  syncUploadInfografia,
+  syncDeleteInfografia,
+  syncDownloadVideos,
+  syncUploadVideo,
+  syncDeleteVideo,
+  syncDownloadPodcasts,
+  syncUploadPodcast,
+  syncDeletePodcast,
+  syncDownloadPosts,
+  syncUploadPost,
+  syncDeletePost
 };

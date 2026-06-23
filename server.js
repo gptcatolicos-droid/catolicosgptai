@@ -246,7 +246,7 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
   <meta property="og:description" content="${M.description}">
   <meta property="og:type" content="website">
   <meta property="og:url" content="${APP_URL}${M.canonical}">
-  <meta property="og:image" content="${M.image || 'https://res.cloudinary.com/df9vdt2da/image/upload/v1714498302/catolicosgpt_hero.png'}">
+  <meta property="og:image" content="${M.image || 'https://yt3.googleusercontent.com/gTL33dWPVULnTlxRu-_2vuEuCKpPsdK_cY6m43-vjfekOV5ho5ucfPFe1wjfbEXl9tjLvNMOlQ=w1060-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj'}">
   <meta property="og:site_name" content="CatólicosGPT">
   
   <!-- Favicon Oficial CatólicosGPT -->
@@ -3332,7 +3332,7 @@ app.get('/blog/:categoria/:slug', (req, res) => {
 app.get('/podcasts', (req, res) => {
   const list = podcast.getPodcasts();
   const html = `
-    <div class="max-w-5xl mx-auto w-full px-4 py-8 flex flex-col gap-6">
+    <div class="max-w-5xl mx-auto w-full px-4 py-8 flex flex-col gap-6 animate-fade-in">
       <div class="flex flex-col gap-2">
         <h1 class="font-display font-bold text-2xl text-maroon tracking-wide">Podcasts Católicos Recomendados</h1>
         <p class="font-serif text-ink2 text-sm italic">Estudios bíblicos, catecismo y meditaciones diarias para reproducir en cualquier momento.</p>
@@ -3351,6 +3351,15 @@ app.get('/podcasts', (req, res) => {
             <div class="rounded-xl overflow-hidden shadow-sm">
               ${p.embedHtml}
             </div>
+
+            <!-- Standalone Link -->
+            <div class="flex items-center justify-between border-t border-border/40 pt-3 mt-1">
+              <span class="text-[10px] font-semibold text-ink2 italic">- Autor: ${p.autor || 'Expositor de Fe'}</span>
+              <a href="/podcasts/${p.slug}" class="text-xs font-bold text-maroon hover:underline flex items-center gap-1">
+                Ver y Compartir
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-external-link"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+              </a>
+            </div>
           </div>
         `).join('')}
       </div>
@@ -3359,26 +3368,154 @@ app.get('/podcasts', (req, res) => {
   res.send(renderPage('Podcasts Católicos Curados', html, req));
 });
 
+app.get('/podcasts/:slug', (req, res) => {
+  const p = podcast.getPodcastBySlug(req.params.slug);
+  if (!p) {
+    return res.status(404).send(renderPage('No encontrado', `<div class="p-12 text-center text-ink w-full">Podcast no encontrado. <a href="/podcasts" class="text-maroon underline">Volver a podcasts</a></div>`, req));
+  }
+
+  // Related podcasts
+  let relacionadosHtml = '';
+  try {
+    const listAll = podcast.getPodcasts();
+    const filtered = listAll.filter(item => item.id !== p.id && item.categoria === p.categoria).slice(0, 3);
+    if (filtered.length > 0) {
+      relacionadosHtml = `
+        <div class="mt-12 border-t pt-8 w-full">
+          <h3 class="font-display font-bold text-lg text-maroon mb-6">Otros podcasts del tema</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            ${filtered.map(item => `
+              <div class="bg-white border rounded-xl p-4.5 shadow-xs flex flex-col justify-between hover:border-gold/30 transition duration-300">
+                <div>
+                  <span class="text-[9px] font-bold text-gold uppercase tracking-wider font-mono">${item.categoria}</span>
+                  <h4 class="font-display font-semibold text-sm text-espresso mt-1 leading-snug line-clamp-2">${item.titulo}</h4>
+                </div>
+                <a href="/podcasts/${item.slug}" class="text-xs text-maroon font-bold mt-4 hover:underline inline-flex items-center gap-1">
+                  Escuchar audio
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </a>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+  } catch(e) {}
+
+  const html = `
+    <div class="max-w-4xl mx-auto w-full px-4 py-8 flex flex-col gap-6 animate-fade-in">
+      <a href="/podcasts" class="text-xs font-semibold flex items-center gap-1.5 text-ink2 hover:text-maroon self-start">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left"><line x1="19" x2="5" y1="12" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        Volver a podcasts
+      </a>
+
+      <!-- PODCAST HEAD AND EMBED -->
+      <div class="flex flex-col gap-4 border-b pb-6">
+        <div class="flex items-center gap-2 text-xs font-semibold text-gold font-mono uppercase tracking-widest">
+          <span>${p.categoria}</span>
+          <span>•</span>
+          <span>Autor: ${p.autor || 'Expositor de Fe'}</span>
+        </div>
+        <h1 class="font-display font-bold text-2xl sm:text-3xl text-espresso tracking-wide leading-tight">${p.titulo}</h1>
+      </div>
+
+      <div class="rounded-2xl overflow-hidden shadow-xl border border-border/40 bg-cream">
+        ${p.embedHtml}
+      </div>
+
+      <div class="bg-cream-light/40 border rounded-2xl p-5 shadow-xs">
+        <h3 class="font-display font-bold text-espresso text-sm mb-2">Descripción del Episodio</h3>
+        <p class="text-ink text-sm leading-relaxed">${p.descripcion || 'Episodio de audio católico de fe.'}</p>
+      </div>
+
+      <!-- SECCIÓN DE COMPARTIR -->
+      <div class="bg-white border rounded-2xl p-6 shadow-sm flex flex-col gap-4 sacred-border">
+        <div class="flex flex-col gap-1">
+          <h3 class="font-display font-bold text-maroon text-sm flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-share-2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
+            Compartir Audio Católico
+          </h3>
+          <p class="text-ink2 text-xs">Comparte la doctrina cristiana difundiendo este podcast y edificando a tus allegados o grupos apostólicos.</p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+          <input type="text" id="share-url-input" readonly value="" class="bg-cream border border-border px-4 py-2 text-xs rounded-xl flex-1 text-ink select-all focus:outline-hidden font-mono">
+          <button id="copy-share-btn" onclick="copyShareUrl()" class="bg-gold hover:bg-gold-deep text-white px-5 py-2 rounded-xl text-xs font-bold transition duration-200 cursor-pointer text-center">Copiar enlace</button>
+        </div>
+
+        <div class="flex gap-2.5 mt-1 flex-wrap">
+          <a id="share-wa-btn" href="#" target="_blank" class="bg-[#25D366] hover:bg-[#20ba5a] text-white px-4 py-2 rounded-full text-xs font-bold transition flex items-center gap-1.5">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-circle"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
+            WhatsApp
+          </a>
+          <a id="share-fb-btn" href="#" target="_blank" class="bg-[#1877F2] hover:bg-[#166fe5] text-white px-4 py-2 rounded-full text-xs font-bold transition flex items-center gap-1.5">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-facebook"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+            Facebook
+          </a>
+        </div>
+      </div>
+
+      <!-- OTROS RELACIONADOS -->
+      ${relacionadosHtml}
+    </div>
+
+    <script>
+      const currentUrl = window.location.href;
+      document.getElementById('share-url-input').value = currentUrl;
+      
+      document.getElementById('share-wa-btn').href = 'https://api.whatsapp.com/send?text=' + encodeURIComponent('Te recomiendo escuchar este audio católico: "' + \`${p.titulo}\` + '" ' + currentUrl);
+      document.getElementById('share-fb-btn').href = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(currentUrl);
+
+      function copyShareUrl() {
+        const input = document.getElementById('share-url-input');
+        input.select();
+        navigator.clipboard.writeText(currentUrl).then(() => {
+          const btn = document.getElementById('copy-share-btn');
+          const originalText = btn.textContent;
+          btn.textContent = '¡Copiado! ✓';
+          btn.classList.remove('bg-gold');
+          btn.classList.add('bg-green-700');
+          setTimeout(() => {
+            btn.textContent = originalText;
+            btn.classList.remove('bg-green-700');
+            btn.classList.add('bg-gold');
+          }, 2000);
+        });
+      }
+    </script>
+  `;
+  res.send(renderPage(p.titulo, html, req, {
+    description: p.descripcion || 'Audio de podcast católico.',
+    keywords: `${p.categoria}, podcast catolico, spotify catolico`
+  }));
+});
+
 app.get('/videos', (req, res) => {
   const list = videos.getVideos();
   const html = `
-    <div class="max-w-5xl mx-auto w-full px-4 py-8 flex flex-col gap-6">
+    <div class="max-w-5xl mx-auto w-full px-4 py-8 flex flex-col gap-6 animate-fade-in">
       <div class="flex flex-col gap-2">
         <h1 class="font-display font-bold text-2xl text-maroon tracking-wide font-medium">Canales y Videos Curados</h1>
         <p class="font-serif text-ink2 text-sm italic">Respuestas de apologética, liturgia explicada y formación doctrinal en formato de video.</p>
       </div>
       
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-4 font-sans">
         ${list.map(v => `
           <div class="seo-card flex flex-col justify-between overflow-hidden">
             <div class="aspect-video rounded-lg overflow-hidden bg-black mb-4 flex">
               <iframe src="https://www.youtube.com/embed/${v.youtubeId}?rel=0" allowfullscreen style="width:100%;height:100%;border:0" loading="lazy"></iframe>
             </div>
-            <div class="flex flex-col gap-1 inline-block">
+            <div class="flex flex-col gap-1 inline-block mt-auto pb-1">
               <span class="text-[9px] font-semibold text-gold font-mono uppercase tracking-widest block">${v.categoria}</span>
-              <h3 class="font-display font-bold text-espresso text-sm leading-snug">${v.titulo}</h3>
+              <h3 class="font-display font-bold text-espresso text-sm leading-snug line-clamp-2">${v.titulo}</h3>
               <p class="text-ink2 text-[11px] leading-relaxed line-clamp-2 mt-1">${v.comentario}</p>
-              <span class="text-[10px] font-semibold text-ink2 mt-2 block italic">- Canal: ${v.canal}</span>
+              <div class="flex items-center justify-between mt-3 pt-2.5 border-t border-border/40">
+                <span class="text-[10px] font-semibold text-ink2 italic">Canal: ${v.canal}</span>
+                <a href="/videos/${v.slug}" class="text-xs font-bold text-maroon hover:underline flex items-center gap-1">
+                  Ver y Compartir
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-external-link"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+                </a>
+              </div>
             </div>
           </div>
         `).join('')}
@@ -3386,6 +3523,132 @@ app.get('/videos', (req, res) => {
     </div>
   `;
   res.send(renderPage('Canales & Videos Católicos', html, req));
+});
+
+app.get('/videos/:slug', (req, res) => {
+  const v = videos.getVideoBySlug(req.params.slug);
+  if (!v) {
+    return res.status(404).send(renderPage('No encontrado', `<div class="p-12 text-center text-ink w-full">Video no encontrado. <a href="/videos" class="text-maroon underline">Volver a videos</a></div>`, req));
+  }
+
+  // Related videos
+  let relacionadosHtml = '';
+  try {
+    const listAll = videos.getVideos();
+    const filtered = listAll.filter(item => item.id !== v.id && item.categoria === v.categoria).slice(0, 3);
+    if (filtered.length > 0) {
+      relacionadosHtml = `
+        <div class="mt-12 border-t pt-8 w-full">
+          <h3 class="font-display font-bold text-lg text-maroon mb-6">Otros videos del tema</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            ${filtered.map(item => `
+              <div class="bg-white border rounded-xl overflow-hidden p-4 shadow-xs flex flex-col justify-between hover:border-gold/30 transition duration-300">
+                <div class="aspect-video rounded bg-black mb-3">
+                  <iframe src="https://www.youtube.com/embed/${item.youtubeId}?rel=0" allowfullscreen style="width:100%;height:100%;border:0" loading="lazy"></iframe>
+                </div>
+                <div>
+                  <span class="text-[9px] font-bold text-gold uppercase tracking-wider font-mono">${item.categoria}</span>
+                  <h4 class="font-display font-semibold text-sm text-espresso mt-1 line-clamp-2">${item.titulo}</h4>
+                </div>
+                <a href="/videos/${item.slug}" class="text-xs text-maroon font-bold mt-4 hover:underline inline-flex items-center gap-1">
+                  Ver detalle
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </a>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+  } catch(e) {}
+
+  const html = `
+    <div class="max-w-4xl mx-auto w-full px-4 py-8 flex flex-col gap-6 animate-fade-in">
+      <a href="/videos" class="text-xs font-semibold flex items-center gap-1.5 text-ink2 hover:text-maroon self-start">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left"><line x1="19" x2="5" y1="12" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        Volver a videos
+      </a>
+
+      <!-- VIDEO HEAD AND PLAYER -->
+      <div class="flex flex-col gap-4 border-b pb-6">
+        <div class="flex items-center gap-2 text-xs font-semibold text-gold font-mono uppercase tracking-widest">
+          <span>${v.categoria}</span>
+          <span>•</span>
+          <span>Canal: ${v.canal}</span>
+        </div>
+        <h1 class="font-display font-bold text-2xl sm:text-3xl text-espresso tracking-wide leading-tight">${v.titulo}</h1>
+      </div>
+
+      <div class="bg-black aspect-video rounded-2xl overflow-hidden shadow-xl border border-border/40">
+        <iframe src="https://www.youtube.com/embed/${v.youtubeId}?rel=0" allowfullscreen style="width:100%;height:100%;border:0"></iframe>
+      </div>
+
+      <div class="bg-cream-light/40 border rounded-2xl p-5 shadow-xs">
+        <h3 class="font-display font-bold text-espresso text-sm mb-2">Comentario de Formación</h3>
+        <p class="text-ink text-sm leading-relaxed">${v.comentario || 'Recurso formativo católico seleccionado.'}</p>
+      </div>
+
+      <!-- SECCIÓN DE COMPARTIR -->
+      <div class="bg-white border rounded-2xl p-6 shadow-sm flex flex-col gap-4 sacred-border">
+        <div class="flex flex-col gap-1">
+          <h3 class="font-display font-bold text-maroon text-sm flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-share-2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
+            Compartir Video Católico
+          </h3>
+          <p class="text-ink2 text-xs">Propaga la fe compartiendo este excelente video formativo con tu familia, amigos o en grupos parroquiales.</p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+          <input type="text" id="share-url-input" readonly value="" class="bg-cream border border-border px-4 py-2 text-xs rounded-xl flex-1 text-ink select-all focus:outline-hidden font-mono">
+          <button id="copy-share-btn" onclick="copyShareUrl()" class="bg-gold hover:bg-gold-deep text-white px-5 py-2 rounded-xl text-xs font-bold transition duration-200 cursor-pointer text-center">Copiar enlace</button>
+        </div>
+
+        <div class="flex gap-2.5 mt-1 flex-wrap">
+          <a id="share-wa-btn" href="#" target="_blank" class="bg-[#25D366] hover:bg-[#20ba5a] text-white px-4 py-2 rounded-full text-xs font-bold transition flex items-center gap-1.5">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-circle"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
+            WhatsApp
+          </a>
+          <a id="share-fb-btn" href="#" target="_blank" class="bg-[#1877F2] hover:bg-[#166fe5] text-white px-4 py-2 rounded-full text-xs font-bold transition flex items-center gap-1.5">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-facebook"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+            Facebook
+          </a>
+        </div>
+      </div>
+
+      <!-- OTROS RELACIONADOS -->
+      ${relacionadosHtml}
+    </div>
+
+    <script>
+      // Populate share URL and setup links
+      const currentUrl = window.location.href;
+      document.getElementById('share-url-input').value = currentUrl;
+      
+      document.getElementById('share-wa-btn').href = 'https://api.whatsapp.com/send?text=' + encodeURIComponent('Te comparto este excelente video católico: "' + \`${v.titulo}\` + '" ' + currentUrl);
+      document.getElementById('share-fb-btn').href = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(currentUrl);
+
+      function copyShareUrl() {
+        const input = document.getElementById('share-url-input');
+        input.select();
+        navigator.clipboard.writeText(currentUrl).then(() => {
+          const btn = document.getElementById('copy-share-btn');
+          const originalText = btn.textContent;
+          btn.textContent = '¡Copiado! ✓';
+          btn.classList.remove('bg-gold');
+          btn.classList.add('bg-green-700');
+          setTimeout(() => {
+            btn.textContent = originalText;
+            btn.classList.remove('bg-green-700');
+            btn.classList.add('bg-gold');
+          }, 2000);
+        });
+      }
+    </script>
+  `;
+  res.send(renderPage(v.titulo, html, req, {
+    description: v.comentario || 'Video católico de apologética y doctrina.',
+    keywords: `${v.categoria}, video catolico`
+  }));
 });
 
 app.get('/liturgia-de-las-horas', async (req, res) => {
@@ -5638,10 +5901,41 @@ app.get('/admin', (req, res) => {
 function extractYoutubeId(urlOrId) {
   if (!urlOrId) return '';
   const trimmed = urlOrId.trim();
+
+  // Si ya es un ID de 11 caracteres normal
   if (trimmed.length === 11) return trimmed;
+
+  // Soporte directo para YouTube Shorts
+  if (trimmed.includes('/shorts/')) {
+    const parts = trimmed.split('/shorts/');
+    const afterShorts = parts[1] || '';
+    const id = afterShorts.split(/[?&#]/)[0];
+    if (id && id.length === 11) {
+      return id;
+    }
+  }
+
+  // Soporte para patrones estándar
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
   const match = trimmed.match(regExp);
-  return (match && match[2].length === 11) ? match[2] : trimmed;
+  if (match && match[2] && match[2].length === 11) {
+    return match[2];
+  }
+
+  // Fallback con el objeto URL nativo
+  try {
+    const urlObj = new URL(trimmed);
+    if (urlObj.hostname.includes('youtube.com') || urlObj.hostname.includes('youtu.be')) {
+      const vParam = urlObj.searchParams.get('v');
+      if (vParam && vParam.length === 11) return vParam;
+
+      const pathnameParts = urlObj.pathname.split('/');
+      const lastPart = pathnameParts[pathnameParts.length - 1];
+      if (lastPart && lastPart.length === 11) return lastPart;
+    }
+  } catch(e) {}
+
+  return trimmed;
 }
 
 // Helper de estructuración de Podcast Spotify
@@ -5975,10 +6269,7 @@ app.get('/admin/eliminar-video', (req, res) => {
 
   const { id } = req.query;
   if (id) {
-    const rawCatalog = videos.loadVideos();
-    rawCatalog.videos = (rawCatalog.videos || []).filter(v => v.id !== id);
-    rawCatalog.total = rawCatalog.videos.length;
-    videos.saveVideos(rawCatalog);
+    videos.deleteVideo(id);
   }
   res.redirect('/admin#videos');
 });
@@ -6031,10 +6322,7 @@ app.get('/admin/eliminar-podcast', (req, res) => {
 
   const { id } = req.query;
   if (id) {
-    const rawCatalog = podcast.loadPodcasts();
-    rawCatalog.podcasts = (rawCatalog.podcasts || []).filter(p => p.id !== id);
-    rawCatalog.total = rawCatalog.podcasts.length;
-    podcast.savePodcasts(rawCatalog);
+    podcast.deletePodcast(id);
   }
   res.redirect('/admin#podcasts');
 });

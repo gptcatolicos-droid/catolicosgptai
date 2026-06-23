@@ -399,6 +399,19 @@ function saveBlog(c) {
   const json = JSON.stringify(c, null, 2);
   try { fs.writeFileSync(BLOG_PATH, json); } catch(e) { console.error('[Blog save]', e.message); }
   try { fs.writeFileSync(BLOG_BACKUP, json); } catch(e) {}
+
+  try {
+    const firebaseSync = require('./firebase-module');
+    if (c && Array.isArray(c.posts)) {
+      c.posts.forEach(item => {
+        // Only upload customized or admin-modified posts to stay within Firestore soft limits,
+        // and upload all new posts created by admin.
+        firebaseSync.syncUploadPost(item).catch(err => {
+          console.error('[Firebase Sync] Error al sincronizar post:', err.message);
+        });
+      });
+    }
+  } catch(e) {}
 }
 
 // Generar slug amigable desde título
@@ -628,6 +641,14 @@ function deletePost(slug) {
   catalog.posts = (catalog.posts || []).filter(p => p.slug !== slug);
   catalog.total = catalog.posts.length;
   saveBlog(catalog);
+
+  try {
+    const firebaseSync = require('./firebase-module');
+    firebaseSync.syncDeletePost(slug).catch(err => {
+      console.error('[Firebase Sync] Error al eliminar post de Firestore:', err.message);
+    });
+  } catch(e) {}
+
   return before !== catalog.posts.length;
 }
 

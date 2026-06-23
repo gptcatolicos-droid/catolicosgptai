@@ -63,6 +63,31 @@ function saveVideos(c) {
   const json = JSON.stringify(c, null, 2);
   try { fs.writeFileSync(VIDEOS_PATH, json); } catch(e) { console.error('[Videos save]', e.message); }
   try { fs.writeFileSync(VIDEOS_BACKUP, json); } catch(e) {}
+
+  try {
+    const firebaseSync = require('./firebase-module');
+    if (c && Array.isArray(c.videos)) {
+      c.videos.forEach(item => {
+        firebaseSync.syncUploadVideo(item).catch(err => {
+          console.error('[Firebase Sync] Error al sincronizar video:', err.message);
+        });
+      });
+    }
+  } catch(e) {}
+}
+
+function deleteVideo(id) {
+  const c = loadVideos();
+  c.videos = (c.videos || []).filter(v => v.id !== id);
+  c.total = c.videos.length;
+  saveVideos(c);
+
+  try {
+    const firebaseSync = require('./firebase-module');
+    firebaseSync.syncDeleteVideo(id).catch(err => {
+      console.error('[Firebase Sync] Error al eliminar video de Firestore:', err.message);
+    });
+  } catch(e) {}
 }
 
 function getVideos({ categoria = null, q = null } = {}) {
@@ -80,4 +105,4 @@ function getVideoBySlug(slug) {
   return loadVideos().videos.find(v => v.slug === slug);
 }
 
-module.exports = { loadVideos, saveVideos, getVideos, getVideoBySlug };
+module.exports = { loadVideos, saveVideos, getVideos, getVideoBySlug, deleteVideo };

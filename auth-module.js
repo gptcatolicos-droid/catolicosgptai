@@ -122,6 +122,58 @@ async function initFirebaseSync() {
     console.error('[Firebase Sync] Error sincronizando cupones en inicio:', err.message);
   }
 
+  // 3. Unificar Infografías
+  try {
+    console.log('[Firebase Sync] Unificando infografías con la nube...');
+    const infografiasModule = require('./infografias-module');
+    let localInfografiasData = infografiasModule.loadCatalog();
+    const mergedInfografias = await firebaseSync.syncDownloadInfografias(localInfografiasData.infografias || []);
+    localInfografiasData.infografias = mergedInfografias;
+    localInfografiasData.total = mergedInfografias.length;
+    infografiasModule.saveCatalog(localInfografiasData);
+  } catch (err) {
+    console.error('[Firebase Sync] Error sincronizando infografías en inicio:', err.message);
+  }
+
+  // 4. Unificar Videos
+  try {
+    console.log('[Firebase Sync] Unificando videos con la nube...');
+    const videosModule = require('./videos-module');
+    let localVideosData = videosModule.loadVideos();
+    const mergedVideos = await firebaseSync.syncDownloadVideos(localVideosData.videos || []);
+    localVideosData.videos = mergedVideos;
+    localVideosData.total = mergedVideos.length;
+    videosModule.saveVideos(localVideosData);
+  } catch (err) {
+    console.error('[Firebase Sync] Error sincronizando videos en inicio:', err.message);
+  }
+
+  // 5. Unificar Podcasts
+  try {
+    console.log('[Firebase Sync] Unificando podcasts con la nube...');
+    const podcastModule = require('./podcast-module');
+    let localPodcastsData = podcastModule.loadPodcasts();
+    const mergedPodcasts = await firebaseSync.syncDownloadPodcasts(localPodcastsData.podcasts || []);
+    localPodcastsData.podcasts = mergedPodcasts;
+    localPodcastsData.total = mergedPodcasts.length;
+    podcastModule.savePodcasts(localPodcastsData);
+  } catch (err) {
+    console.error('[Firebase Sync] Error sincronizando podcasts en inicio:', err.message);
+  }
+
+  // 6. Unificar Blog Posts
+  try {
+    console.log('[Firebase Sync] Unificando blog posts con la nube...');
+    const blogModule = require('./blog-module');
+    let localBlogData = blogModule.loadBlog();
+    const mergedPosts = await firebaseSync.syncDownloadPosts(localBlogData.posts || []);
+    localBlogData.posts = mergedPosts;
+    localBlogData.total = mergedPosts.length;
+    blogModule.saveBlog(localBlogData);
+  } catch (err) {
+    console.error('[Firebase Sync] Error sincronizando blog posts en inicio:', err.message);
+  }
+
   console.log('[Firebase Sync] Sincronización inicial exitosa.');
 }
 
