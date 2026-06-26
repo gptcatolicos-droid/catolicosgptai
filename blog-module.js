@@ -395,23 +395,30 @@ function loadBlog() {
   return catalog;
 }
 
-function saveBlog(c) {
+function saveBlog(c, itemToSync = null) {
+  const nuevoTotal = (c && c.posts) ? c.posts.length : 0;
+  if (nuevoTotal === 0) {
+    try {
+      const existente = JSON.parse(fs.readFileSync(BLOG_PATH, 'utf-8'));
+      if (existente && existente.posts && existente.posts.length > 0) {
+        console.error('[Blog save] BLOQUEADO: intento de guardar catálogo de blog vacío sobre datos existentes.');
+        return false;
+      }
+    } catch(e) {}
+  }
   const json = JSON.stringify(c, null, 2);
   try { fs.writeFileSync(BLOG_PATH, json); } catch(e) { console.error('[Blog save]', e.message); }
   try { fs.writeFileSync(BLOG_BACKUP, json); } catch(e) {}
 
-  try {
-    const firebaseSync = require('./firebase-module');
-    if (c && Array.isArray(c.posts)) {
-      c.posts.forEach(item => {
-        // Only upload customized or admin-modified posts to stay within Firestore soft limits,
-        // and upload all new posts created by admin.
-        firebaseSync.syncUploadPost(item).catch(err => {
-          console.error('[Firebase Sync] Error al sincronizar post:', err.message);
-        });
+  if (itemToSync) {
+    try {
+      const firebaseSync = require('./firebase-module');
+      firebaseSync.syncUploadPost(itemToSync).catch(err => {
+        console.error('[Firebase Sync] Error al sincronizar post:', err.message);
       });
-    }
-  } catch(e) {}
+    } catch(e) {}
+  }
+  return true;
 }
 
 // Generar slug amigable desde título
@@ -505,6 +512,11 @@ Responde SOLO JSON válido en español (sin markdown, sin backticks):
 // Parser Markdown → HTML (simple pero suficiente)
 function parseMarkdown(md) {
   if (!md) return '';
+  // Si parece contener HTML crudo estructurado de ChatGPT/Gemini, retornarlo directo para no romper tablas o estructuras complejas
+  const lower = md.toLowerCase();
+  if (lower.includes('<table') || lower.includes('<div') || lower.includes('<p') || lower.includes('</ul>') || lower.includes('</ol>') || lower.includes('<article') || lower.includes('<section') || lower.includes('<h1') || lower.includes('<h2') || lower.includes('<h3') || lower.includes('<h4') || lower.includes('<span') || lower.includes('<iframe') || lower.includes('<style')) {
+    return md;
+  }
   let html = md;
 
   // Code blocks (proteger primero)
@@ -663,14 +675,16 @@ function upsertPost(post) {
   catalog.posts = catalog.posts || [];
   const idx = catalog.posts.findIndex(p => p.slug === post.slug);
   if (idx >= 0) {
-    catalog.posts[idx] = { ...catalog.posts[idx], ...post, fechaModificacion: new Date().toISOString() };
+    catalog.posts[idx] = { ...catalog.posts[idx], ...post, fechaModificacion: new Date().toISOString(), customizado: true };
   } else {
     post.fechaCreacion = post.fechaCreacion || new Date().toISOString();
+    post.customizado = true;
     catalog.posts.unshift(post);
   }
   catalog.total = catalog.posts.length;
-  saveBlog(catalog);
-  return idx >= 0 ? catalog.posts[idx] : catalog.posts[0];
+  const savedPost = idx >= 0 ? catalog.posts[idx] : catalog.posts[0];
+  saveBlog(catalog, savedPost);
+  return savedPost;
 }
 
 // ── SISTEMA SEO AUTÓNOMO DETECTOR Y GENERADOR DE CONTENIDO ──

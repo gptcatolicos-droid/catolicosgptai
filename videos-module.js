@@ -59,21 +59,30 @@ function loadVideos() {
   return DEFAULT_VIDEOS;
 }
 
-function saveVideos(c) {
+function saveVideos(c, itemToSync = null) {
+  const nuevoTotal = (c && c.videos) ? c.videos.length : 0;
+  if (nuevoTotal === 0) {
+    try {
+      const existente = JSON.parse(fs.readFileSync(VIDEOS_PATH, 'utf-8'));
+      if (existente && existente.videos && existente.videos.length > 0) {
+        console.error('[Videos save] BLOQUEADO: intento de guardar catálogo vacío sobre datos existentes.');
+        return false;
+      }
+    } catch(e) {}
+  }
   const json = JSON.stringify(c, null, 2);
   try { fs.writeFileSync(VIDEOS_PATH, json); } catch(e) { console.error('[Videos save]', e.message); }
   try { fs.writeFileSync(VIDEOS_BACKUP, json); } catch(e) {}
 
-  try {
-    const firebaseSync = require('./firebase-module');
-    if (c && Array.isArray(c.videos)) {
-      c.videos.forEach(item => {
-        firebaseSync.syncUploadVideo(item).catch(err => {
-          console.error('[Firebase Sync] Error al sincronizar video:', err.message);
-        });
+  if (itemToSync) {
+    try {
+      const firebaseSync = require('./firebase-module');
+      firebaseSync.syncUploadVideo(itemToSync).catch(err => {
+        console.error('[Firebase Sync] Error al sincronizar video:', err.message);
       });
-    }
-  } catch(e) {}
+    } catch(e) {}
+  }
+  return true;
 }
 
 function deleteVideo(id) {

@@ -65,21 +65,30 @@ function loadPodcasts() {
   return DEFAULT_PODCASTS;
 }
 
-function savePodcasts(c) {
+function savePodcasts(c, itemToSync = null) {
+  const nuevoTotal = (c && c.podcasts) ? c.podcasts.length : 0;
+  if (nuevoTotal === 0) {
+    try {
+      const existente = JSON.parse(fs.readFileSync(PODCAST_PATH, 'utf-8'));
+      if (existente && existente.podcasts && existente.podcasts.length > 0) {
+        console.error('[Podcasts save] BLOQUEADO: intento de guardar catálogo vacío sobre datos existentes.');
+        return false;
+      }
+    } catch(e) {}
+  }
   const json = JSON.stringify(c, null, 2);
   try { fs.writeFileSync(PODCAST_PATH, json); } catch(e) { console.error('[Podcasts save]', e.message); }
   try { fs.writeFileSync(PODCAST_BACKUP, json); } catch(e) {}
 
-  try {
-    const firebaseSync = require('./firebase-module');
-    if (c && Array.isArray(c.podcasts)) {
-      c.podcasts.forEach(item => {
-        firebaseSync.syncUploadPodcast(item).catch(err => {
-          console.error('[Firebase Sync] Error al sincronizar podcast:', err.message);
-        });
+  if (itemToSync) {
+    try {
+      const firebaseSync = require('./firebase-module');
+      firebaseSync.syncUploadPodcast(itemToSync).catch(err => {
+        console.error('[Firebase Sync] Error al sincronizar podcast:', err.message);
       });
-    }
-  } catch(e) {}
+    } catch(e) {}
+  }
+  return true;
 }
 
 function deletePodcast(id) {

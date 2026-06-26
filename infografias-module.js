@@ -6,10 +6,11 @@
 const { v2: cloudinary } = require('cloudinary');
 const fs   = require('fs');
 const path = require('path');
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'dwbqrp7kk';
 
 // ── Cloudinary config ──
 cloudinary.config({
-  cloud_name: 'c-d958e57b08c7fd3570db695ad41478',
+  cloud_name: CLOUDINARY_CLOUD_NAME,
   api_key:    process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
@@ -34,7 +35,7 @@ function loadCatalog() {
   return { version:'5.0', total:0, categorias:[], infografias:[] };
 }
 
-function saveCatalog(c) {
+function saveCatalog(c, itemToSync = null) {
   const nuevoTotal = (c && c.infografias) ? c.infografias.length : 0;
   if (nuevoTotal === 0) {
     try {
@@ -55,18 +56,15 @@ function saveCatalog(c) {
     try { fs.writeFileSync(CATALOG_BACKUP, json, 'utf-8'); } catch(e) {}
   }
 
-  // Sincronización asincrónica de fondo hacia Firestore
-  try {
-    const firebaseSync = require('./firebase-module');
-    if (c && Array.isArray(c.infografias)) {
-      c.infografias.forEach(item => {
-        firebaseSync.syncUploadInfografia(item).catch(err => {
-          console.error('[Firebase Sync] Error al sincronizar infografia:', err.message);
-        });
+  if (itemToSync) {
+    try {
+      const firebaseSync = require('./firebase-module');
+      firebaseSync.syncUploadInfografia(itemToSync).catch(err => {
+        console.error('[Firebase Sync] Error al sincronizar infografia:', err.message);
       });
+    } catch (fsErr) {
+      console.error('[Firebase Sync] Error de carga diferida:', fsErr.message);
     }
-  } catch (fsErr) {
-    console.error('[Firebase Sync] Error de carga diferida:', fsErr.message);
   }
 
   return true;
@@ -409,7 +407,6 @@ CRÍTICO:
 
 async function uploadToCloudinary(imageData, slug, index = 0, meta = {}) {
   // Safe default background or return if no credentials configured
-  const cloudName = 'c-d958e57b08c7fd3570db695ad41478';
   if (!process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
     console.warn('[Cloudinary] No configured credentials, returning source image direct.');
     return imageData;
@@ -569,7 +566,7 @@ async function generarInfografia({ tema, tipo: tipoOverride, formato = '9:16', e
   catalog.infografias = catalog.infografias || [];
   catalog.infografias.unshift(infografia);
   catalog.total = catalog.infografias.length;
-  saveCatalog(catalog);
+  saveCatalog(catalog, infografia);
   return infografia;
 }
 
@@ -589,6 +586,31 @@ function getInfografias({ categoria, q, page=1, limit=20 } = {}) {
 }
 
 function getInfografiaBySlug(slug) { return loadCatalog().infografias.find(i => i.slug===slug) || null; }
+
+function setInfografiaDelDia(slug) {
+  const c = loadCatalog();
+  c.infografias = c.infografias || [];
+  let target = null;
+  c.infografias.forEach(i => {
+    if (i.slug === slug) {
+      i.esInfografiaDelDia = true;
+      target = i;
+    } else {
+      i.esInfografiaDelDia = false;
+    }
+  });
+  saveCatalog(c, target);
+  return true;
+}
+
+function getInfografiaDelDia() {
+  const c = loadCatalog();
+  const inf = c.infografias.find(i => i.esInfografiaDelDia === true);
+  if (inf) return inf;
+  // Fallback: retornar la más reciente
+  return c.infografias[0] || null;
+}
+
 function deleteInfografia(id) {
   const c = loadCatalog();
   c.infografias = c.infografias.filter(i => i.id !== id);
@@ -603,4 +625,4 @@ function deleteInfografia(id) {
   } catch(e) {}
 }
 
-module.exports = { generarInfografia, detectarTipo, generateSlug, getInfografias, getInfografiaBySlug, deleteInfografia, loadCatalog, saveCatalog, SIZES };
+module.exports = { generarInfografia, detectarTipo, generateSlug, getInfografias, getInfografiaBySlug, setInfografiaDelDia, getInfografiaDelDia, deleteInfografia, loadCatalog, saveCatalog, SIZES };
