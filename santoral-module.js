@@ -97,6 +97,11 @@ function saveSantoral(db, itemToSync = null) {
 async function getOrCreateDailySaint(dia, mesIndex) {
   const db = loadSantoral();
   const mesNombre = mesesEnEspanol[mesIndex] || 'Junio';
+
+  const destacado = db.santos.find(s => s.esSantoDelDia === true);
+  if (destacado) {
+    return destacado;
+  }
   
   // Buscar santo para este día y mes
   let santo = db.santos.find(s => parseInt(s.dia) === parseInt(dia) && s.mes.toLowerCase() === mesNombre.toLowerCase());
@@ -255,10 +260,14 @@ function createSaint(data) {
     seo_titulo: data.seo_titulo || `${data.nombre} | CatólicosGPT`,
     seo_descripcion: data.seo_descripcion || `Biografía de ${data.nombre}.`,
     seo_keywords: data.seo_keywords || `santo, santoral, ${data.nombre}`,
+    esSantoDelDia: data.esSantoDelDia === true,
     creado_por_admin: true,
     fechaCreacion: new Date().toISOString()
   };
 
+  if (nuevoSanto.esSantoDelDia) {
+    db.santos = db.santos.map(s => ({ ...s, esSantoDelDia: false }));
+  }
   db.santos.push(nuevoSanto);
   saveSantoral(db, nuevoSanto);
   return nuevoSanto;
@@ -269,6 +278,10 @@ function updateSaint(slug, updatedData) {
   const db = loadSantoral();
   const idx = db.santos.findIndex(s => s.slug === slug);
   if (idx === -1) return null;
+
+  if (updatedData.esSantoDelDia === true) {
+    db.santos = db.santos.map(s => ({ ...s, esSantoDelDia: false }));
+  }
 
   db.santos[idx] = {
     ...db.santos[idx],
