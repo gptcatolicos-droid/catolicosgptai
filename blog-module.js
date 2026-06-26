@@ -389,8 +389,18 @@ function loadBlog() {
   if (!catalog) {
     catalog = { version: '1.0', total: 0, posts: [] };
   }
-  if (!catalog.posts || catalog.posts.length < 300) {
-    catalog = seedBlogCatalog300(catalog);
+  if (!catalog.posts || catalog.posts.length < 1000) {
+    try {
+      console.log('[Blog Bulk] Catálogo incompleto; regenerando lote editorial de 1000 artículos...');
+      const bulk = require('./scripts/generate-bulk-content');
+      catalog = bulk.generateBlogCatalog();
+      saveBlog(catalog);
+    } catch (bulkErr) {
+      console.error('[Blog Bulk] No se pudo regenerar lote masivo:', bulkErr.message);
+      if (!catalog.posts || catalog.posts.length < 300) {
+        catalog = seedBlogCatalog300(catalog);
+      }
+    }
   }
   return catalog;
 }
