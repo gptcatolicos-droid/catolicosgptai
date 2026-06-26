@@ -522,10 +522,9 @@ Responde SOLO JSON válido en español (sin markdown, sin backticks):
 // Parser Markdown → HTML (simple pero suficiente)
 function parseMarkdown(md) {
   if (!md) return '';
-  // Si parece contener HTML crudo estructurado de ChatGPT/Gemini, retornarlo directo para no romper tablas o estructuras complejas
   const lower = md.toLowerCase();
   if (lower.includes('<table') || lower.includes('<div') || lower.includes('<p') || lower.includes('</ul>') || lower.includes('</ol>') || lower.includes('<article') || lower.includes('<section') || lower.includes('<h1') || lower.includes('<h2') || lower.includes('<h3') || lower.includes('<h4') || lower.includes('<span') || lower.includes('<iframe') || lower.includes('<style')) {
-    return md;
+    return formatMixedHtml(md);
   }
   let html = md;
 
@@ -584,6 +583,24 @@ function parseMarkdown(md) {
   html = html.replace(/\x00CODE(\d+)\x00/g, (m, i) => codeBlocks[parseInt(i)]);
 
   return html;
+}
+
+function formatMixedHtml(raw) {
+  if (!raw) return '';
+  const blockTags = 'article|aside|blockquote|div|figure|figcaption|h[1-6]|hr|iframe|img|li|ol|p|pre|section|table|tbody|td|tfoot|th|thead|tr|ul|style';
+  return String(raw)
+    .replace(/\r\n/g, '\n')
+    .split(/\n{2,}/)
+    .map(block => {
+      const b = block.trim();
+      if (!b) return '';
+      if (new RegExp(`^<(${blockTags})(\\s|>|/)`, 'i').test(b) || new RegExp(`</(${blockTags})>\\s*$`, 'i').test(b)) {
+        return b;
+      }
+      if (/^\[(infografia|video|podcast):[\w-]+\]$/i.test(b)) return b;
+      return `<p>${b.replace(/\n/g, '<br>')}</p>`;
+    })
+    .join('\n\n');
 }
 
 // Renderiza shortcodes [infografia:slug], [video:slug], [podcast:slug]
