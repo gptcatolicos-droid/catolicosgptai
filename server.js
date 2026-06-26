@@ -6802,12 +6802,14 @@ app.get('/admin', (req, res) => {
           <div class="flex flex-col gap-4">
             <h3 class="font-display font-semibold text-espresso text-base">⛪ Catálogo del Santoral</h3>
             <p class="text-xs text-ink-2">Perfiles de santos almacenados y sincronizados en la base de datos de CatólicosGPT.</p>
+            <input type="text" id="santo-admin-search-input" oninput="filterAdminSantos()" placeholder="Buscar santo por nombre, fecha, devoción, keywords o biografía..." class="border border-border rounded-lg px-3 py-2 text-xs bg-white outline-none focus:ring-1 focus:ring-gold">
             
             <div class="max-h-[750px] overflow-y-auto border border-border rounded-xl divide-y text-xs bg-white">
               ${santoral.getAllSaints().length === 0 ? '<div class="p-4 text-center text-ink-2 italic">No hay santos en el santoral. Crea el primero arriba.</div>' : 
                 santoral.getAllSaints().map(s => {
                   return `
-                    <div class="p-3 flex flex-col gap-2 hover:bg-cream/10">
+                    <div class="santo-admin-card p-3 flex flex-col gap-2 hover:bg-cream/10"
+                         data-search="${escapeHtml(`${s.nombre || ''} ${s.slug || ''} ${s.dia || ''} ${s.mes || ''} ${s.tipo || ''} ${s.lema || ''} ${s.biografia || ''} ${s.seo_keywords || ''} ${s.seo_descripcion || ''}`.toLowerCase())}">
                       <div class="flex items-start justify-between gap-1">
                         <div class="flex flex-col truncate max-w-[200px]">
                           <span class="font-bold text-espresso">${s.nombre}</span>
@@ -7105,6 +7107,18 @@ app.get('/admin', (req, res) => {
         document.getElementById('santo_seo_keywords').value = '';
       }
 
+      function filterAdminSantos() {
+        const q = (document.getElementById('santo-admin-search-input')?.value || '').toLowerCase().trim();
+        const cards = document.querySelectorAll('.santo-admin-card');
+        let visible = 0;
+        cards.forEach(card => {
+          const haystack = card.getAttribute('data-search') || '';
+          const match = !q || haystack.includes(q);
+          card.style.display = match ? 'flex' : 'none';
+          if (match) visible++;
+        });
+      }
+
       window.addEventListener('DOMContentLoaded', () => {
         actualizarMesIndex();
       });
@@ -7159,7 +7173,10 @@ app.get('/admin', (req, res) => {
             (p.titulo || '').toLowerCase().includes(query) || 
             (p.slug || '').toLowerCase().includes(query) || 
             (p.categoria || '').toLowerCase().includes(query) ||
-            (p.descripcion || '').toLowerCase().includes(query)
+            (p.descripcion || '').toLowerCase().includes(query) ||
+            (p.keywords || '').toLowerCase().includes(query) ||
+            (p.extracto || '').toLowerCase().includes(query) ||
+            (p.contenidoMd || '').toLowerCase().includes(query)
           );
         }
 
