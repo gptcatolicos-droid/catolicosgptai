@@ -51,18 +51,33 @@ function loadSantoral() {
   if (fs.existsSync(SANTORAL_FILE)) {
     try {
       const data = JSON.parse(fs.readFileSync(SANTORAL_FILE, 'utf-8'));
-      return data;
+      if (data && Array.isArray(data.santos) && data.santos.length >= 365) {
+        return data;
+      }
+      console.log('[Santoral Bulk] Base incompleta; regenerando 365 perfiles editables...');
+      const bulk = require('./scripts/generate-bulk-content');
+      const generated = bulk.generateSantoral();
+      saveSantoral(generated);
+      return generated;
     } catch (e) {
       console.error('[Santoral DB] Error al leer base de datos, reestructurando:', e.message);
     }
   }
 
-  // Si no existe, inicializar con estructura básica
-  const db = {
-    santos: []
-  };
-  saveSantoral(db);
-  return db;
+  try {
+    console.log('[Santoral Bulk] Base no encontrada; generando santoral completo de 365 días...');
+    const bulk = require('./scripts/generate-bulk-content');
+    const generated = bulk.generateSantoral();
+    saveSantoral(generated);
+    return generated;
+  } catch (e) {
+    console.error('[Santoral Bulk] No se pudo generar santoral completo:', e.message);
+    const db = {
+      santos: []
+    };
+    saveSantoral(db);
+    return db;
+  }
 }
 
 function saveSantoral(db, itemToSync = null) {
