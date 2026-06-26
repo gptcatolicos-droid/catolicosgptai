@@ -768,7 +768,7 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
           <div class="flex flex-col gap-1">
             <span class="text-[10px] text-ink2 uppercase tracking-widest font-bold px-3 py-1 font-mono">Liturgia de hoy</span>
             <nav class="flex flex-col gap-1">
-              <a href="/santo-del-dia" class="nav-link ${req.originalUrl==='/santo-del-dia'?'active':''}">
+              <a href="/?inline=%2Fsanto-del-dia" class="nav-link ${req.originalUrl==='/santo-del-dia'?'active':''}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sparkles"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
                 Santo del día
               </a>
@@ -799,7 +799,7 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rss"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
                 Podcast
               </a>
-              <a href="/blog" class="nav-link ${req.originalUrl.startsWith('/blog')?'active':''}">
+              <a href="/?inline=%2Fblog" class="nav-link ${req.originalUrl.startsWith('/blog')?'active':''}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-scroll"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><path d="M14 3v5h5M16 13H8M16 17H8M10 9H8"/></svg>
                 Blog
               </a>
@@ -884,7 +884,7 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
             <div class="flex flex-col gap-1">
               <span class="text-[10px] text-ink2 uppercase tracking-widest font-bold px-3 py-1 font-mono">Liturgia de hoy</span>
               <nav class="flex flex-col gap-1">
-                <a href="/santo-del-dia" onclick="toggleMobileMenu()" class="nav-link">Santo de hoy</a>
+                <a href="/?inline=%2Fsanto-del-dia" onclick="toggleMobileMenu()" class="nav-link">Santo de hoy</a>
                 <a href="/oracion-del-dia" onclick="toggleMobileMenu()" class="nav-link">Oración del día</a>
               </nav>
             </div>
@@ -897,7 +897,7 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
                 <a href="/infografias" onclick="toggleMobileMenu()" class="nav-link">Infografías</a>
                 <a href="/videos" onclick="toggleMobileMenu()" class="nav-link">Videos</a>
                 <a href="/podcasts" onclick="toggleMobileMenu()" class="nav-link">Podcast</a>
-                <a href="/blog" onclick="toggleMobileMenu()" class="nav-link">Blog</a>
+                <a href="/?inline=%2Fblog" onclick="toggleMobileMenu()" class="nav-link">Blog</a>
                 <a href="/misas" onclick="toggleMobileMenu()" class="nav-link">Horarios de Misa</a>
                 <a href="/planes" onclick="toggleMobileMenu()" class="nav-link">Planes</a>
               </nav>
@@ -1384,6 +1384,7 @@ app.get('/', (req, res) => {
     <script>
       const chatBox = document.getElementById('chat-box');
       const chatInput = document.getElementById('chat-input');
+      const initialChatHtml = chatBox.innerHTML;
       
       function enviarAtajo(texto) {
         chatInput.value = texto;
@@ -1417,9 +1418,61 @@ app.get('/', (req, res) => {
       }
       
       function clearChat() {
-        chatBox.querySelectorAll('.chat-bubble').forEach(b => b.remove());
-        const welcome = document.getElementById('welcome-screen');
-        if (welcome) welcome.classList.remove('hidden');
+        chatBox.innerHTML = initialChatHtml;
+      }
+
+      function shouldOpenInsideChat(url) {
+        if (url.origin !== window.location.origin) return false;
+        const path = url.pathname;
+        return path === '/santo-del-dia'
+          || path === '/blog'
+          || path.startsWith('/blog/')
+          || /^\\/santoral\\/[^/]+$/.test(path);
+      }
+
+      async function loadInsideChat(rawUrl, label = 'contenido') {
+        const url = new URL(rawUrl, window.location.origin);
+        const displayUrl = new URL(rawUrl, window.location.origin);
+        url.searchParams.set('partial', '1');
+        const originalPath = displayUrl.pathname + displayUrl.search;
+
+        chatBox.innerHTML = \`
+          <div class="w-full max-w-5xl mx-auto bg-white border border-[#E6DFD4] rounded-2xl shadow-sm overflow-hidden">
+            <div class="px-4 py-3 border-b border-[#E6DFD4] bg-[#FCFAF5] flex items-center justify-between gap-3">
+              <button type="button" onclick="clearChat()" class="text-xs text-maroon hover:text-gold font-bold border-0 bg-transparent cursor-pointer">← Volver al chat</button>
+              <a href="\${originalPath}" class="text-[10px] text-ink2 hover:text-maroon font-mono uppercase tracking-wider">Abrir página</a>
+            </div>
+            <div class="p-8 text-center text-ink2 italic">Cargando \${label}...</div>
+          </div>
+        \`;
+
+        try {
+          const res = await fetch(url.toString(), { headers: { 'X-Requested-With': 'CatolicosGPT-Inline' } });
+          if (!res.ok) throw new Error('No se pudo cargar el contenido.');
+          const html = await res.text();
+          chatBox.innerHTML = \`
+            <div class="w-full max-w-5xl mx-auto bg-white border border-[#E6DFD4] rounded-2xl shadow-sm overflow-hidden">
+              <div class="px-4 py-3 border-b border-[#E6DFD4] bg-[#FCFAF5] flex items-center justify-between gap-3 sticky top-0 z-10">
+                <button type="button" onclick="clearChat()" class="text-xs text-maroon hover:text-gold font-bold border-0 bg-transparent cursor-pointer">← Volver al chat</button>
+                <a href="\${originalPath}" class="text-[10px] text-ink2 hover:text-maroon font-mono uppercase tracking-wider">Abrir página</a>
+              </div>
+              <div class="embedded-reader max-h-none overflow-visible">
+                \${html}
+              </div>
+            </div>
+          \`;
+          const shareInput = document.getElementById('saint-share-url');
+          if (shareInput) shareInput.value = window.location.origin + originalPath;
+          chatBox.scrollTop = 0;
+        } catch (err) {
+          chatBox.innerHTML = \`
+            <div class="max-w-xl mx-auto my-auto bg-white border border-red-200 rounded-2xl p-8 text-center">
+              <h3 class="font-display text-maroon font-bold">No se pudo cargar el contenido</h3>
+              <p class="text-sm text-ink2 mt-2">\${err.message}</p>
+              <button type="button" onclick="clearChat()" class="mt-4 bg-maroon text-white px-4 py-2 rounded-lg text-xs font-bold">Volver al chat</button>
+            </div>
+          \`;
+        }
       }
       
       async function enviarMensaje(e) {
@@ -1496,7 +1549,21 @@ app.get('/', (req, res) => {
 
       // Atajo automático para parámetros url
       window.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('click', (event) => {
+          const link = event.target.closest('a[href]');
+          if (!link) return;
+          const url = new URL(link.getAttribute('href'), window.location.origin);
+          if (!shouldOpenInsideChat(url)) return;
+          event.preventDefault();
+          loadInsideChat(url.toString(), link.textContent.trim() || 'contenido');
+        });
+
         const urlParams = new URLSearchParams(window.location.search);
+        const inlinePath = urlParams.get('inline');
+        if (inlinePath) {
+          loadInsideChat(new URL(inlinePath, window.location.origin).toString(), 'contenido');
+          return;
+        }
         const query = urlParams.get('query');
         if (query) {
           let text = '';
@@ -3803,6 +3870,10 @@ app.get('/blog', (req, res) => {
     </div>
   `;
 
+  if (req.query.partial === '1' || req.query.embed === '1') {
+    return res.send(html);
+  }
+
   res.send(renderPage('Blog Católico de Formación', html, req));
 });
 
@@ -3850,6 +3921,10 @@ app.get('/blog/:slug', (req, res) => {
       </div>
     </div>
   `;
+
+  if (req.query.partial === '1' || req.query.embed === '1') {
+    return res.send(html);
+  }
 
   res.send(renderPage(post.titulo, html, req, {
     description: post.descripcion || post.extracto || "Formación de fe católico.",
@@ -3946,6 +4021,10 @@ app.get('/blog/:categoria/:slug', (req, res) => {
       </div>
     </div>
   `;
+
+  if (req.query.partial === '1' || req.query.embed === '1') {
+    return res.send(html);
+  }
 
   // Construir Structured Schemas
   const schemas = [
@@ -4860,6 +4939,10 @@ function renderSaintPage(s, req, res) {
       }
     </script>
   `;
+
+  if (req.query.partial === '1' || req.query.embed === '1') {
+    return res.send(html);
+  }
 
   res.send(renderPage(s.nombre, html, req, {
     description: s.seo_description || `Biografía completa de ${s.nombre} en el Santoral de CatólicosGPT.`,
@@ -6274,6 +6357,9 @@ app.get('/admin', (req, res) => {
                 if (data.keywords) {
                   document.getElementById('seo_keywords').value = data.keywords;
                 }
+                if (data.warning) {
+                  alert(data.warning);
+                }
               }
             } catch(e) {
               alert('Error conectando con el servidor teológico.');
@@ -6616,6 +6702,14 @@ app.get('/admin', (req, res) => {
                 <input type="text" name="lema" id="santo_lema" placeholder="Ej: 'Señor, hazme un instrumento de tu paz.'" class="border border-[#D1C7BD] rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs bg-white">
               </div>
 
+              <div class="md:col-span-2 bg-gold/10 border border-gold/25 rounded-xl p-3 flex items-start gap-2.5">
+                <input type="checkbox" name="es_santo_del_dia" id="santo_es_santo_del_dia" value="1" class="mt-0.5 w-4 h-4 accent-maroon">
+                <div class="flex flex-col gap-0.5">
+                  <label for="santo_es_santo_del_dia" class="font-bold text-maroon text-xs cursor-pointer">Mostrar como Santo del día en la app</label>
+                  <p class="text-[10px] text-ink2 leading-relaxed">Al activar esta opción, este perfil reemplaza el cálculo automático y queda como la biografía destacada en el menú principal.</p>
+                </div>
+              </div>
+
               <div class="flex flex-col gap-1.5">
                 <label class="font-semibold text-espresso text-xs">URL de Foto (Cloudinary)</label>
                 <div class="flex gap-2">
@@ -6719,9 +6813,9 @@ app.get('/admin', (req, res) => {
                           <span class="font-bold text-espresso">${s.nombre}</span>
                           <span class="text-[10px] text-ink-2 font-mono">${s.dia} de ${s.mes} | ${s.tipo}</span>
                         </div>
-                        <span class="text-[10px] bg-gold/10 text-maroon font-bold px-2 py-0.5 rounded-full border border-gold/20">
-                          /${s.slug}
-                        </span>
+                          <span class="text-[10px] bg-gold/10 text-maroon font-bold px-2 py-0.5 rounded-full border border-gold/20">
+                            ${s.esSantoDelDia ? '⭐ Santo del día' : `/${s.slug}`}
+                          </span>
                       </div>
                       
                       <div class="flex items-center gap-2 pt-1 border-t border-border/20 justify-end">
@@ -6967,6 +7061,7 @@ app.get('/admin', (req, res) => {
         document.getElementById('santo_mes_index').value = data.mes_index || '01';
         document.getElementById('santo_tipo').value = data.tipo || '';
         document.getElementById('santo_lema').value = data.lema || '';
+        document.getElementById('santo_es_santo_del_dia').checked = data.esSantoDelDia === true;
         document.getElementById('santo_foto_url').value = data.foto_url || '';
         document.getElementById('santo_infografia_url').value = data.infografia_url || '';
         document.getElementById('santo_biografia').value = data.biografia || '';
@@ -6996,6 +7091,7 @@ app.get('/admin', (req, res) => {
         actualizarMesIndex();
         document.getElementById('santo_tipo').value = '';
         document.getElementById('santo_lema').value = '';
+        document.getElementById('santo_es_santo_del_dia').checked = false;
         document.getElementById('santo_foto_url').value = '';
         document.getElementById('santo_infografia_url').value = '';
         document.getElementById('santo_biografia').value = '';
@@ -7813,6 +7909,28 @@ app.post('/api/admin/blogs/delete', (req, res) => {
   }
 });
 
+function buildLocalInfografiaSeo({ titulo, tema, categoria } = {}) {
+  const cleanTitle = (titulo || 'Infografía católica').trim();
+  const cleanTema = (tema || cleanTitle).trim();
+  const cleanCategoria = (categoria || 'formación católica').trim();
+  const metaBase = `${cleanTitle}: recurso visual de CatólicosGPT sobre ${cleanTema}, pensado para formación católica, catequesis y evangelización.`;
+  const metaDescription = metaBase.length > 160 ? metaBase.slice(0, 157).trim() + '...' : metaBase;
+  const keywords = [
+    cleanTitle,
+    cleanTema,
+    cleanCategoria,
+    'infografia catolica',
+    'CatolicosGPT',
+    'catequesis',
+    'formacion catolica'
+  ]
+    .map(k => k.toLowerCase())
+    .filter((k, idx, arr) => k && arr.indexOf(k) === idx)
+    .join(', ');
+
+  return { metaDescription, keywords };
+}
+
 // API: GENERAR SEO PARA INFOGRAFÍA USANDO GEMINI (AJAX)
 app.post('/api/seo/generar-seo-infografia', async (req, res) => {
   const { titulo, tema, categoria } = req.body;
@@ -7820,7 +7938,12 @@ app.post('/api/seo/generar-seo-infografia', async (req, res) => {
 
   try {
     const aiInstance = getAi();
-    if (!aiInstance) return res.json({ metaDescription: `${titulo} — Formación espiritual católica profunda.`, keywords: 'catolico, fe, doctrina' });
+    if (!aiInstance) {
+      return res.json({
+        ...buildLocalInfografiaSeo({ titulo, tema, categoria }),
+        warning: 'SEO generado localmente porque la IA no está disponible en este momento.'
+      });
+    }
     
     const seoPrompt = `Genera un metaDescription SEO y keywords para una infografía católica con la siguiente información:
 Título: "${titulo}"
@@ -7846,7 +7969,10 @@ Devuelve un JSON estrictamente con la estructura literal:
     return res.json(parsed);
   } catch(e) {
     console.error('[SEO IA Infografía Error]', e.message);
-    return res.json({ error: e.message });
+    return res.json({
+      ...buildLocalInfografiaSeo({ titulo, tema, categoria }),
+      warning: 'Gemini está sin cuota o temporalmente no disponible. Se completó el SEO con una versión local editable.'
+    });
   }
 });
 
@@ -7948,8 +8074,11 @@ Devuelve un JSON estrictamente con la estructura literal:
       }
     }
 
-    if (!finalDesc) finalDesc = `${titulo} — CatolicosGPT`;
-    if (!finalKeywords) finalKeywords = 'infografia, manual, fe, catolico';
+    if (!finalDesc || !finalKeywords) {
+      const localSeo = buildLocalInfografiaSeo({ titulo, tema, categoria });
+      if (!finalDesc) finalDesc = localSeo.metaDescription;
+      if (!finalKeywords) finalKeywords = localSeo.keywords;
+    }
 
     const newInf = {
       id: `inf-${Date.now()}`,
@@ -8202,7 +8331,8 @@ app.post('/admin/crear-santo', express.urlencoded({ extended: true }), async (re
     santuario,
     seo_titulo,
     seo_descripcion,
-    seo_keywords
+    seo_keywords,
+    es_santo_del_dia
   } = req.body;
 
   if (!nombre || !dia || !mes_select || !biografia) {
@@ -8268,6 +8398,7 @@ Devuelve un JSON estrictamente con la estructura literal:
       infografia_url: infografia_url || "",
       biografia,
       aspectos_tabla,
+      esSantoDelDia: es_santo_del_dia === '1',
       seo_titulo: finalSeoTitle || `${nombre} — Santo del Día | CatólicosGPT`,
       seo_descripcion: finalSeoDesc || `Conoce la vida y obra de ${nombre}. Biografía completa en el Santoral de CatólicosGPT.`,
       seo_keywords: finalSeoKeywords || `santo del dia, ${nombre}, santoral, vida de santos`
