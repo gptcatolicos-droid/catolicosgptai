@@ -169,6 +169,9 @@ async function generateSeoJson({ entityType, requestedField, context }) {
   const systemInstruction = `Eres un especialista senior en SEO católico y formación doctrinal.
 Generas metadata breve, fiel al Magisterio, clara para Google Search Console y útil para personas reales.
 No inventes datos históricos concretos si el contexto no los trae.
+Marca principal: "CatólicosGPT | La IA Católica #1 en Español".
+Incluye de forma natural, especialmente en keywords cuando corresponda: CatólicosGPT, CatolicosGPT, ia catolica, inteligencia artificial catolica, chat catolico, catequesis catolica.
+Para altText de imágenes de infografías usa texto descriptivo y añade CatólicosGPT o IA Católica solo si cabe naturalmente.
 Devuelve exclusivamente JSON válido, sin markdown ni explicación.`;
 
   const prompt = `Tipo de contenido: ${entityType}

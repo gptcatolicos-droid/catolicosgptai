@@ -125,7 +125,13 @@ function getTodaySaintTarget() {
     const [, mesIdx, diaVal] = todayStr.split('-');
     const mesNombre = mesesEnEspanol[mesIdx] || '';
     const santos = santoral.getAllSaints() || [];
-    const destacado = santos.find(s => s.esSantoDelDia === true);
+    const destacado = (typeof santoral.getFeaturedSaintForDay === 'function')
+      ? santoral.getFeaturedSaintForDay(parseInt(diaVal), mesIdx)
+      : santos.find(s =>
+          s.esSantoDelDia === true &&
+          parseInt(s.dia) === parseInt(diaVal) &&
+          String(s.mes || '').toLowerCase() === mesNombre.toLowerCase()
+        );
     const santo = destacado || santos.find(s =>
       parseInt(s.dia) === parseInt(diaVal) &&
       String(s.mes || '').toLowerCase() === mesNombre.toLowerCase()
@@ -237,23 +243,65 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
   const santoralSaints = allSaints.map(s => ({ nombre: s.nombre, slug: s.slug }));
 
   const defaultMetaTags = {
-    description: "CatólicosGPT es la Inteligencia Artificial Católica #1 en español con fidelidad del 100% al Magisterio. Explora la Biblia de Navarra, el Catecismo, oraciones, y genera infografías pastorales interactivas.",
-    keywords: "ia catolica, inteligencia artificial catolica, catolicosgpt, catolicos gpt, magisterio de la iglesia, biblia de navarra, catecismo, oraciones catolicas, papa leon xiv, apologetica catolica, oracion del dia, evangelio del dia",
+    description: "CatólicosGPT | La IA Católica #1 en Español. Chat católico con Magisterio, Catecismo, Biblia de Navarra, santoral, liturgia, oraciones, infografías, videos y podcast.",
+    keywords: "CatólicosGPT, CatolicosGPT, catolicos gpt, ia catolica, IA católica, inteligencia artificial catolica, inteligencia artificial católica, chat catolico, chat católico, la ia catolica #1 en espanol, la ia católica #1 en español, magisterio de la iglesia, biblia de navarra, catecismo, santoral catolico, oraciones catolicas, infografias catolicas, videos catolicos, podcast catolico",
     canonical: req.originalUrl || '/'
   };
 
   const M = { ...defaultMetaTags, ...metaTags };
   const APP_URL = process.env.APP_URL || 'https://ai.catolicosgpt.com';
+  const brandTitle = 'CatólicosGPT | La IA Católica #1 en Español';
+  const fullTitle = !title || /cat[oó]licosgpt\s*\|\s*la ia cat[oó]lica/i.test(title)
+    ? brandTitle
+    : `${title} — ${brandTitle}`;
+  const defaultSchemas = [
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "CatólicosGPT",
+      "alternateName": ["Católicos GPT", "IA Católica", "Chat Católico", "La IA Católica #1 en Español"],
+      "url": APP_URL,
+      "description": M.description,
+      "inLanguage": "es",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": `${APP_URL}/?q={search_term_string}`,
+        "query-input": "required name=search_term_string"
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "CatólicosGPT",
+      "alternateName": "La IA Católica #1 en Español",
+      "applicationCategory": "EducationalApplication",
+      "operatingSystem": "Web",
+      "url": APP_URL,
+      "description": M.description,
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "CatólicosGPT",
+      "url": APP_URL,
+      "sameAs": ["https://www.catolicosgpt.com", "https://ai.catolicosgpt.com"]
+    }
+  ];
+  const schemas = [...defaultSchemas, ...((M.schemas && Array.isArray(M.schemas)) ? M.schemas : [])];
 
   return `<!DOCTYPE html>
 <html lang="es" class="h-full">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>${title} — CatólicosGPT | La IA Católica #1 en Español</title>
+  <title>${fullTitle}</title>
   
   <meta name="description" content="${M.description}">
   <meta name="keywords" content="${M.keywords}">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <meta name="application-name" content="CatólicosGPT">
+  <meta name="apple-mobile-web-app-title" content="CatólicosGPT">
   <link rel="canonical" href="${APP_URL}${M.canonical}">
 
   <script>
@@ -277,18 +325,22 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
   </script>
   
   <!-- Open Graph -->
-  <meta property="og:title" content="${title} — CatólicosGPT | La IA Católica #1 en Español">
+  <meta property="og:title" content="${fullTitle}">
   <meta property="og:description" content="${M.description}">
   <meta property="og:type" content="website">
   <meta property="og:url" content="${APP_URL}${M.canonical}">
   <meta property="og:image" content="${M.image || 'https://yt3.googleusercontent.com/gTL33dWPVULnTlxRu-_2vuEuCKpPsdK_cY6m43-vjfekOV5ho5ucfPFe1wjfbEXl9tjLvNMOlQ=w1060-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj'}">
   <meta property="og:site_name" content="CatólicosGPT">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${fullTitle}">
+  <meta name="twitter:description" content="${M.description}">
+  <meta name="twitter:image" content="${M.image || 'https://yt3.googleusercontent.com/gTL33dWPVULnTlxRu-_2vuEuCKpPsdK_cY6m43-vjfekOV5ho5ucfPFe1wjfbEXl9tjLvNMOlQ=w1060-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj'}">
   
   <!-- Favicon Oficial CatólicosGPT -->
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="shortcut icon" type="image/svg+xml" href="/favicon.svg">
   
-  ${M.schemas ? M.schemas.map(sch => `<script type="application/ld+json">${JSON.stringify(sch)}</script>`).join('\n') : ''}
+  ${schemas.map(sch => `<script type="application/ld+json">${JSON.stringify(sch)}</script>`).join('\n')}
   ${M.schema ? `<script type="application/ld+json">${JSON.stringify(M.schema)}</script>` : ''}
   
   <!-- Google Fonts & Tailwind -->
@@ -1672,7 +1724,47 @@ app.get('/', (req, res) => {
     </script>
   `;
 
-  res.send(renderPage('Asistente Magisterial Inteligente', html, req));
+  res.send(renderPage('CatólicosGPT | La IA Católica #1 en Español', html, req, {
+    description: 'CatólicosGPT | La IA Católica #1 en Español. Chat católico con Magisterio, Catecismo, Biblia de Navarra, santoral, liturgia, oraciones, infografías, videos y podcast.',
+    keywords: 'CatólicosGPT, CatolicosGPT, ia catolica, IA católica, inteligencia artificial catolica, inteligencia artificial católica, chat catolico, chat católico, catequesis catolica, Magisterio de la Iglesia, santoral catolico, oraciones catolicas, infografias catolicas',
+    canonical: '/'
+  }));
+});
+
+app.get('/ia-catolica', (req, res) => {
+  const html = `
+    <main class="max-w-5xl mx-auto px-4 py-10 md:py-14 flex flex-col gap-8">
+      <section class="grid grid-cols-1 lg:grid-cols-[1.2fr_.8fr] gap-8 items-start">
+        <div class="flex flex-col gap-5">
+          <p class="text-xs font-bold tracking-[0.18em] uppercase text-gold">CatólicosGPT</p>
+          <h1 class="font-display text-4xl md:text-5xl font-bold text-maroon leading-tight">CatólicosGPT | La IA Católica #1 en Español</h1>
+          <p class="text-ink2 text-lg leading-relaxed">Asistente católico con inteligencia artificial para formación, catequesis, oración, santoral, liturgia, infografías, videos y podcasts, siempre orientado por el Magisterio de la Iglesia.</p>
+          <div class="flex flex-wrap gap-3">
+            <a href="/" class="bg-maroon hover:bg-gold text-white px-5 py-3 rounded-xl font-bold text-sm transition">Abrir el chat</a>
+            <a href="/blog" class="border border-maroon text-maroon hover:bg-maroon hover:text-white px-5 py-3 rounded-xl font-bold text-sm transition">Ver formación católica</a>
+          </div>
+        </div>
+        <aside class="bg-white border border-border rounded-2xl p-5 shadow-sm flex flex-col gap-3">
+          <h2 class="font-display text-maroon font-bold text-xl">Qué puedes pedir</h2>
+          <ul class="text-sm text-ink2 leading-relaxed space-y-2">
+            <li>Guías catequéticas, resúmenes y cronologías.</li>
+            <li>Guiones para podcast, charlas y presentaciones.</li>
+            <li>Explicaciones del Catecismo y documentos de la Iglesia.</li>
+            <li>Recursos relacionados: infografías, videos, blog y santoral.</li>
+          </ul>
+        </aside>
+      </section>
+      <section class="bg-white border border-border rounded-2xl p-6 shadow-sm">
+        <h2 class="font-display text-2xl font-bold text-maroon mb-3">IA católica para formación fiel al Magisterio</h2>
+        <p class="text-ink2 leading-relaxed">CatólicosGPT combina conversación pastoral, búsqueda de recursos propios y contexto doctrinal para ayudar a personas, familias, catequistas y comunidades a profundizar en la fe católica. La plataforma integra chat, blog, santoral, videos, podcasts e infografías para que cada consulta pueda convertirse en formación clara y compartible.</p>
+      </section>
+    </main>
+  `;
+  res.send(renderPage('CatólicosGPT | La IA Católica #1 en Español', html, req, {
+    description: 'CatólicosGPT es la IA Católica #1 en Español: chat católico con Magisterio, Catecismo, santoral, liturgia, infografías, videos y podcasts.',
+    keywords: 'CatólicosGPT, IA Católica, ia catolica, inteligencia artificial catolica, chat catolico, catequesis catolica, Magisterio de la Iglesia, CatolicosGPT',
+    canonical: '/ia-catolica'
+  }));
 });
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -4436,9 +4528,10 @@ app.get('/podcasts/:slug', (req, res) => {
       }
     </script>
   `;
-  res.send(renderPage(p.titulo, html, req, {
-    description: p.descripcion || 'Audio de podcast católico.',
-    keywords: `${p.categoria}, podcast catolico, spotify catolico`
+  res.send(renderPage(p.seoTitle || p.titulo, html, req, {
+    description: p.metaDescription || p.descripcion || 'Audio de podcast católico.',
+    keywords: p.keywords || `${p.categoria}, podcast catolico, spotify catolico, CatólicosGPT, ia catolica`,
+    canonical: `/podcasts/${p.slug}`
   }));
 });
 
@@ -4597,9 +4690,10 @@ app.get('/videos/:slug', (req, res) => {
       }
     </script>
   `;
-  res.send(renderPage(v.titulo, html, req, {
-    description: v.comentario || 'Video católico de apologética y doctrina.',
-    keywords: `${v.categoria}, video catolico`
+  res.send(renderPage(v.seoTitle || v.titulo, html, req, {
+    description: v.metaDescription || v.comentario || 'Video católico de apologética y doctrina.',
+    keywords: v.keywords || `${v.categoria}, video catolico, CatólicosGPT, ia catolica`,
+    canonical: `/videos/${v.slug}`
   }));
 });
 
@@ -5878,12 +5972,16 @@ app.get('/sitemap.xml', (req, res) => {
   const blogCatalog = blog.loadBlog();
   const sementeras = seoTopics.getTemasSEO();
   const saintsList = santoral.getAllSaints();
+  const videosCatalog = videos.loadVideos();
+  const podcastsCatalog = podcast.loadPodcasts();
 
   const xml = seo.generateSitemapXML({
     infografias: infCatalog.infografias || [],
     posts: blogCatalog.posts || [],
     sementeras,
-    santos: saintsList
+    santos: saintsList,
+    videos: videosCatalog.videos || [],
+    podcasts: podcastsCatalog.podcasts || []
   });
 
   res.setHeader('Content-Type', 'application/xml');
@@ -6814,11 +6912,19 @@ app.get('/admin', (req, res) => {
 
         <div class="bg-white border rounded-2xl p-6 shadow-sm flex flex-col gap-3">
           <h3 class="font-display font-semibold text-espresso text-base">📋 Catálogo de Videos Curados</h3>
-          <div class="max-h-[300px] overflow-y-auto border border-border rounded-xl divide-y text-xs">
+          <p class="text-[10px] text-ink-2">Arrastra los videos para definir el orden público.</p>
+          <div id="admin-videos-sortable" class="max-h-[300px] overflow-y-auto border border-border rounded-xl divide-y text-xs">
             ${videosCatalog.videos.length === 0 ? '<div class="p-4 text-center text-ink-2 italic">Sin videos curados. Añade uno arriba.</div>' : 
               videosCatalog.videos.map(v => `
-                <div class="p-3 flex items-center justify-between hover:bg-cream/10">
+                <div class="video-sort-item p-3 flex items-center justify-between hover:bg-cream/10 cursor-grab active:cursor-grabbing"
+                     draggable="true"
+                     data-id="${v.id}"
+                     ondragstart="dragCatalogStart(event, 'videos')"
+                     ondragover="dragCatalogOver(event, 'video-sort-item')"
+                     ondrop="dropCatalogItem(event, 'videos')"
+                     ondragend="dragCatalogEnd(event)">
                   <div class="flex items-center gap-3 truncate max-w-xl">
+                    <span class="text-gold font-bold text-sm select-none">☰</span>
                     <img src="https://img.youtube.com/vi/${v.youtubeId}/default.jpg" class="w-12 h-9 object-cover rounded border">
                     <div class="flex flex-col gap-0.5 truncate">
                       <span class="font-bold text-espresso">${v.titulo}</span>
@@ -6890,14 +6996,24 @@ app.get('/admin', (req, res) => {
 
         <div class="bg-white border rounded-2xl p-6 shadow-sm flex flex-col gap-3">
           <h3 class="font-display font-semibold text-espresso text-base">📋 Podcasts en Canales</h3>
-          <div class="max-h-[300px] overflow-y-auto border border-border rounded-xl divide-y text-xs">
+          <p class="text-[10px] text-ink-2">Arrastra los podcasts para definir el orden público.</p>
+          <div id="admin-podcasts-sortable" class="max-h-[300px] overflow-y-auto border border-border rounded-xl divide-y text-xs">
             ${podcastsCatalog.podcasts.length === 0 ? '<div class="p-4 text-center text-ink-2 italic">Sin podcasts creados. ¡Añade tu canal arriba!</div>' : 
               podcastsCatalog.podcasts.map(p => `
-                <div class="p-3 flex items-center justify-between hover:bg-cream/10">
-                  <div class="flex flex-col gap-0.5 truncate max-w-xl">
+                <div class="podcast-sort-item p-3 flex items-center justify-between hover:bg-cream/10 cursor-grab active:cursor-grabbing"
+                     draggable="true"
+                     data-id="${p.id}"
+                     ondragstart="dragCatalogStart(event, 'podcasts')"
+                     ondragover="dragCatalogOver(event, 'podcast-sort-item')"
+                     ondrop="dropCatalogItem(event, 'podcasts')"
+                     ondragend="dragCatalogEnd(event)">
+                  <div class="flex items-start gap-3 truncate max-w-xl">
+                    <span class="text-gold font-bold text-sm select-none">☰</span>
+                    <div class="flex flex-col gap-0.5 truncate">
                     <span class="font-bold text-espresso">${p.titulo}</span>
                     <span class="text-[10px] text-ink-2 truncate">Slug: <strong class="text-maroon">${p.slug}</strong> | Autor: ${p.autor} | Categoría: ${p.categoria}</span>
                     <code class="text-[10px] bg-[#F8F5EE] border border-border rounded px-2 py-1 text-maroon font-mono select-all">[podcast:${p.slug}]</code>
+                    </div>
                   </div>
                   <div class="flex items-center gap-3">
                     <button type="button" onclick="copyShortcode('[podcast:${p.slug}]')" class="text-[10px] text-espresso hover:text-maroon border border-border px-2 py-0.5 rounded-md font-bold bg-white cursor-pointer">Copiar shortcode</button>
@@ -6965,8 +7081,8 @@ app.get('/admin', (req, res) => {
               <div class="md:col-span-2 bg-gold/10 border border-gold/25 rounded-xl p-3 flex items-start gap-2.5">
                 <input type="checkbox" name="es_santo_del_dia" id="santo_es_santo_del_dia" value="1" class="mt-0.5 w-4 h-4 accent-maroon">
                 <div class="flex flex-col gap-0.5">
-                  <label for="santo_es_santo_del_dia" class="font-bold text-maroon text-xs cursor-pointer">Mostrar como Santo del día en la app</label>
-                  <p class="text-[10px] text-ink2 leading-relaxed">Al activar esta opción, este perfil reemplaza el cálculo automático y queda como la biografía destacada en el menú principal.</p>
+                  <label for="santo_es_santo_del_dia" class="font-bold text-maroon text-xs cursor-pointer">Destacar como santo del día para esta fecha</label>
+                  <p class="text-[10px] text-ink2 leading-relaxed">Si hay varios santos el mismo día, este será el perfil que abrirán el menú principal y la tarjeta del home.</p>
                 </div>
               </div>
 
@@ -7094,6 +7210,7 @@ app.get('/admin', (req, res) => {
                       
                       <div class="flex items-center gap-2 pt-1 border-t border-border/20 justify-end">
                         <a href="/santoral/${s.slug}" target="_blank" class="text-maroon hover:underline font-bold">Ver página ↗</a>
+                        ${s.esSantoDelDia ? '' : `<a href="/admin/marcar-santo-del-dia?slug=${s.slug}" onclick="return confirm('¿Destacar ${s.nombre} como santo del día para el ${s.dia} de ${s.mes}?')" class="text-gold hover:underline font-bold">Destacar</a>`}
                         <button type="button" 
                                 data-santo="${escapeHtml(JSON.stringify(s))}"
                                 onclick="cargarEditarSanto(this)" 
@@ -7628,6 +7745,62 @@ app.get('/admin', (req, res) => {
           showSeoToast('Orden de infografías guardado.', false);
         } catch (err) {
           alert('No se pudo guardar el orden de infografías: ' + err.message);
+        }
+      }
+
+      let draggedCatalogItemId = null;
+
+      function dragCatalogStart(event, type) {
+        draggedCatalogItemId = event.currentTarget.getAttribute('data-id');
+        event.currentTarget.classList.add('opacity-50');
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', draggedCatalogItemId || '');
+      }
+
+      function dragCatalogOver(event, itemClass) {
+        event.preventDefault();
+        const dragging = document.querySelector('.' + itemClass + '.opacity-50');
+        const target = event.target.closest('.' + itemClass);
+        if (!dragging || !target || dragging === target) return;
+        const box = target.getBoundingClientRect();
+        const before = event.clientY < box.top + box.height / 2;
+        target.parentNode.insertBefore(dragging, before ? target : target.nextSibling);
+      }
+
+      async function dropCatalogItem(event, type) {
+        event.preventDefault();
+        await saveCatalogOrder(type);
+      }
+
+      function dragCatalogEnd(event) {
+        event.currentTarget.classList.remove('opacity-50');
+        draggedCatalogItemId = null;
+      }
+
+      async function saveCatalogOrder(type) {
+        const config = {
+          videos: { list: 'admin-videos-sortable', item: 'video-sort-item', endpoint: '/api/admin/videos/reorder', label: 'videos' },
+          podcasts: { list: 'admin-podcasts-sortable', item: 'podcast-sort-item', endpoint: '/api/admin/podcasts/reorder', label: 'podcasts' }
+        }[type];
+        if (!config) return;
+        const list = document.getElementById(config.list);
+        if (!list) return;
+        const orderedIds = Array.from(list.querySelectorAll('.' + config.item))
+          .map(item => item.getAttribute('data-id'))
+          .filter(Boolean);
+        if (!orderedIds.length) return;
+
+        try {
+          const response = await fetch(config.endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderedIds })
+          });
+          const data = await response.json();
+          if (!response.ok || data.error) throw new Error(data.error || 'No se pudo guardar el orden.');
+          showSeoToast('Orden de ' + config.label + ' guardado.', false);
+        } catch (err) {
+          alert('No se pudo guardar el orden de ' + config.label + ': ' + err.message);
         }
       }
 
@@ -8268,7 +8441,7 @@ app.get('/admin', (req, res) => {
         const previewImg = row.querySelector('.image-preview-img');
 
         if (urlInput) urlInput.value = resource.url;
-        if (altInput) altInput.value = 'Infografía católica: ' + label;
+        if (altInput) altInput.value = 'Infografía católica CatólicosGPT IA Católica: ' + label;
         if (nameInput) nameInput.value = rawName;
         if (widthInput) widthInput.value = width;
         if (heightInput) heightInput.value = height;
@@ -8460,7 +8633,7 @@ function buildLocalInfografiaSeo({ titulo, tema, categoria } = {}) {
   const cleanTitle = (titulo || 'Infografía católica').trim();
   const cleanTema = (tema || cleanTitle).trim();
   const cleanCategoria = (categoria || 'formación católica').trim();
-  const metaBase = `${cleanTitle}: recurso visual de CatólicosGPT sobre ${cleanTema}, pensado para formación católica, catequesis y evangelización.`;
+  const metaBase = `${cleanTitle}: recurso visual de CatólicosGPT | La IA Católica #1 en Español sobre ${cleanTema}, para catequesis y evangelización.`;
   const metaDescription = metaBase.length > 160 ? metaBase.slice(0, 157).trim() + '...' : metaBase;
   const keywords = [
     cleanTitle,
@@ -8468,6 +8641,10 @@ function buildLocalInfografiaSeo({ titulo, tema, categoria } = {}) {
     cleanCategoria,
     'infografia catolica',
     'CatolicosGPT',
+    'CatólicosGPT',
+    'ia catolica',
+    'inteligencia artificial catolica',
+    'la ia catolica #1 en espanol',
     'catequesis',
     'formacion catolica'
   ]
@@ -8483,9 +8660,17 @@ function buildLocalSeoByEntity({ entityType, context } = {}) {
   const baseTitle = (ctx.seoTitle || ctx.titulo || ctx.nombre || ctx.title || 'Contenido catolico').trim();
   const tema = (ctx.tema || ctx.categoria || ctx.tipo || entityType || 'formacion catolica').trim();
   const text = (ctx.contenido || ctx.contenidoMd || ctx.biografia || ctx.descripcion || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-  const suffix = entityType === 'santoral' ? 'Santoral CatolicosGPT' : entityType === 'infografia' ? 'Infografia CatolicosGPT' : 'Blog CatolicosGPT';
+  const suffix = entityType === 'santoral'
+    ? 'Santoral CatólicosGPT'
+    : entityType === 'infografia'
+      ? 'Infografía CatólicosGPT'
+      : entityType === 'video'
+        ? 'Video CatólicosGPT'
+        : entityType === 'podcast'
+          ? 'Podcast CatólicosGPT'
+          : 'CatólicosGPT IA Católica';
   const seoTitle = `${baseTitle} | ${suffix}`.slice(0, 60).trim();
-  const metaRaw = `${baseTitle}: guia catolica sobre ${tema}${text ? `. ${text.slice(0, 80)}` : ''}.`;
+  const metaRaw = `${baseTitle}: guía católica de CatólicosGPT | La IA Católica #1 en Español sobre ${tema}${text ? `. ${text.slice(0, 60)}` : ''}.`;
   const metaDescription = metaRaw.length > 155 ? metaRaw.slice(0, 152).trim() + '...' : metaRaw;
   const keywords = [
     baseTitle,
@@ -8493,7 +8678,15 @@ function buildLocalSeoByEntity({ entityType, context } = {}) {
     entityType === 'santoral' ? 'santoral catolico' : '',
     entityType === 'infografia' ? 'infografia catolica' : '',
     entityType === 'blog' ? 'blog catolico' : '',
+    entityType === 'video' ? 'video catolico' : '',
+    entityType === 'podcast' ? 'podcast catolico' : '',
     'CatolicosGPT',
+    'CatólicosGPT',
+    'catolicos gpt',
+    'ia catolica',
+    'IA católica',
+    'inteligencia artificial catolica',
+    'la ia catolica #1 en espanol',
     'catequesis catolica',
     'formacion catolica',
     'fe catolica'
@@ -8503,7 +8696,7 @@ function buildLocalSeoByEntity({ entityType, context } = {}) {
     seoTitle,
     metaDescription,
     keywords,
-    altText: baseTitle
+    altText: `${baseTitle} | CatólicosGPT IA Católica`
   };
 }
 
@@ -8513,7 +8706,7 @@ app.post('/api/admin/seo/openai', async (req, res) => {
   if (!user || user.plan !== 'admin') return res.status(403).json({ error: 'No autorizado' });
 
   const { entityType, requestedField, context } = req.body || {};
-  const allowedEntities = ['blog', 'santoral', 'infografia'];
+  const allowedEntities = ['blog', 'santoral', 'infografia', 'video', 'podcast'];
   const allowedFields = ['seoTitle', 'metaDescription', 'keywords', 'altText', 'all'];
 
   if (!allowedEntities.includes(entityType)) {
@@ -8602,7 +8795,7 @@ app.post('/admin/crear-infografia-manual', async (req, res) => {
 
     const imagenesParaGuardar = imageUrls.map((u, index) => {
       const name = imageNames[index] || `slide-${index + 1}.jpg`;
-      const alt = imageAlts[index] || `${titulo} — Diapositiva ${index + 1}`;
+      const alt = imageAlts[index] || `${titulo} — Diapositiva ${index + 1} | CatólicosGPT IA Católica`;
       const w = parseInt(imageWidths[index]) || 1200;
       const h = parseInt(imageHeights[index]) || 1200;
       const esPortada = imageCovers[index] === '1';
@@ -8639,7 +8832,7 @@ app.post('/admin/crear-infografia-manual', async (req, res) => {
       titulo,
       seoTitle: seoTitle || titulo,
       metaDescription: finalDesc,
-      altText: titulo,
+      altText: `${titulo} | CatólicosGPT IA Católica`,
       tipoVisualizacion: tipoVisualizacion || 'continua',
       imagenes: imagenesParaGuardar,
       totalSlides: imagenesParaGuardar.length,
@@ -8749,6 +8942,10 @@ app.post('/admin/crear-video', (req, res) => {
     const parsedYtId = extractYoutubeId(youtubeId);
     const cleanId = `vid-${Date.now()}`;
     const slug = blog.slugify(titulo);
+    const videoSeo = buildLocalSeoByEntity({
+      entityType: 'video',
+      context: { titulo, categoria, descripcion: comentario, seoTitle: titulo }
+    });
 
     const newVideo = {
       id: cleanId,
@@ -8758,6 +8955,10 @@ app.post('/admin/crear-video', (req, res) => {
       youtubeId: parsedYtId,
       comentario: comentario || 'Video sugerido para formación católica.',
       categoria: categoria || 'liturgia',
+      seoTitle: videoSeo.seoTitle,
+      metaDescription: videoSeo.metaDescription,
+      keywords: videoSeo.keywords,
+      altText: `${titulo} | CatólicosGPT IA Católica`,
       publicado: true
     };
 
@@ -8800,6 +9001,10 @@ app.post('/admin/crear-podcast', (req, res) => {
     const { spotifyUrl: sUrl, embedUrl, embedHtml } = extractSpotifyInfo(spotifyUrl);
     const cleanId = `pod-${Date.now()}`;
     const slug = blog.slugify(titulo);
+    const podcastSeo = buildLocalSeoByEntity({
+      entityType: 'podcast',
+      context: { titulo, categoria, descripcion, seoTitle: titulo }
+    });
 
     const newPodcast = {
       id: cleanId,
@@ -8811,6 +9016,10 @@ app.post('/admin/crear-podcast', (req, res) => {
       embedHtml,
       spotifyUrl: sUrl,
       categoria: categoria || 'oracion',
+      seoTitle: podcastSeo.seoTitle,
+      metaDescription: podcastSeo.metaDescription,
+      keywords: podcastSeo.keywords,
+      altText: `${titulo} | CatólicosGPT IA Católica`,
       publicado: true
     };
 
@@ -8867,6 +9076,38 @@ app.post('/api/admin/infografias/reorder', (req, res) => {
     return res.json({ success: true, total: catalog.infografias.length });
   } catch (e) {
     return res.status(500).json({ error: 'Error guardando orden: ' + e.message });
+  }
+});
+
+app.post('/api/admin/videos/reorder', (req, res) => {
+  const user = getAuthedUser(req);
+  if (!user || user.plan !== 'admin') return res.status(403).json({ error: 'No autorizado' });
+
+  try {
+    const { orderedIds } = req.body || {};
+    if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+      return res.status(400).json({ error: 'No se recibió un orden válido.' });
+    }
+    const catalog = videos.reorderVideos(orderedIds);
+    return res.json({ success: true, total: catalog.videos.length });
+  } catch (e) {
+    return res.status(500).json({ error: 'Error guardando orden de videos: ' + e.message });
+  }
+});
+
+app.post('/api/admin/podcasts/reorder', (req, res) => {
+  const user = getAuthedUser(req);
+  if (!user || user.plan !== 'admin') return res.status(403).json({ error: 'No autorizado' });
+
+  try {
+    const { orderedIds } = req.body || {};
+    if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+      return res.status(400).json({ error: 'No se recibió un orden válido.' });
+    }
+    const catalog = podcast.reorderPodcasts(orderedIds);
+    return res.json({ success: true, total: catalog.podcasts.length });
+  } catch (e) {
+    return res.status(500).json({ error: 'Error guardando orden de podcasts: ' + e.message });
   }
 });
 
@@ -8959,6 +9200,17 @@ app.get('/admin/eliminar-santo', (req, res) => {
   const { slug } = req.query;
   if (slug) {
     santoral.deleteSaint(slug);
+  }
+  res.redirect('/admin#santoral');
+});
+
+app.get('/admin/marcar-santo-del-dia', (req, res) => {
+  const user = getAuthedUser(req);
+  if (!user || user.plan !== 'admin') return res.status(403).send('No autorizado');
+
+  const { slug } = req.query;
+  if (slug) {
+    santoral.setFeaturedSaint(slug);
   }
   res.redirect('/admin#santoral');
 });

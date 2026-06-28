@@ -42,6 +42,178 @@ function slugify(text) {
     .replace(/(^-|-$)/g, ''); // Trim leading/trailing dashes
 }
 
+const SEO_BASE_KEYWORDS = 'catolicosgpt, catolicos gpt, ia catolica, inteligencia artificial catolica, la ia catolica #1 en espanol';
+const SANTORAL_REFERENCE = 'Martirologio Romano; Vatican News; ACI Prensa; EWTN';
+
+const SANTORAL_SUPPLEMENT = [
+  ['01', 1, 'Santa María, Madre de Dios', 'Solemnidad', 'Santa María, Madre de Dios, ruega por nosotros.'],
+  ['01', 2, 'Santos Basilio Magno y Gregorio Nacianceno', 'Memoria Obligatoria', 'La fe se comprende mejor cuando se vive en la Iglesia.'],
+  ['01', 17, 'San Antonio Abad', 'Memoria Obligatoria', 'Nada antepongas al amor de Cristo.'],
+  ['01', 21, 'Santa Inés', 'Memoria Obligatoria', 'Cristo es mi esposo y mi corona.'],
+  ['01', 24, 'San Francisco de Sales', 'Memoria Obligatoria', 'Todo por amor, nada por fuerza.'],
+  ['01', 25, 'Conversión de San Pablo', 'Fiesta', 'Señor, ¿qué quieres que haga?'],
+  ['01', 26, 'Santos Timoteo y Tito', 'Memoria Obligatoria', 'Guarda el buen depósito de la fe.'],
+  ['01', 28, 'Santo Tomás de Aquino', 'Memoria Obligatoria', 'Contemplar y dar a otros lo contemplado.'],
+  ['01', 31, 'San Juan Bosco', 'Memoria Obligatoria', 'Dadme almas y llevaos lo demás.'],
+  ['02', 2, 'Presentación del Señor', 'Fiesta', 'Luz para alumbrar a las naciones.'],
+  ['02', 3, 'San Blas', 'Memoria Libre', 'Protege nuestra voz para bendecir al Señor.'],
+  ['02', 11, 'Nuestra Señora de Lourdes', 'Memoria Libre', 'Yo soy la Inmaculada Concepción.'],
+  ['02', 14, 'Santos Cirilo y Metodio', 'Fiesta', 'Evangelizar es traducir la fe al corazón de los pueblos.'],
+  ['02', 22, 'Cátedra de San Pedro', 'Fiesta', 'Tú eres Pedro, y sobre esta piedra edificaré mi Iglesia.'],
+  ['03', 19, 'San José, Esposo de la Virgen María', 'Solemnidad', 'San José, custodio del Redentor, ruega por nosotros.'],
+  ['03', 25, 'Anunciación del Señor', 'Solemnidad', 'Hágase en mí según tu palabra.'],
+  ['04', 25, 'San Marcos Evangelista', 'Fiesta', 'Proclamad el Evangelio a toda criatura.'],
+  ['04', 29, 'Santa Catalina de Siena', 'Fiesta', 'Si sois lo que debéis ser, prenderéis fuego al mundo.'],
+  ['05', 1, 'San José Obrero', 'Memoria Libre', 'El trabajo hecho con amor santifica la vida diaria.'],
+  ['05', 3, 'Santos Felipe y Santiago, apóstoles', 'Fiesta', 'Muéstranos al Padre y nos basta.'],
+  ['05', 13, 'Nuestra Señora de Fátima', 'Memoria Libre', 'Mi Inmaculado Corazón será tu refugio.'],
+  ['05', 14, 'San Matías Apóstol', 'Fiesta', 'Testigo de la Resurrección de Cristo.'],
+  ['05', 31, 'Visitación de la Virgen María', 'Fiesta', 'Mi alma glorifica al Señor.'],
+  ['06', 11, 'San Bernabé Apóstol', 'Memoria Obligatoria', 'Hijo de la consolación, anima nuestra fe.'],
+  ['06', 13, 'San Antonio de Padua', 'Memoria Obligatoria', 'El Evangelio vivido predica más que las palabras.'],
+  ['06', 24, 'Natividad de San Juan Bautista', 'Solemnidad', 'Conviene que Cristo crezca y yo disminuya.'],
+  ['06', 29, 'Santos Pedro y Pablo', 'Solemnidad', 'Dos columnas apostólicas de la Iglesia.'],
+  ['07', 3, 'Santo Tomás Apóstol', 'Fiesta', 'Señor mío y Dios mío.'],
+  ['07', 11, 'San Benito Abad', 'Fiesta', 'Ora et labora.'],
+  ['07', 16, 'Nuestra Señora del Carmen', 'Memoria Libre', 'Madre del Carmelo, condúcenos a Cristo.'],
+  ['07', 22, 'Santa María Magdalena', 'Fiesta', 'He visto al Señor.'],
+  ['07', 25, 'Santiago Apóstol', 'Fiesta', 'Apóstol peregrino, fortalece nuestra misión.'],
+  ['07', 26, 'Santos Joaquín y Ana', 'Memoria Obligatoria', 'Raíces santas de la familia de María.'],
+  ['07', 31, 'San Ignacio de Loyola', 'Memoria Obligatoria', 'En todo amar y servir.'],
+  ['08', 1, 'San Alfonso María de Ligorio', 'Memoria Obligatoria', 'La oración es el gran medio de salvación.'],
+  ['08', 4, 'San Juan María Vianney', 'Memoria Obligatoria', 'El sacerdocio es el amor del Corazón de Jesús.'],
+  ['08', 6, 'Transfiguración del Señor', 'Fiesta', 'Este es mi Hijo amado: escuchadlo.'],
+  ['08', 8, 'Santo Domingo de Guzmán', 'Memoria Obligatoria', 'Hablar con Dios o de Dios.'],
+  ['08', 10, 'San Lorenzo Diácono y Mártir', 'Fiesta', 'Los pobres son el tesoro de la Iglesia.'],
+  ['08', 11, 'Santa Clara de Asís', 'Memoria Obligatoria', 'Mira a Cristo, considera a Cristo, contempla a Cristo.'],
+  ['08', 14, 'San Maximiliano María Kolbe', 'Memoria Obligatoria', 'Solo el amor crea.'],
+  ['08', 15, 'Asunción de la Virgen María', 'Solemnidad', 'María fue llevada al cielo en cuerpo y alma.'],
+  ['08', 20, 'San Bernardo de Claraval', 'Memoria Obligatoria', 'Mira la estrella, invoca a María.'],
+  ['08', 21, 'San Pío X', 'Memoria Obligatoria', 'Restaurar todas las cosas en Cristo.'],
+  ['08', 22, 'Santa María Reina', 'Memoria Obligatoria', 'Reina del cielo, ruega por nosotros.'],
+  ['08', 24, 'San Bartolomé Apóstol', 'Fiesta', 'Un israelita de verdad, sin doblez.'],
+  ['08', 27, 'Santa Mónica', 'Memoria Obligatoria', 'Las lágrimas de una madre pueden abrir caminos de gracia.'],
+  ['08', 28, 'San Agustín', 'Memoria Obligatoria', 'Nos hiciste para ti, Señor.'],
+  ['08', 29, 'Martirio de San Juan Bautista', 'Memoria Obligatoria', 'La verdad se anuncia aunque cueste la vida.'],
+  ['09', 3, 'San Gregorio Magno', 'Memoria Obligatoria', 'Servidor de los servidores de Dios.'],
+  ['09', 8, 'Natividad de la Virgen María', 'Fiesta', 'Tu nacimiento, Virgen Madre de Dios, anunció la alegría al mundo.'],
+  ['09', 14, 'Exaltación de la Santa Cruz', 'Fiesta', 'En la Cruz está la salvación.'],
+  ['09', 15, 'Nuestra Señora de los Dolores', 'Memoria Obligatoria', 'Una espada atravesará tu alma.'],
+  ['09', 21, 'San Mateo Apóstol y Evangelista', 'Fiesta', 'Sígueme.'],
+  ['09', 23, 'San Pío de Pietrelcina', 'Memoria Obligatoria', 'Reza, espera y no te preocupes.'],
+  ['09', 29, 'Santos Arcángeles Miguel, Gabriel y Rafael', 'Fiesta', 'Defiéndenos, anúncianos y condúcenos.'],
+  ['09', 30, 'San Jerónimo', 'Memoria Obligatoria', 'Ignorar las Escrituras es ignorar a Cristo.'],
+  ['10', 1, 'Santa Teresa del Niño Jesús', 'Memoria Obligatoria', 'Mi vocación es el amor.'],
+  ['10', 2, 'Santos Ángeles Custodios', 'Memoria Obligatoria', 'Ángel de mi guarda, dulce compañía.'],
+  ['10', 4, 'San Francisco de Asís', 'Memoria Obligatoria', 'Señor, hazme un instrumento de tu paz.'],
+  ['10', 7, 'Nuestra Señora del Rosario', 'Memoria Obligatoria', 'Con María contemplamos el rostro de Cristo.'],
+  ['10', 15, 'Santa Teresa de Jesús', 'Memoria Obligatoria', 'Solo Dios basta.'],
+  ['10', 18, 'San Lucas Evangelista', 'Fiesta', 'Médico y evangelista de la misericordia.'],
+  ['10', 22, 'San Juan Pablo II', 'Memoria Libre', 'No tengáis miedo. Abrid las puertas a Cristo.'],
+  ['10', 28, 'Santos Simón y Judas, apóstoles', 'Fiesta', 'Apóstoles fieles del Señor.'],
+  ['11', 1, 'Todos los Santos', 'Solemnidad', 'La santidad es la vocación de todos los bautizados.'],
+  ['11', 2, 'Conmemoración de los Fieles Difuntos', 'Conmemoración', 'Dales, Señor, el descanso eterno.'],
+  ['11', 4, 'San Carlos Borromeo', 'Memoria Obligatoria', 'El pastor se entrega por su pueblo.'],
+  ['11', 9, 'Dedicación de la Basílica de Letrán', 'Fiesta', 'Somos templo vivo de Dios.'],
+  ['11', 11, 'San Martín de Tours', 'Memoria Obligatoria', 'Cristo está presente en el pobre.'],
+  ['11', 21, 'Presentación de la Virgen María', 'Memoria Obligatoria', 'María se entrega enteramente al Señor.'],
+  ['11', 22, 'Santa Cecilia', 'Memoria Obligatoria', 'Cantad a Dios con el corazón.'],
+  ['11', 30, 'San Andrés Apóstol', 'Fiesta', 'Hemos encontrado al Mesías.'],
+  ['12', 3, 'San Francisco Javier', 'Memoria Obligatoria', 'Ay de mí si no anuncio el Evangelio.'],
+  ['12', 6, 'San Nicolás de Bari', 'Memoria Libre', 'La caridad discreta revela a Cristo.'],
+  ['12', 8, 'Inmaculada Concepción de la Virgen María', 'Solemnidad', 'Llena de gracia desde el primer instante.'],
+  ['12', 12, 'Nuestra Señora de Guadalupe', 'Fiesta', '¿No estoy yo aquí, que soy tu Madre?'],
+  ['12', 13, 'Santa Lucía', 'Memoria Obligatoria', 'La luz de Cristo vence la oscuridad.'],
+  ['12', 14, 'San Juan de la Cruz', 'Memoria Obligatoria', 'Al atardecer de la vida seremos examinados en el amor.'],
+  ['12', 25, 'Natividad del Señor', 'Solemnidad', 'El Verbo se hizo carne y habitó entre nosotros.'],
+  ['12', 26, 'San Esteban Protomártir', 'Fiesta', 'Señor, no les tengas en cuenta este pecado.'],
+  ['12', 27, 'San Juan Apóstol y Evangelista', 'Fiesta', 'Dios es amor.'],
+  ['12', 28, 'Santos Inocentes Mártires', 'Fiesta', 'Los pequeños son preciosos ante Dios.'],
+  ['12', 31, 'San Silvestre I, papa', 'Memoria Libre', 'La Iglesia persevera en la historia con Cristo.']
+];
+
+function buildSupplementalSaint([mesIndex, dia, nombre, tipo, lema]) {
+  const mes = mesesEnEspanol[mesIndex] || 'Enero';
+  return {
+    slug: slugify(nombre),
+    dia,
+    mes,
+    mes_index: mesIndex,
+    nombre,
+    tipo,
+    lema,
+    biografia: `${nombre}\n\nVida y obra\n${nombre} se celebra el ${dia} de ${mes} dentro del santoral católico. Su memoria ayuda a la Iglesia a contemplar cómo la gracia de Cristo transforma la historia concreta de personas, familias, pueblos y comunidades.\n\nMilagros, devoción y legado espiritual\nLa devoción católica no mira a los santos como sustitutos de Cristo, sino como testigos que conducen a Él. Su ejemplo invita a vivir la fe con oración, caridad, fidelidad sacramental y obediencia al Evangelio.\n\nPreguntas para catequesis\n¿Qué virtud enseña este santo o fiesta? ¿Cómo puede una familia vivir hoy su mensaje? ¿Qué práctica concreta de oración, servicio o conversión propone su testimonio?`,
+    aspectos_tabla: {
+      "Festividad": `${dia} de ${mes}`,
+      "Grado litúrgico": tipo,
+      "Fuentes de referencia": SANTORAL_REFERENCE,
+      "Enfoque catequético": "Vida de santos, santoral católico, devoción y formación espiritual"
+    },
+    foto_url: "",
+    infografia_url: "",
+    seo_titulo: `${nombre}: vida, obra y fiesta | CatólicosGPT`,
+    seo_descripcion: `Conoce ${nombre}: vida, devoción, legado espiritual y celebración en el santoral católico de CatólicosGPT.`,
+    seo_keywords: `${slugify(nombre).replace(/-/g, ' ')}, ${nombre}, santoral catolico, santo del dia, vida de santos, ${SEO_BASE_KEYWORDS}`,
+    fuentes_referencia: SANTORAL_REFERENCE,
+    creado_por_admin: false,
+    fuente: 'Santoral complementario CatólicosGPT',
+    fechaCreacion: new Date().toISOString()
+  };
+}
+
+function sameLiturgicalDay(a, b) {
+  return parseInt(a && a.dia) === parseInt(b && b.dia) &&
+    String(a && a.mes_index || '').padStart(2, '0') === String(b && b.mes_index || '').padStart(2, '0');
+}
+
+function clearFeaturedForSameDay(db, daySource, keepSlug = null) {
+  if (!db || !Array.isArray(db.santos) || !daySource) return db;
+  db.santos = db.santos.map(s => {
+    if (sameLiturgicalDay(s, daySource) && s.slug !== keepSlug) {
+      return { ...s, esSantoDelDia: false };
+    }
+    return s;
+  });
+  return db;
+}
+
+function mergeSupplementalSantoral(db) {
+  const target = db && Array.isArray(db.santos) ? db : { santos: [] };
+  const bySlug = new Map(target.santos.map(s => [s.slug, s]));
+  let changed = false;
+
+  SANTORAL_SUPPLEMENT.map(buildSupplementalSaint).forEach(extra => {
+    const existing = bySlug.get(extra.slug);
+    if (!existing) {
+      target.santos.push(extra);
+      bySlug.set(extra.slug, extra);
+      changed = true;
+      return;
+    }
+    const filled = { ...existing };
+    let localChanged = false;
+    ['tipo', 'lema', 'biografia', 'seo_titulo', 'seo_descripcion', 'seo_keywords', 'fuentes_referencia'].forEach(key => {
+      if (!filled[key] && extra[key]) {
+        filled[key] = extra[key];
+        localChanged = true;
+      }
+    });
+    if (!filled.aspectos_tabla || Object.keys(filled.aspectos_tabla).length === 0) {
+      filled.aspectos_tabla = extra.aspectos_tabla;
+      localChanged = true;
+    }
+    if (localChanged) {
+      const idx = target.santos.findIndex(s => s.slug === extra.slug);
+      if (idx >= 0) target.santos[idx] = filled;
+      changed = true;
+    }
+  });
+
+  target.total = target.santos.length;
+  if (changed) saveSantoral(target);
+  return target;
+}
+
 // Carga la base de datos de santoral enriquecida
 function loadSantoral() {
   if (!fs.existsSync(DATA_DIR)) {
@@ -51,16 +223,11 @@ function loadSantoral() {
   if (fs.existsSync(SANTORAL_FILE)) {
     try {
       const data = JSON.parse(fs.readFileSync(SANTORAL_FILE, 'utf-8'));
-      if (data && Array.isArray(data.santos) && data.santos.length >= 365) {
-        return data;
+      if (data && Array.isArray(data.santos)) {
+        return mergeSupplementalSantoral(data);
       }
-      console.log('[Santoral Bulk] Base incompleta; regenerando 365 perfiles editables...');
-      const bulk = require('./scripts/generate-bulk-content');
-      const generated = bulk.generateSantoral();
-      saveSantoral(generated);
-      return generated;
     } catch (e) {
-      console.error('[Santoral DB] Error al leer base de datos, reestructurando:', e.message);
+      console.error('[Santoral DB] Error al leer base de datos, intentando base inicial:', e.message);
     }
   }
 
@@ -68,15 +235,14 @@ function loadSantoral() {
     console.log('[Santoral Bulk] Base no encontrada; generando santoral completo de 365 días...');
     const bulk = require('./scripts/generate-bulk-content');
     const generated = bulk.generateSantoral();
-    saveSantoral(generated);
-    return generated;
+    const merged = mergeSupplementalSantoral(generated);
+    saveSantoral(merged);
+    return merged;
   } catch (e) {
     console.error('[Santoral Bulk] No se pudo generar santoral completo:', e.message);
-    const db = {
-      santos: []
-    };
-    saveSantoral(db);
-    return db;
+    const merged = mergeSupplementalSantoral({ santos: [] });
+    saveSantoral(merged);
+    return merged;
   }
 }
 
@@ -113,7 +279,11 @@ async function getOrCreateDailySaint(dia, mesIndex) {
   const db = loadSantoral();
   const mesNombre = mesesEnEspanol[mesIndex] || 'Junio';
 
-  const destacado = db.santos.find(s => s.esSantoDelDia === true);
+  const destacado = db.santos.find(s =>
+    s.esSantoDelDia === true &&
+    parseInt(s.dia) === parseInt(dia) &&
+    String(s.mes || '').toLowerCase() === mesNombre.toLowerCase()
+  );
   if (destacado) {
     return destacado;
   }
@@ -280,9 +450,7 @@ function createSaint(data) {
     fechaCreacion: new Date().toISOString()
   };
 
-  if (nuevoSanto.esSantoDelDia) {
-    db.santos = db.santos.map(s => ({ ...s, esSantoDelDia: false }));
-  }
+  if (nuevoSanto.esSantoDelDia) clearFeaturedForSameDay(db, nuevoSanto);
   db.santos.push(nuevoSanto);
   saveSantoral(db, nuevoSanto);
   return nuevoSanto;
@@ -294,11 +462,7 @@ function updateSaint(slug, updatedData) {
   const idx = db.santos.findIndex(s => s.slug === slug);
   if (idx === -1) return null;
 
-  if (updatedData.esSantoDelDia === true) {
-    db.santos = db.santos.map(s => ({ ...s, esSantoDelDia: false }));
-  }
-
-  db.santos[idx] = {
+  const mergedData = {
     ...db.santos[idx],
     ...updatedData,
     dia: parseInt(updatedData.dia) || db.santos[idx].dia,
@@ -307,10 +471,33 @@ function updateSaint(slug, updatedData) {
       : (updatedData.aspectos_tabla || db.santos[idx].aspectos_tabla),
     fechaModificacion: new Date().toISOString()
   };
+  if (mergedData.esSantoDelDia === true) clearFeaturedForSameDay(db, mergedData, mergedData.slug);
+  db.santos[idx] = mergedData;
 
   saveSantoral(db, db.santos[idx]);
 
   return db.santos[idx];
+}
+
+function getFeaturedSaintForDay(dia, mesIndex) {
+  const db = loadSantoral();
+  const mesNombre = mesesEnEspanol[String(mesIndex).padStart(2, '0')] || '';
+  const sameDay = (db.santos || []).filter(s =>
+    parseInt(s.dia) === parseInt(dia) &&
+    String(s.mes || '').toLowerCase() === mesNombre.toLowerCase()
+  );
+  return sameDay.find(s => s.esSantoDelDia === true) || sameDay[0] || null;
+}
+
+function setFeaturedSaint(slug) {
+  const db = loadSantoral();
+  const idx = (db.santos || []).findIndex(s => s.slug === slug);
+  if (idx === -1) return null;
+  const target = { ...db.santos[idx], esSantoDelDia: true, fechaModificacion: new Date().toISOString() };
+  clearFeaturedForSameDay(db, target, target.slug);
+  db.santos[idx] = target;
+  saveSantoral(db, target);
+  return target;
 }
 
 // Obtener todos los santos en la DB para el administrador
@@ -342,6 +529,8 @@ module.exports = {
   updateSaint,
   deleteSaint,
   getAllSaints,
+  getFeaturedSaintForDay,
+  setFeaturedSaint,
   loadSantoral,
   saveSantoral,
   slugify

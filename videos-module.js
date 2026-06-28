@@ -114,4 +114,26 @@ function getVideoBySlug(slug) {
   return loadVideos().videos.find(v => v.slug === slug);
 }
 
-module.exports = { loadVideos, saveVideos, getVideos, getVideoBySlug, deleteVideo };
+function reorderVideos(orderedIds = []) {
+  const c = loadVideos();
+  const byId = new Map((c.videos || []).map(item => [String(item.id), item]));
+  const used = new Set();
+  const reordered = [];
+  orderedIds.map(String).forEach(id => {
+    const item = byId.get(id);
+    if (item) {
+      reordered.push(item);
+      used.add(id);
+    }
+  });
+  (c.videos || []).forEach(item => {
+    const id = String(item.id);
+    if (!used.has(id)) reordered.push(item);
+  });
+  c.videos = reordered.map((item, index) => ({ ...item, orden: index + 1 }));
+  c.total = c.videos.length;
+  saveVideos(c);
+  return c;
+}
+
+module.exports = { loadVideos, saveVideos, getVideos, getVideoBySlug, deleteVideo, reorderVideos };

@@ -9,7 +9,7 @@ const path = require('path');
 const APP_URL = process.env.APP_URL || 'https://ai.catolicosgpt.com';
 
 // ── Sitemap Generator ──
-function generateSitemapXML({ infografias = [], posts = [], sementeras = [] } = {}) {
+function generateSitemapXML({ infografias = [], posts = [], sementeras = [], santos = [], videos = [], podcasts = [] } = {}) {
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -28,6 +28,7 @@ function generateSitemapXML({ infografias = [], posts = [], sementeras = [] } = 
 
   // 1. Core pages
   addUrl('/', '1.0', 'daily');
+  addUrl('/ia-catolica', '1.0', 'weekly');
   addUrl('/preguntas-frecuentes', '0.9', 'weekly');
   addUrl('/infografias', '0.8', 'daily');
   addUrl('/blog', '0.8', 'daily');
@@ -35,6 +36,7 @@ function generateSitemapXML({ infografias = [], posts = [], sementeras = [] } = 
   addUrl('/videos', '0.7', 'weekly');
   addUrl('/misa-de-hoy', '0.8', 'daily');
   addUrl('/santo-del-dia', '0.8', 'daily');
+  addUrl('/santoral', '0.8', 'daily');
   addUrl('/liturgia-de-las-horas', '0.8', 'daily');
 
   // 2. Infografías
@@ -55,6 +57,24 @@ function generateSitemapXML({ infografias = [], posts = [], sementeras = [] } = 
   // 4. Secciones SEO temáticas (sementeras)
   sementeras.forEach(sem => {
     addUrl(`/recursos/${sem.slug}`, '0.6', 'weekly');
+  });
+
+  santos.forEach(s => {
+    if (!s.slug) return;
+    const fecha = s.fechaModificacion ? s.fechaModificacion.slice(0, 10) : (s.fechaCreacion ? s.fechaCreacion.slice(0, 10) : null);
+    addUrl(`/santoral/${s.slug}`, '0.7', 'monthly', fecha);
+  });
+
+  videos.forEach(v => {
+    if (!v.slug) return;
+    const fecha = v.fechaCreacion ? v.fechaCreacion.slice(0, 10) : null;
+    addUrl(`/videos/${v.slug}`, '0.6', 'monthly', fecha);
+  });
+
+  podcasts.forEach(p => {
+    if (!p.slug) return;
+    const fecha = p.fechaCreacion ? p.fechaCreacion.slice(0, 10) : null;
+    addUrl(`/podcasts/${p.slug}`, '0.6', 'monthly', fecha);
   });
 
   xml += '\n</urlset>';

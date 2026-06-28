@@ -120,4 +120,26 @@ function getPodcastBySlug(slug) {
   return loadPodcasts().podcasts.find(p => p.slug === slug);
 }
 
-module.exports = { loadPodcasts, savePodcasts, getPodcasts, getPodcastBySlug, deletePodcast };
+function reorderPodcasts(orderedIds = []) {
+  const c = loadPodcasts();
+  const byId = new Map((c.podcasts || []).map(item => [String(item.id), item]));
+  const used = new Set();
+  const reordered = [];
+  orderedIds.map(String).forEach(id => {
+    const item = byId.get(id);
+    if (item) {
+      reordered.push(item);
+      used.add(id);
+    }
+  });
+  (c.podcasts || []).forEach(item => {
+    const id = String(item.id);
+    if (!used.has(id)) reordered.push(item);
+  });
+  c.podcasts = reordered.map((item, index) => ({ ...item, orden: index + 1 }));
+  c.total = c.podcasts.length;
+  savePodcasts(c);
+  return c;
+}
+
+module.exports = { loadPodcasts, savePodcasts, getPodcasts, getPodcastBySlug, deletePodcast, reorderPodcasts };
