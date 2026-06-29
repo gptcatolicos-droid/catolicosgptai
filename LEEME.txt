@@ -1,0 +1,26 @@
+Paquete CatolicosGPT - admin movil e infografias editables
+
+Archivos incluidos para reemplazar en GitHub:
+- server.js
+- infografias-module.js
+- santoral-module.js
+- videos-module.js
+- podcast-module.js
+- seo-module.js
+- openai-chat-module.js
+- blog-module.js
+
+Importante:
+- Este paquete NO incluye la carpeta data.
+- No reemplaza contenidos publicados.
+- No borra infografias, blog, santoral, videos ni podcasts existentes.
+
+Cambios principales:
+- Se elimino el acceso visible a la Consola Admin desde el home/menu.
+- /admin sigue funcionando como URL privada para administradores.
+- Admin mejorado para celular: tabs tipo app, formularios a una columna, botones mas grandes y listas mas usables.
+- En la pagina publica de infografias, "Servidor: cloudinary-native" cambia a "CatolicosGPT - IA Catolica".
+- Catalogo de infografias: drag and drop optimizado y botones para subir/bajar.
+- Infografias editables: boton Editar, carga de datos actuales, actualizacion del mismo registro.
+- Modo edicion de infografias permite subir/bajar imagenes, eliminar filas y cambiar portada.
+- El guardado filtra filas de imagen vacias para evitar diapositivas rotas.

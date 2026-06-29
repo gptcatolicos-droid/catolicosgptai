@@ -625,6 +625,31 @@ function deleteInfografia(id) {
   } catch(e) {}
 }
 
+function updateInfografia(id, updatedData = {}) {
+  const c = loadCatalog();
+  c.infografias = c.infografias || [];
+  const idx = c.infografias.findIndex(i => String(i.id) === String(id));
+  if (idx === -1) return null;
+
+  const current = c.infografias[idx];
+  const updated = {
+    ...current,
+    ...updatedData,
+    id: current.id,
+    slug: updatedData.slug || current.slug,
+    fechaCreacion: current.fechaCreacion,
+    fechaISO: current.fechaISO,
+    orden: current.orden,
+    esInfografiaDelDia: current.esInfografiaDelDia === true,
+    fechaModificacion: new Date().toISOString()
+  };
+
+  c.infografias[idx] = updated;
+  c.total = c.infografias.length;
+  saveCatalog(c, updated);
+  return updated;
+}
+
 function reorderInfografias(orderedIds = []) {
   const c = loadCatalog();
   c.infografias = c.infografias || [];
@@ -657,4 +682,4 @@ function reorderInfografias(orderedIds = []) {
   return c;
 }
 
-module.exports = { generarInfografia, detectarTipo, generateSlug, getInfografias, getInfografiaBySlug, setInfografiaDelDia, getInfografiaDelDia, deleteInfografia, reorderInfografias, loadCatalog, saveCatalog, SIZES };
+module.exports = { generarInfografia, detectarTipo, generateSlug, getInfografias, getInfografiaBySlug, setInfografiaDelDia, getInfografiaDelDia, deleteInfografia, updateInfografia, reorderInfografias, loadCatalog, saveCatalog, SIZES };
