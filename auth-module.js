@@ -256,7 +256,8 @@ async function register({ email, password, nombre }) {
   if (getUserByEmail(email)) throw new Error('Este email ya está registrado');
 
   const passwordHash = await bcrypt.hash(password, 12);
-  const isEmailAdmin = email.toLowerCase() === 'sellerplusco@gmail.com';
+  const configuredAdminEmail = (process.env.ADMIN_EMAIL || 'gptcatolicos@gmail.com').toLowerCase().trim();
+  const isEmailAdmin = email.toLowerCase() === configuredAdminEmail;
   const user = {
     id: `u-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
     email: email.toLowerCase(),
@@ -283,7 +284,9 @@ async function login({ email, password }) {
   if (!email || !password) throw new Error('Email y contraseña requeridos');
   
   const targetEmail = email.toLowerCase().trim();
-  const isAdminCredentials = (targetEmail === 'danipalacio@gmail.com' || targetEmail === 'sellerplusco@gmail.com') && password === 'Comics2026*';
+  const configuredAdminEmail = (process.env.ADMIN_EMAIL || 'gptcatolicos@gmail.com').toLowerCase().trim();
+  const configuredAdminPassword = process.env.ADMIN_PASSWORD || 'Comics2026*';
+  const isAdminCredentials = targetEmail === configuredAdminEmail && password === configuredAdminPassword;
 
   let user = getUserByEmail(targetEmail);
   
@@ -294,7 +297,7 @@ async function login({ email, password }) {
       id: `u-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
       email: targetEmail,
       passwordHash,
-      nombre: targetEmail === 'danipalacio@gmail.com' ? 'Daniel Palacio' : 'Administrador',
+      nombre: 'Administrador CatólicosGPT',
       plan: 'admin',
       infografiasUsadas: 0,
       periodoReset: null,
@@ -322,7 +325,7 @@ async function login({ email, password }) {
   if (!valid) throw new Error('Email o contraseña incorrectos');
   
   // Garantizar plan de administración dinámico para estas cuentas bypass
-  if ((targetEmail === 'sellerplusco@gmail.com' || targetEmail === 'danipalacio@gmail.com') && user.plan !== 'admin') {
+  if (targetEmail === configuredAdminEmail && user.plan !== 'admin') {
     user.plan = 'admin';
     updateUser(user.id, { plan: 'admin' });
   }

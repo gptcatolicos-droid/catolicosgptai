@@ -6,10 +6,10 @@
 const fs = require('fs');
 const path = require('path');
 
-const APP_URL = process.env.APP_URL || 'https://ai.catolicosgpt.com';
+const APP_URL = (process.env.PUBLIC_SITE_URL || process.env.APP_URL || 'https://ai.catolicosgpt.com').replace(/\/+$/, '');
 
 // ── Sitemap Generator ──
-function generateSitemapXML({ infografias = [], posts = [], sementeras = [], santos = [], videos = [], podcasts = [] } = {}) {
+function generateSitemapXML({ infografias = [], posts = [], sementeras = [], santos = [], videos = [], podcasts = [], authorityPages = [] } = {}) {
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -28,7 +28,6 @@ function generateSitemapXML({ infografias = [], posts = [], sementeras = [], san
 
   // 1. Core pages
   addUrl('/', '1.0', 'daily');
-  addUrl('/ia-catolica', '1.0', 'weekly');
   addUrl('/preguntas-frecuentes', '0.9', 'weekly');
   addUrl('/infografias', '0.8', 'daily');
   addUrl('/blog', '0.8', 'daily');
@@ -38,6 +37,10 @@ function generateSitemapXML({ infografias = [], posts = [], sementeras = [], san
   addUrl('/santo-del-dia', '0.8', 'daily');
   addUrl('/santoral', '0.8', 'daily');
   addUrl('/liturgia-de-las-horas', '0.8', 'daily');
+
+  authorityPages.forEach(page => {
+    if (page && page.path) addUrl(page.path, page.path === '/ia-catolica' ? '1.0' : '0.9', 'weekly');
+  });
 
   // 2. Infografías
   infografias.forEach(inf => {

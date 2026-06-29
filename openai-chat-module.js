@@ -229,9 +229,80 @@ Si el campo solicitado no es "all", igualmente devuelve todos los campos, pero o
   };
 }
 
+async function generateContentJson({ contentType, audience, topic, existingTitles }) {
+  const settings = getOpenAISettings();
+  if (!settings.apiKey) {
+    throw new Error('OPENAI_API_KEY no está configurada.');
+  }
+
+  const systemInstruction = `Eres redactor jefe de CatólicosGPT | La IA Católica #1 en Español.
+Creas contenido católico en español, fiel al Magisterio, útil para formación pastoral y optimizado para SEO.
+Usa un tono claro, catequético y reverente. No inventes citas textuales ni documentos concretos si no tienes certeza; puedes mencionar referencias doctrinales generales como Catecismo, Sagrada Escritura, concilios, encíclicas y tradición de la Iglesia.
+Cada pieza debe ser original, no repetir títulos ni enfoques existentes.
+Devuelve exclusivamente JSON válido, sin markdown fuera del JSON.`;
+
+  const prompt = `Tipo de contenido: ${contentType || 'blog'}
+Audiencia: ${audience || 'adultos'}
+Tema sugerido o área: ${topic || 'formación católica integral'}
+
+Títulos ya publicados que no debes repetir:
+${(existingTitles || []).slice(0, 120).map(t => `- ${t}`).join('\n')}
+
+Genera un recurso publicable con esta estructura exacta:
+{
+  "titulo": "Título claro, buscable y atractivo",
+  "seoTitle": "Título SEO máximo 60 caracteres",
+  "metaDescription": "Meta descripción máximo 155 caracteres",
+  "extracto": "Resumen breve de 35 a 55 palabras",
+  "keywords": "10 a 16 keywords separadas por coma, incluyendo CatólicosGPT, ia catolica, catequesis catolica cuando encaje",
+  "categoria": "Una categoría slug: sacramentos, doctrina, magisterio, santos, dogmas, apologetica, hermeneutica, teologia, moral, teologia-del-cuerpo, catequesis-ninos, catequesis-jovenes",
+  "contenidoMd": "Guía en Markdown con introducción breve, secciones ##, preguntas y respuestas, tabla resumen en HTML simple con bordes suaves, aplicación práctica y cierre pastoral. Entre 900 y 1400 palabras.",
+  "faqs": [
+    { "q": "Pregunta frecuente 1", "a": "Respuesta breve" },
+    { "q": "Pregunta frecuente 2", "a": "Respuesta breve" },
+    { "q": "Pregunta frecuente 3", "a": "Respuesta breve" }
+  ]
+}
+
+Si la audiencia es niños, usa lenguaje sencillo y ejemplos familiares. Si es jóvenes, usa tono directo y aplicaciones para vida escolar, amistad, redes, vocación y oración.`;
+
+  const response = await fetch(OPENAI_RESPONSES_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${settings.apiKey}`
+    },
+    body: JSON.stringify({
+      model: settings.seoModel,
+      instructions: systemInstruction,
+      input: prompt,
+      store: false,
+      max_output_tokens: Number(process.env.OPENAI_CONTENT_MAX_OUTPUT_TOKENS || 3600),
+      temperature: 0.45
+    }),
+    signal: AbortSignal.timeout(Number(process.env.OPENAI_CONTENT_TIMEOUT_MS || 90000))
+  });
+
+  if (!response.ok) {
+    let errorText = '';
+    try {
+      errorText = await response.text();
+    } catch (_) {}
+    throw new Error(`OpenAI Content ${response.status}: ${errorText || response.statusText}`);
+  }
+
+  const data = await response.json();
+  const parsed = parseJsonObject(extractResponseText(data));
+  if (!parsed || !parsed.titulo || !parsed.contenidoMd) {
+    throw new Error('OpenAI no devolvió JSON de contenido válido.');
+  }
+  return parsed;
+}
+
 module.exports = {
   isConfigured,
   getConfiguredModelLabel,
   streamOpenAIChat,
-  generateSeoJson
+  generateSeoJson,
+  generateContentJson
 };
