@@ -1,23 +1,23 @@
-HOTFIX V7 - ARRANQUE BLINDADO CLOUD RUN + PDF RAW
+PAQUETE ESTABLE V8 - ROLLBACK CONTROLADO
 
-Sube estos archivos al root del repo:
+Usa este paquete para volver al servidor estable anterior.
+
+Sube/reemplaza en el root del repo solamente:
 
 1. server.js
 2. recursos-pdf-module.js
 
-Qué corrige:
-- Evita que Cloud Run se caiga al arrancar si falta un módulo opcional.
-- Mantiene la administración de PDFs desde Cloudinary RAW.
-- Mantiene el botón de PDF para abrir en nueva ventana con URL de CatólicosGPT.
-- Mantiene cover para recursos relacionados del chat.
-- Mantiene botones de compartir.
+Este paquete:
+- NO incluye carpeta data.
+- NO incluye archivos JSON de contenidos.
+- NO borra infografias, blogs, videos, podcasts, santoral ni recursos PDF.
+- Conserva soporte de recursos PDF, covers y botones de compartir.
+- Conserva enlaces de PDF con target _blank para abrir en nueva ventana cuando el navegador lo permita.
 
 Importante:
-- Este paquete NO incluye carpeta data.
-- Este paquete NO incluye JSON de contenidos.
-- No borra infografías, blogs, videos, podcasts, santoral ni PDFs publicados.
+- No mezclar con el paquete v7 de arranque blindado.
+- Este v8 debe reemplazar el server.js que quedo en GitHub tras el deploy fallido.
 
-Si después de este zip Cloud Run vuelve a fallar con el mismo error de puerto 8080,
-hay que abrir el enlace "Ver en el Explorador de registros" del fallo para ver
-el error real de Node.js, porque Google Cloud en esa pantalla solo muestra el
-mensaje genérico de arranque.
+Si el deploy falla incluso con este paquete, abre "Ver en el Explorador de registros"
+en Google Cloud y copia el error de Node.js. La pantalla de Cloud Build solo muestra
+el mensaje generico del puerto 8080, no la causa real.
