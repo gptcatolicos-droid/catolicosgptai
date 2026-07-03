@@ -1,29 +1,23 @@
-Deploy integrado PDF + Compartir - CatólicosGPT
+HOTFIX V7 - ARRANQUE BLINDADO CLOUD RUN + PDF RAW
 
-Archivos incluidos:
-- server.js
-- recursos-pdf-module.js
+Sube estos archivos al root del repo:
 
-Incluye:
-- Fix de descarga PDF desde CatólicosGPT sin exponer Cloudinary cuando el PDF está entregable como RAW público.
-- Selector/admin de PDFs desde Cloudinary ajustado para listar PDFs RAW y evitar PDFs guardados como image/upload que Cloudinary bloquea con 401.
-- Botón "Subir PDF RAW" en el admin: eliges el PDF local y CatólicosGPT lo sube correctamente a Cloudinary como raw/upload.
-- Al subir un PDF RAW, el admin detecta título, audiencia/categoría básica y genera descripción SEO + keywords con OpenAI.
-- Upload de PDFs corregido para crear public_id RAW limpio, sin duplicar extension .pdf.
-- Descarga robusta: prueba URL pública, versión, signed/private candidates y entrega el archivo desde CatólicosGPT con nombre propio.
-- Ruta "Ver PDF" en nueva pestaña: /catequesis-ia/recursos/:slug/ver entrega el PDF inline para verlo en navegador.
-- Ruta "Descargar PDF" separada: /catequesis-ia/recursos/:slug/descargar mantiene descarga directa.
-- Hotfix de arranque Cloud Run: santoral-module, openai-chat-module, daily-content-module y seo-pillars-router quedan como módulos opcionales. Si alguno falta en GitHub, el servidor arranca igual y solo desactiva esa función específica.
-- Campo Cover / portada para PDFs desde Cloudinary. Si no se asigna cover, CatólicosGPT muestra una portada automática de marca.
-- Los recursos recomendados por el chat muestran portada para PDFs y blogs. Si no existe imagen, usan portada automática para evitar tarjetas vacías.
-- Plantilla "Classic version" en el editor HTML para crear posts/PDFs con estilo editorial clásico.
-- Botones compartir en Facebook, X y WhatsApp.
-- Compartir agregado a infografías, blog/artículos, videos, podcasts, santoral, Catequesis IA, PDFs y recursos para niños.
-- Los botones usan URL absoluta y las redes toman previsualización desde OpenGraph de cada página.
+1. server.js
+2. recursos-pdf-module.js
 
-IMPORTANTE SOBRE CLOUDINARY:
-- Los PDFs deben seleccionarse como recurso RAW/PDF desde la biblioteca de Cloudinary.
-- Si un PDF aparece como /image/upload/...pdf y Cloudinary devuelve 401, no es un PDF público descargable para el servidor. Debe subirse/seleccionarse como RAW.
-- El admin ahora advierte cuando intentas seleccionar un PDF guardado como image/upload.
+Qué corrige:
+- Evita que Cloud Run se caiga al arrancar si falta un módulo opcional.
+- Mantiene la administración de PDFs desde Cloudinary RAW.
+- Mantiene el botón de PDF para abrir en nueva ventana con URL de CatólicosGPT.
+- Mantiene cover para recursos relacionados del chat.
+- Mantiene botones de compartir.
 
-No incluye carpeta data. No borra ni modifica infografías, videos, blogs, santoral, podcasts ni recursos publicados.
+Importante:
+- Este paquete NO incluye carpeta data.
+- Este paquete NO incluye JSON de contenidos.
+- No borra infografías, blogs, videos, podcasts, santoral ni PDFs publicados.
+
+Si después de este zip Cloud Run vuelve a fallar con el mismo error de puerto 8080,
+hay que abrir el enlace "Ver en el Explorador de registros" del fallo para ver
+el error real de Node.js, porque Google Cloud en esa pantalla solo muestra el
+mensaje genérico de arranque.
