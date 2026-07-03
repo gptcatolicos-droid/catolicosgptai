@@ -1,26 +1,29 @@
-Paquete CatolicosGPT - admin movil e infografias editables
+Deploy integrado PDF + Compartir - CatólicosGPT
 
-Archivos incluidos para reemplazar en GitHub:
+Archivos incluidos:
 - server.js
-- infografias-module.js
-- santoral-module.js
-- videos-module.js
-- podcast-module.js
-- seo-module.js
-- openai-chat-module.js
-- blog-module.js
+- recursos-pdf-module.js
 
-Importante:
-- Este paquete NO incluye la carpeta data.
-- No reemplaza contenidos publicados.
-- No borra infografias, blog, santoral, videos ni podcasts existentes.
+Incluye:
+- Fix de descarga PDF desde CatólicosGPT sin exponer Cloudinary cuando el PDF está entregable como RAW público.
+- Selector/admin de PDFs desde Cloudinary ajustado para listar PDFs RAW y evitar PDFs guardados como image/upload que Cloudinary bloquea con 401.
+- Botón "Subir PDF RAW" en el admin: eliges el PDF local y CatólicosGPT lo sube correctamente a Cloudinary como raw/upload.
+- Al subir un PDF RAW, el admin detecta título, audiencia/categoría básica y genera descripción SEO + keywords con OpenAI.
+- Upload de PDFs corregido para crear public_id RAW limpio, sin duplicar extension .pdf.
+- Descarga robusta: prueba URL pública, versión, signed/private candidates y entrega el archivo desde CatólicosGPT con nombre propio.
+- Ruta "Ver PDF" en nueva pestaña: /catequesis-ia/recursos/:slug/ver entrega el PDF inline para verlo en navegador.
+- Ruta "Descargar PDF" separada: /catequesis-ia/recursos/:slug/descargar mantiene descarga directa.
+- Hotfix de arranque Cloud Run: santoral-module, openai-chat-module, daily-content-module y seo-pillars-router quedan como módulos opcionales. Si alguno falta en GitHub, el servidor arranca igual y solo desactiva esa función específica.
+- Campo Cover / portada para PDFs desde Cloudinary. Si no se asigna cover, CatólicosGPT muestra una portada automática de marca.
+- Los recursos recomendados por el chat muestran portada para PDFs y blogs. Si no existe imagen, usan portada automática para evitar tarjetas vacías.
+- Plantilla "Classic version" en el editor HTML para crear posts/PDFs con estilo editorial clásico.
+- Botones compartir en Facebook, X y WhatsApp.
+- Compartir agregado a infografías, blog/artículos, videos, podcasts, santoral, Catequesis IA, PDFs y recursos para niños.
+- Los botones usan URL absoluta y las redes toman previsualización desde OpenGraph de cada página.
 
-Cambios principales:
-- Se elimino el acceso visible a la Consola Admin desde el home/menu.
-- /admin sigue funcionando como URL privada para administradores.
-- Admin mejorado para celular: tabs tipo app, formularios a una columna, botones mas grandes y listas mas usables.
-- En la pagina publica de infografias, "Servidor: cloudinary-native" cambia a "CatolicosGPT - IA Catolica".
-- Catalogo de infografias: drag and drop optimizado y botones para subir/bajar.
-- Infografias editables: boton Editar, carga de datos actuales, actualizacion del mismo registro.
-- Modo edicion de infografias permite subir/bajar imagenes, eliminar filas y cambiar portada.
-- El guardado filtra filas de imagen vacias para evitar diapositivas rotas.
+IMPORTANTE SOBRE CLOUDINARY:
+- Los PDFs deben seleccionarse como recurso RAW/PDF desde la biblioteca de Cloudinary.
+- Si un PDF aparece como /image/upload/...pdf y Cloudinary devuelve 401, no es un PDF público descargable para el servidor. Debe subirse/seleccionarse como RAW.
+- El admin ahora advierte cuando intentas seleccionar un PDF guardado como image/upload.
+
+No incluye carpeta data. No borra ni modifica infografías, videos, blogs, santoral, podcasts ni recursos publicados.
