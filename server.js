@@ -3,7 +3,11 @@
 // Integración con Magisterium API, Gemini @google/genai, e Infografías
 // ════════════════════════════════════════════════════════════════════════════
 
-require('dotenv').config();
+try {
+  require('dotenv').config();
+} catch (err) {
+  console.warn('[Startup] dotenv no disponible; se usarán variables de entorno del runtime.');
+}
 const express      = require('express');
 const fs           = require('fs');
 const path         = require('path');

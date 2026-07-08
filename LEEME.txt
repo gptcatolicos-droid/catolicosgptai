@@ -2,12 +2,18 @@ PAQUETE ESTABLE V8 - ROLLBACK CONTROLADO
 
 Usa este paquete para volver al servidor estable anterior.
 
-Sube/reemplaza en el root del repo solamente:
+ESTE ZIP NO ES EL REPO COMPLETO.
+
+Sube/reemplaza estos archivos dentro del root del repo existente:
 
 1. server.js
 2. recursos-pdf-module.js
 3. firebase-module.js
 4. firestore.rules (solo si despliegas reglas de Firestore desde el repo)
+
+No reemplaces todo el repositorio por este zip. El repo debe conservar package.json,
+package-lock.json, auth-module.js, blog-module.js, infografias-module.js y los demas
+modulos existentes.
 
 Este paquete:
 - NO incluye carpeta data.
@@ -29,6 +35,7 @@ Importante:
 - Firestore debe estar habilitado en Google Cloud/Firebase y el proyecto debe conservar firebase-applet-config.json.
 - La coleccion usada para PDFs se llama recursos_pdf.
 - Si Firestore no esta disponible, el sistema cae al respaldo local, pero ese respaldo local NO es persistente en Cloud Run.
+- Google Drive es opcional. Si todavia no configuras su API, Cloudinary sigue funcionando.
 
 Google Drive:
 - Activa Google Drive API en el proyecto de Google Cloud.
