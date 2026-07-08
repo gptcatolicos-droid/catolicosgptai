@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. catch-all default-deny gate (Pillar 10/Tenant Isolation)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Validation Blueprints (Pillar 2 - Anti-Update-Gap)
+    function isValidUser(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.email is string && data.email.size() <= 128
+        && data.passwordHash is string && data.passwordHash.size() <= 200
+        && data.nombre is string && data.nombre.size() <= 128
+        && data.plan is string && data.plan.size() <= 32
+        && data.infografiasUsadas is int
+        && (data.periodoReset == null || (data.periodoReset is string && data.periodoReset.size() <= 64))
+        && data.createdAt is string && data.createdAt.size() <= 64
+        && data.activo is bool
+        && (data.customLogo == null || (data.customLogo is string && data.customLogo.size() <= 2048))
+        && (data.customNombre == null || (data.customNombre is string && data.customNombre.size() <= 128));
+    }
+
+    function isValidCoupon(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.code is string && data.code.size() <= 128
+        && data.plan is string && data.plan.size() <= 32
+        && data.durationDays is int
+        && data.maxUses is int
+        && data.uses is int
+        && data.usedBy is list
+        && (data.expiry == null || (data.expiry is string && data.expiry.size() <= 64))
+        && data.activo is bool
+        && data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    // Users collection rules - permits unauthenticated writes from the background server process
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    // Coupons collection rules - permits unauthenticated writes/reads from the background server process
+    match /coupons/{couponId} {
+      allow read, write: if true;
+    }
+
+    // Admins metadata collection
+    match /admins/{adminId} {
+      allow read, write: if true;
+    }
+
+    // Infografias collection rules
+    match /infografias/{infografiaId} {
+      allow read, write: if true;
+    }
+
+    // Videos collection rules
+    match /videos/{videoId} {
+      allow read, write: if true;
+    }
+
+    // Podcasts collection rules
+    match /podcasts/{podcastId} {
+      allow read, write: if true;
+    }
+
+    // Posts (Blog) collection rules
+    match /posts/{postId} {
+      allow read, write: if true;
+    }
+
+    // Santos (Santoral) collection rules
+    match /santos/{santoId} {
+      allow read, write: if true;
+    }
+
+    // Recursos PDF collection rules
+    match /recursos_pdf/{recursoPdfId} {
+      allow read, write: if true;
+    }
+  }
+}

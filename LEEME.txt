@@ -6,17 +6,40 @@ Sube/reemplaza en el root del repo solamente:
 
 1. server.js
 2. recursos-pdf-module.js
+3. firebase-module.js
+4. firestore.rules (solo si despliegas reglas de Firestore desde el repo)
 
 Este paquete:
 - NO incluye carpeta data.
 - NO incluye archivos JSON de contenidos.
 - NO borra infografias, blogs, videos, podcasts, santoral ni recursos PDF.
 - Conserva soporte de recursos PDF, covers y botones de compartir.
+- Agrega persistencia Firestore para el catalogo de PDFs en la coleccion recursos_pdf.
+- Permite guardar enlaces publicos de Google Drive para PDFs.
+- Agrega selector visual de PDFs desde una carpeta de Google Drive en el admin.
+- "Ver PDF" abre el visor publico de Drive si el recurso es de Google Drive.
+- "Descargar PDF" abre la descarga publica de Drive si el recurso es de Google Drive.
 - Conserva enlaces de PDF con target _blank para abrir en nueva ventana cuando el navegador lo permita.
+- Agrega buscador y filtros visibles en Fe Católica.
+- Agrega buscador y filtros visibles en Catequesis IA para PDFs, guías e infografías.
 
 Importante:
 - No mezclar con el paquete v7 de arranque blindado.
 - Este v8 debe reemplazar el server.js que quedo en GitHub tras el deploy fallido.
+- Firestore debe estar habilitado en Google Cloud/Firebase y el proyecto debe conservar firebase-applet-config.json.
+- La coleccion usada para PDFs se llama recursos_pdf.
+- Si Firestore no esta disponible, el sistema cae al respaldo local, pero ese respaldo local NO es persistente en Cloud Run.
+
+Google Drive:
+- Activa Google Drive API en el proyecto de Google Cloud.
+- Crea una cuenta de servicio y comparte la carpeta de Drive con el email de esa cuenta.
+- Carpeta actual sugerida: 1e64CqL-Otla0tqQtVi8XNGhiLNYUI5C9
+- Expone estas variables/secretos en Cloud Run:
+  GOOGLE_DRIVE_FOLDER_ID = 1e64CqL-Otla0tqQtVi8XNGhiLNYUI5C9
+  GOOGLE_SERVICE_ACCOUNT_JSON = JSON completo de la cuenta de servicio
+- Alternativa si no usas JSON completo:
+  GOOGLE_SERVICE_ACCOUNT_EMAIL = email de la cuenta de servicio
+  GOOGLE_PRIVATE_KEY = private_key de la cuenta de servicio
 
 Si el deploy falla incluso con este paquete, abre "Ver en el Explorador de registros"
 en Google Cloud y copia el error de Node.js. La pantalla de Cloud Build solo muestra
