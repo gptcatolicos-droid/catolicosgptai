@@ -1,0 +1,24 @@
+CATOLICOSGPT - BACKUP SEGURO 2026-07-09
+
+Este paquete contiene SOLO server.js.
+
+Objetivo:
+- Agrega en el admin el boton "Descargar Backup".
+- Crea la ruta privada /admin/backup-completo.
+- Exporta un JSON con infografias, Fe Catolica/blog, catequesis, recursos PDF, videos, podcasts y santoral.
+- No borra contenidos.
+- No modifica registros.
+- No sincroniza ni reconstruye PDFs desde Cloudinary al cargar el admin.
+
+Uso recomendado:
+1. Subir/reemplazar solamente server.js en GitHub.
+2. Hacer deploy.
+3. Entrar a /admin.
+4. Dar click en "Descargar Backup".
+5. Guardar el archivo JSON en tu computador y en Google Drive.
+
+Importante:
+- Este backup es el paso previo antes de volver a intentar funciones nuevas.
+- No incluye la seccion Oraciones.
+- No incluye cambios nuevos de estructura.
+- Esta pensado para conservar lo que esta vivo ahora.
