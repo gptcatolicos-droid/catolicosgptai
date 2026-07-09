@@ -1,9 +1,9 @@
-CATOLICOSGPT - PDF MANUAL DRIVE + FIRESTORE - 2026-07-09 v1
+CATOLICOSGPT - PDF MANUAL DRIVE + FIRESTORE - 2026-07-09 v2
 
 Objetivo de este paquete:
 - Evitar que los Recursos PDF se pierdan al reiniciar o redesplegar Cloud Run.
-- Dejar de depender de subir/servir PDFs desde Cloudinary para el archivo principal.
-- Crear fichas SEO internas en CatolicosGPT, como los articulos del blog.
+- Usar fichas SEO internas en CatolicosGPT y enlaces publicos manuales de Google Drive.
+- Usar Cloudinary solo para cover/portada del recurso.
 
 Archivos incluidos para reemplazar en el repo:
 1. server.js
@@ -15,7 +15,7 @@ Nuevo flujo recomendado:
 1. Subes el PDF a Google Drive.
 2. Lo pones publico: cualquiera con el enlace puede ver.
 3. En Admin > Recursos PDF creas la ficha.
-4. Pegas el enlace publico de Google Drive en "URL publica del PDF".
+4. Pegas el enlace publico de Google Drive en URL publica del PDF.
 5. Opcional: eliges cover desde Cloudinary.
 6. Generas descripcion y keywords con OpenAI.
 7. Guardas.
@@ -23,11 +23,11 @@ Nuevo flujo recomendado:
 Resultado:
 - La pagina interna queda en /catequesis-ia/recursos/slug-del-documento.
 - El titulo de la tarjeta enlaza a esa ficha interna para SEO.
-- Los botones Ver PDF y Descargar PDF abren el enlace publico de Drive en nueva ventana.
-- Cloudinary se usa solo para el cover del recurso.
-- Firestore guarda el catalogo recursos_pdf para que no se resetee en cada deploy.
+- Ver PDF y Descargar PDF abren el enlace publico de Drive en nueva ventana.
+- Firestore guarda el catalogo en recursos_pdf.
+- Si produccion aun no tiene permisos para recursos_pdf, usa respaldo en admins/recursos_pdf_catalog para no perder trabajo.
 
 IMPORTANTE:
 - No subir la carpeta data/ al deploy.
 - No reemplazar bases de datos ni contenidos existentes.
-- Activar Firebase/Firestore en produccion para que los registros PDF sean persistentes.
+- Idealmente desplegar firestore.rules para activar recursos_pdf de forma directa.

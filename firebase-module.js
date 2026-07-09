@@ -705,9 +705,50 @@ async function syncDownloadRecursosPdf(localList) {
     console.log(`[Firebase Sync] Recursos PDF sincronizados desde Firestore. Total: ${merged.length}`);
     return merged;
   } catch (err) {
-    console.error('[Firebase Sync] Error sincronizando recursos PDF desde Firestore:', err.message);
-    return localList;
+    console.warn('[Firebase Sync] recursos_pdf no disponible, probando respaldo admins/recursos_pdf_catalog:', err.message);
+    try {
+      const backupSnap = await getDoc(doc(db, 'admins', 'recursos_pdf_catalog'));
+      if (!backupSnap.exists()) return localList;
+      const backupData = backupSnap.data() || {};
+      const backupItems = Array.isArray(backupData.recursos) ? backupData.recursos : [];
+      if (!backupItems.length) return localList;
+      const merged = [...localList];
+      backupItems.forEach((cloudItem) => {
+        const idx = merged.findIndex(item =>
+          (item.id && cloudItem.id && item.id === cloudItem.id) ||
+          (item.slug && cloudItem.slug && item.slug === cloudItem.slug)
+        );
+        if (idx === -1) {
+          merged.push(cloudItem);
+        } else {
+          const localTime = new Date(merged[idx].actualizadoEn || merged[idx].creadoEn || 0).getTime();
+          const cloudTime = new Date(cloudItem.actualizadoEn || cloudItem.creadoEn || 0).getTime();
+          if (cloudTime >= localTime) merged[idx] = { ...merged[idx], ...cloudItem };
+        }
+      });
+      console.log(`[Firebase Sync] Recursos PDF sincronizados desde respaldo. Total: ${merged.length}`);
+      return merged;
+    } catch (backupErr) {
+      console.error('[Firebase Sync] Error sincronizando recursos PDF desde respaldo:', backupErr.message);
+      return localList;
+    }
   }
+}
+
+async function syncUploadRecursoPdfBackup(item) {
+  const snap = await getDoc(doc(db, 'admins', 'recursos_pdf_catalog'));
+  const current = snap.exists() && Array.isArray((snap.data() || {}).recursos) ? (snap.data() || {}).recursos : [];
+  const idx = current.findIndex(existing =>
+    (existing.id && item.id && existing.id === item.id) ||
+    (existing.slug && item.slug && existing.slug === item.slug)
+  );
+  const next = [...current];
+  if (idx >= 0) next[idx] = item;
+  else next.push(item);
+  await setDoc(doc(db, 'admins', 'recursos_pdf_catalog'), {
+    recursos: next,
+    updatedAt: new Date().toISOString()
+  }, { merge: true });
 }
 
 async function syncUploadRecursoPdf(item) {
@@ -744,8 +785,14 @@ async function syncUploadRecursoPdf(item) {
       actualizadoEn: item.actualizadoEn || new Date().toISOString()
     };
 
-    await setDoc(doc(db, 'recursos_pdf', docId), sanitizedItem);
-    safeLog(`[Firebase Sync] Recurso PDF "${sanitizedItem.titulo}" guardado en Firestore.`);
+    try {
+      await setDoc(doc(db, 'recursos_pdf', docId), sanitizedItem);
+      safeLog(`[Firebase Sync] Recurso PDF "${sanitizedItem.titulo}" guardado en Firestore.`);
+    } catch (primaryError) {
+      console.warn('[Firebase Sync] No se pudo guardar en recursos_pdf, usando respaldo admins/recursos_pdf_catalog:', primaryError.message);
+      await syncUploadRecursoPdfBackup(sanitizedItem);
+      safeLog(`[Firebase Sync] Recurso PDF "${sanitizedItem.titulo}" guardado en respaldo Firestore.`);
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -755,7 +802,20 @@ async function syncDeleteRecursoPdf(slug) {
   if (!isFirebaseEnabled || !slug) return;
   const path = `recursos_pdf/${slug}`;
   try {
-    await deleteDoc(doc(db, 'recursos_pdf', slug));
+    try {
+      await deleteDoc(doc(db, 'recursos_pdf', slug));
+    } catch (primaryError) {
+      console.warn('[Firebase Sync] No se pudo eliminar en recursos_pdf, usando respaldo:', primaryError.message);
+    }
+    const snap = await getDoc(doc(db, 'admins', 'recursos_pdf_catalog'));
+    if (snap.exists()) {
+      const data = snap.data() || {};
+      const current = Array.isArray(data.recursos) ? data.recursos : [];
+      await setDoc(doc(db, 'admins', 'recursos_pdf_catalog'), {
+        recursos: current.filter(item => item.slug !== slug),
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    }
     safeLog(`[Firebase Sync] Recurso PDF "${slug}" eliminado de Firestore.`);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);

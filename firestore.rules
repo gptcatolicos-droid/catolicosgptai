@@ -79,5 +79,10 @@ service cloud.firestore {
     match /recursos_pdf/{recursoPdfId} {
       allow read, write: if true;
     }
+
+    // Compatibilidad por si algun endpoint usa guion medio
+    match /recursos-pdf/{recursoPdfId} {
+      allow read, write: if true;
+    }
   }
 }
