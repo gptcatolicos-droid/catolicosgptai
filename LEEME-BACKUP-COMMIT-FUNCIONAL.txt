@@ -1,0 +1,27 @@
+CATOLICOSGPT - BACKUP SOBRE COMMIT FUNCIONAL
+
+Base confirmada:
+545baee5d5121f1cfe399e599684aeef122092ec
+
+Este paquete contiene:
+- server.js
+- esta nota
+
+Que cambia:
+- Agrega el boton "Descargar Backup" en el admin.
+- Agrega la ruta privada /admin/backup-completo.
+- La ruta descarga un JSON con infografias, Fe Catolica, catequesis, recursos PDF, videos, podcasts y santoral.
+
+Que NO cambia:
+- No incluye carpeta data.
+- No reemplaza catalogos.
+- No borra infografias.
+- No borra articulos.
+- No borra catequesis.
+- No borra videos.
+- No borra podcasts.
+- No cambia la logica funcional del commit base.
+
+Uso:
+Subir solamente server.js al repo/commit que vas a desplegar.
+Despues del deploy, entrar a /admin y hacer click en "Descargar backup completo".

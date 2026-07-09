@@ -5189,6 +5189,7 @@ function resourceCoverHtml({ imageUrl = '', title = '', label = 'CatólicosGPT',
 }
 
 app.get('/ninos', async (req, res) => {
+  await recursosPdf.refreshFromCloud();
   const filtro = String(req.query.tipo || 'todo').toLowerCase();
   const allInfografias = (infografias.loadCatalog().infografias || []).filter(i => i.publicado !== false);
   const childrenInfografias = allInfografias.filter(isChildrenInfografia);
@@ -5367,6 +5368,7 @@ app.get('/ninos/recursos/:slug/imagen/:index/descargar', (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 
 app.get('/catequesis-ia', async (req, res) => {
+  await recursosPdf.refreshFromCloud();
   const audience = req.query.audiencia || 'todo';
   const q = String(req.query.q || '').trim();
   const normalizeSearch = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -5565,6 +5567,7 @@ app.get('/catequesis-ia', async (req, res) => {
 });
 
 app.get('/catequesis-ia/recursos/:slug', async (req, res) => {
+  await recursosPdf.refreshFromCloud();
   const pdf = recursosPdf.getBySlug(req.params.slug);
   if (!pdf || pdf.publicado === false) {
     return res.status(404).send(renderPage('Recurso no encontrado', `<div class="p-12 text-center text-ink">Recurso PDF no encontrado. <a href="/catequesis-ia" class="text-maroon underline font-bold">Volver a Catequesis IA</a></div>`, req));
@@ -5615,6 +5618,7 @@ app.get('/catequesis-ia/recursos/:slug', async (req, res) => {
 });
 
 async function servePdfResource(req, res, dispositionMode = 'attachment') {
+  await recursosPdf.refreshFromCloud();
   const pdf = recursosPdf.getBySlug(req.params.slug);
   if (!pdf || pdf.publicado === false || !pdfResourceHasFile(pdf)) {
     return res.status(404).send(renderPage('PDF no encontrado', `<div class="p-12 text-center text-ink">PDF no encontrado. <a href="/catequesis-ia" class="text-maroon underline font-bold">Volver a Catequesis IA</a></div>`, req));
@@ -7658,7 +7662,7 @@ app.get('/sitemap.xml', async (req, res) => {
   const saintsList = santoral.getAllSaints();
   const videosCatalog = videos.loadVideos();
   const podcastsCatalog = podcast.loadPodcasts();
-  const pdfCatalog = recursosPdf.loadCatalog();
+  const pdfCatalog = await recursosPdf.refreshFromCloud();
 
   const xml = seo.generateSitemapXML({
     infografias: infCatalog.infografias || [],
@@ -8015,9 +8019,9 @@ function backupSection(label, reader) {
   } catch (error) {
     return {
       ok: false,
+      label,
       error: error && error.message ? error.message : String(error),
-      data: null,
-      label
+      data: null
     };
   }
 }
@@ -8038,7 +8042,7 @@ app.get('/admin/backup-completo', (req, res) => {
   const exportedAt = new Date();
   const sections = {
     infografias: backupSection('infografias', () => infografias.loadCatalog()),
-    blog: backupSection('blog', () => blog.loadBlog()),
+    feCatolica: backupSection('feCatolica', () => blog.loadBlog()),
     catequesis: backupSection('catequesis', () => {
       const catalog = blog.loadBlog();
       return {
@@ -8053,12 +8057,13 @@ app.get('/admin/backup-completo', (req, res) => {
 
   const backup = {
     app: 'CatolicosGPT',
+    commitBase: '545baee5d5121f1cfe399e599684aeef122092ec',
     type: 'admin-content-backup',
     exportedAt: exportedAt.toISOString(),
-    note: 'Backup generado desde el admin. No modifica ni sincroniza contenido externo.',
+    note: 'Backup generado desde el admin. Esta ruta solo lee datos; no sincroniza, no elimina y no modifica contenidos.',
     counts: {
       infografias: countBackupItems(sections.infografias, ['infografias', 'items']),
-      blog: countBackupItems(sections.blog, ['posts', 'items']),
+      feCatolica: countBackupItems(sections.feCatolica, ['posts', 'items']),
       catequesis: countBackupItems(sections.catequesis, ['posts', 'items']),
       recursosPdf: countBackupItems(sections.recursosPdf, ['recursos', 'items']),
       videos: countBackupItems(sections.videos, ['videos', 'items']),
@@ -8093,7 +8098,7 @@ app.get('/admin', async (req, res) => {
   const blogCatalog = blog.loadBlog();
   const videosCatalog = videos.loadVideos();
   const podcastsCatalog = podcast.loadPodcasts();
-  const pdfCatalog = recursosPdf.loadCatalog();
+  const pdfCatalog = await recursosPdf.refreshFromCloud({ force: true });
   const cloudName = CLOUDINARY_CLOUD_NAME;
 
   const html = `
@@ -11434,6 +11439,7 @@ app.get('/admin/recursos-pdf/eliminar', (req, res) => {
 app.get('/api/admin/recursos-pdf', async (req, res) => {
   const user = getAuthedUser(req);
   if (!isStrictAdminUser(user)) return res.status(403).json({ error: 'No autorizado' });
+  await recursosPdf.refreshFromCloud({ force: true });
   res.json(recursosPdf.getRecursos({ publicado: null, limit: 500 }));
 });
 
