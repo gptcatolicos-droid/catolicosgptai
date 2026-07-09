@@ -84,5 +84,10 @@ service cloud.firestore {
     match /recursos-pdf/{recursoPdfId} {
       allow read, write: if true;
     }
+
+    // Oraciones publicadas desde el admin
+    match /oraciones/{oracionId} {
+      allow read, write: if true;
+    }
   }
 }

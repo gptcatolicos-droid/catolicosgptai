@@ -822,6 +822,138 @@ async function syncDeleteRecursoPdf(slug) {
   }
 }
 
+async function syncDownloadOraciones(localList) {
+  if (!isFirebaseEnabled) {
+    console.log('[Firebase Sync] Descarga de oraciones omitida (Firebase desactivado).');
+    return localList || [];
+  }
+  const path = 'oraciones';
+  try {
+    const querySnapshot = await getDocs(collection(db, path));
+    if (!querySnapshot.empty) {
+      const cloudItems = [];
+      querySnapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data && data.slug) cloudItems.push(data);
+      });
+      cloudItems.sort((a, b) => {
+        const ao = Number.isFinite(Number(a.orden)) ? Number(a.orden) : 999999;
+        const bo = Number.isFinite(Number(b.orden)) ? Number(b.orden) : 999999;
+        if (ao !== bo) return ao - bo;
+        return new Date(b.fechaCreacion || 0) - new Date(a.fechaCreacion || 0);
+      });
+      console.log(`[Firebase Sync] ${cloudItems.length} oraciones descargadas desde Firestore.`);
+      return cloudItems;
+    }
+    console.log('[Firebase Sync] Colección oraciones vacía. Se conserva catálogo local.');
+    return localList || [];
+  } catch (err) {
+    console.warn('[Firebase Sync] oraciones no disponible, probando respaldo admins/oraciones_catalog:', err.message);
+    try {
+      const backupSnap = await getDoc(doc(db, 'admins', 'oraciones_catalog'));
+      if (backupSnap.exists()) {
+        const data = backupSnap.data() || {};
+        const items = Array.isArray(data.oraciones) ? data.oraciones : [];
+        if (items.length > 0) {
+          console.log(`[Firebase Sync] ${items.length} oraciones descargadas desde respaldo.`);
+          return items;
+        }
+      }
+    } catch (backupErr) {
+      console.error('[Firebase Sync] Error sincronizando oraciones desde respaldo:', backupErr.message);
+    }
+    handleFirestoreError(err, OperationType.READ, path);
+    return localList || [];
+  }
+}
+
+async function syncUploadOracionBackup(item) {
+  const snap = await getDoc(doc(db, 'admins', 'oraciones_catalog'));
+  const current = snap.exists() && Array.isArray((snap.data() || {}).oraciones) ? (snap.data() || {}).oraciones : [];
+  const idx = current.findIndex(existing =>
+    (existing.id && item.id && existing.id === item.id) ||
+    (existing.slug && item.slug && existing.slug === item.slug)
+  );
+  const next = [...current];
+  if (idx >= 0) next[idx] = item;
+  else next.push(item);
+  await setDoc(doc(db, 'admins', 'oraciones_catalog'), {
+    oraciones: next,
+    updatedAt: new Date().toISOString()
+  }, { merge: true });
+}
+
+async function syncUploadOracion(item) {
+  if (!isFirebaseEnabled || !item) return;
+  const docId = item.slug || item.id;
+  if (!docId) return;
+  const path = `oraciones/${docId}`;
+  try {
+    const sanitizedItem = {
+      id: item.id || '',
+      slug: item.slug || '',
+      titulo: item.titulo || '',
+      categoria: item.categoria || 'basicas',
+      descripcion: item.descripcion || '',
+      imagenUrl: item.imagenUrl || '',
+      imagenAlt: item.imagenAlt || '',
+      imagenes: Array.isArray(item.imagenes) ? item.imagenes.map((img, index) => ({
+        url: img.url || '',
+        name: img.name || '',
+        alt: img.alt || '',
+        width: img.width || '',
+        height: img.height || '',
+        esPortada: img.esPortada === true,
+        slide: img.slide || index + 1,
+        formato: img.formato || '',
+        sizeLabel: img.sizeLabel || ''
+      })).filter(img => img.url) : [],
+      tipoVisualizacion: item.tipoVisualizacion || 'continua',
+      textoOracion: item.textoOracion || '',
+      seoTitle: item.seoTitle || item.titulo || '',
+      metaDescription: item.metaDescription || item.descripcion || '',
+      keywords: item.keywords || '',
+      orden: Number.isFinite(Number(item.orden)) ? Number(item.orden) : 999999,
+      publicado: typeof item.publicado === 'boolean' ? item.publicado : true,
+      fechaCreacion: item.fechaCreacion || new Date().toISOString(),
+      actualizadoEn: item.actualizadoEn || new Date().toISOString()
+    };
+    try {
+      await setDoc(doc(db, 'oraciones', docId), sanitizedItem);
+      safeLog(`[Firebase Sync] Oración "${sanitizedItem.titulo}" guardada en Firestore.`);
+    } catch (primaryError) {
+      console.warn('[Firebase Sync] No se pudo guardar en oraciones, usando respaldo admins/oraciones_catalog:', primaryError.message);
+      await syncUploadOracionBackup(sanitizedItem);
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+async function syncDeleteOracion(slug) {
+  if (!isFirebaseEnabled || !slug) return;
+  const path = `oraciones/${slug}`;
+  try {
+    try {
+      await deleteDoc(doc(db, 'oraciones', slug));
+    } catch (primaryError) {
+      console.warn('[Firebase Sync] No se pudo eliminar en oraciones, usando respaldo:', primaryError.message);
+    }
+    const snap = await getDoc(doc(db, 'admins', 'oraciones_catalog'));
+    if (snap.exists()) {
+      const data = snap.data() || {};
+      const current = Array.isArray(data.oraciones) ? data.oraciones : [];
+      await setDoc(doc(db, 'admins', 'oraciones_catalog'), {
+        oraciones: current.filter(item => item.slug !== slug && item.id !== slug),
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    }
+    safeLog(`[Firebase Sync] Oración "${slug}" eliminada de Firestore.`);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
 module.exports = {
   db,
   auth,
@@ -849,5 +981,8 @@ module.exports = {
   syncDeleteSanto,
   syncDownloadRecursosPdf,
   syncUploadRecursoPdf,
-  syncDeleteRecursoPdf
+  syncDeleteRecursoPdf,
+  syncDownloadOraciones,
+  syncUploadOracion,
+  syncDeleteOracion
 };

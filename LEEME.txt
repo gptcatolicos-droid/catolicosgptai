@@ -1,15 +1,18 @@
-CATOLICOSGPT - PDF MANUAL DRIVE + FIRESTORE - 2026-07-09 v2
+CATOLICOSGPT - PDF MANUAL DRIVE + ORACIONES CLOUDINARY + FIRESTORE - 2026-07-09 v3
 
 Objetivo de este paquete:
 - Evitar que los Recursos PDF se pierdan al reiniciar o redesplegar Cloud Run.
 - Usar fichas SEO internas en CatolicosGPT y enlaces publicos manuales de Google Drive.
 - Usar Cloudinary solo para cover/portada del recurso.
+- Crear la nueva seccion Oraciones con home publico, URL propia por oracion, SEO IA y seleccion de imagenes desde Cloudinary.
+- Soportar oraciones de una imagen y novenas/secuencias de varias imagenes en modo continuo, carrusel 9:16 o cuadricula.
 
 Archivos incluidos para reemplazar en el repo:
 1. server.js
 2. recursos-pdf-module.js
 3. firebase-module.js
 4. firestore.rules
+5. oraciones-module.js
 
 Nuevo flujo recomendado:
 1. Subes el PDF a Google Drive.
@@ -27,7 +30,14 @@ Resultado:
 - Firestore guarda el catalogo en recursos_pdf.
 - Si produccion aun no tiene permisos para recursos_pdf, usa respaldo en admins/recursos_pdf_catalog para no perder trabajo.
 
+Nuevo flujo de Oraciones:
+1. En Admin > Oraciones creas la oracion.
+2. Seleccionas una o varias imagenes desde Cloudinary. Recomendado: carpeta catolicosgpt/oraciones.
+3. Marcas portada y eliges visualizacion: continua, carrusel 9:16 o cuadricula.
+4. Generas SEO con OpenAI o completas titulo SEO, descripcion y keywords manualmente.
+5. Guardas. La pagina publica queda en /oraciones/slug-de-la-oracion.
+
 IMPORTANTE:
 - No subir la carpeta data/ al deploy.
 - No reemplazar bases de datos ni contenidos existentes.
-- Idealmente desplegar firestore.rules para activar recursos_pdf de forma directa.
+- Idealmente desplegar firestore.rules para activar recursos_pdf y oraciones de forma directa.
