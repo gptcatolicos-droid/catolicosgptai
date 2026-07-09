@@ -1,53 +1,33 @@
-PAQUETE ESTABLE V8 - ROLLBACK CONTROLADO
+CATOLICOSGPT - PDF MANUAL DRIVE + FIRESTORE - 2026-07-09 v1
 
-Usa este paquete para volver al servidor estable anterior.
+Objetivo de este paquete:
+- Evitar que los Recursos PDF se pierdan al reiniciar o redesplegar Cloud Run.
+- Dejar de depender de subir/servir PDFs desde Cloudinary para el archivo principal.
+- Crear fichas SEO internas en CatolicosGPT, como los articulos del blog.
 
-ESTE ZIP NO ES EL REPO COMPLETO.
-
-Sube/reemplaza estos archivos dentro del root del repo existente:
-
+Archivos incluidos para reemplazar en el repo:
 1. server.js
 2. recursos-pdf-module.js
 3. firebase-module.js
-4. firestore.rules (solo si despliegas reglas de Firestore desde el repo)
+4. firestore.rules
 
-No reemplaces todo el repositorio por este zip. El repo debe conservar package.json,
-package-lock.json, auth-module.js, blog-module.js, infografias-module.js y los demas
-modulos existentes.
+Nuevo flujo recomendado:
+1. Subes el PDF a Google Drive.
+2. Lo pones publico: cualquiera con el enlace puede ver.
+3. En Admin > Recursos PDF creas la ficha.
+4. Pegas el enlace publico de Google Drive en "URL publica del PDF".
+5. Opcional: eliges cover desde Cloudinary.
+6. Generas descripcion y keywords con OpenAI.
+7. Guardas.
 
-Este paquete:
-- NO incluye carpeta data.
-- NO incluye archivos JSON de contenidos.
-- NO borra infografias, blogs, videos, podcasts, santoral ni recursos PDF.
-- Conserva soporte de recursos PDF, covers y botones de compartir.
-- Agrega persistencia Firestore para el catalogo de PDFs en la coleccion recursos_pdf.
-- Permite guardar enlaces publicos de Google Drive para PDFs.
-- Agrega selector visual de PDFs desde una carpeta de Google Drive en el admin.
-- "Ver PDF" abre el visor publico de Drive si el recurso es de Google Drive.
-- "Descargar PDF" abre la descarga publica de Drive si el recurso es de Google Drive.
-- Conserva enlaces de PDF con target _blank para abrir en nueva ventana cuando el navegador lo permita.
-- Agrega buscador y filtros visibles en Fe Católica.
-- Agrega buscador y filtros visibles en Catequesis IA para PDFs, guías e infografías.
+Resultado:
+- La pagina interna queda en /catequesis-ia/recursos/slug-del-documento.
+- El titulo de la tarjeta enlaza a esa ficha interna para SEO.
+- Los botones Ver PDF y Descargar PDF abren el enlace publico de Drive en nueva ventana.
+- Cloudinary se usa solo para el cover del recurso.
+- Firestore guarda el catalogo recursos_pdf para que no se resetee en cada deploy.
 
-Importante:
-- No mezclar con el paquete v7 de arranque blindado.
-- Este v8 debe reemplazar el server.js que quedo en GitHub tras el deploy fallido.
-- Firestore debe estar habilitado en Google Cloud/Firebase y el proyecto debe conservar firebase-applet-config.json.
-- La coleccion usada para PDFs se llama recursos_pdf.
-- Si Firestore no esta disponible, el sistema cae al respaldo local, pero ese respaldo local NO es persistente en Cloud Run.
-- Google Drive es opcional. Si todavia no configuras su API, Cloudinary sigue funcionando.
-
-Google Drive:
-- Activa Google Drive API en el proyecto de Google Cloud.
-- Crea una cuenta de servicio y comparte la carpeta de Drive con el email de esa cuenta.
-- Carpeta actual sugerida: 1e64CqL-Otla0tqQtVi8XNGhiLNYUI5C9
-- Expone estas variables/secretos en Cloud Run:
-  GOOGLE_DRIVE_FOLDER_ID = 1e64CqL-Otla0tqQtVi8XNGhiLNYUI5C9
-  GOOGLE_SERVICE_ACCOUNT_JSON = JSON completo de la cuenta de servicio
-- Alternativa si no usas JSON completo:
-  GOOGLE_SERVICE_ACCOUNT_EMAIL = email de la cuenta de servicio
-  GOOGLE_PRIVATE_KEY = private_key de la cuenta de servicio
-
-Si el deploy falla incluso con este paquete, abre "Ver en el Explorador de registros"
-en Google Cloud y copia el error de Node.js. La pantalla de Cloud Build solo muestra
-el mensaje generico del puerto 8080, no la causa real.
+IMPORTANTE:
+- No subir la carpeta data/ al deploy.
+- No reemplazar bases de datos ni contenidos existentes.
+- Activar Firebase/Firestore en produccion para que los registros PDF sean persistentes.

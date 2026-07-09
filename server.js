@@ -5028,6 +5028,34 @@ function pdfResourceHasFile(pdf = {}) {
   );
 }
 
+function getPdfPublicViewUrl(pdf = {}) {
+  const driveInfo = getPdfDriveInfo(pdf);
+  if (driveInfo && driveInfo.viewUrl) return driveInfo.viewUrl;
+  return String(pdf.pdfUrl || pdf.driveViewUrl || pdf.cloudinarySecureUrl || '').trim();
+}
+
+function getPdfPublicDownloadUrl(pdf = {}) {
+  const driveInfo = getPdfDriveInfo(pdf);
+  if (driveInfo && driveInfo.downloadUrl) return driveInfo.downloadUrl;
+  return String(pdf.pdfUrl || pdf.driveDownloadUrl || pdf.cloudinarySecureUrl || '').trim();
+}
+
+function pdfExternalButtonsHtml(pdf = {}, options = {}) {
+  if (!pdfResourceHasFile(pdf)) return '';
+  const viewUrl = escapeHtml(getPdfPublicViewUrl(pdf));
+  const downloadUrl = escapeHtml(getPdfPublicDownloadUrl(pdf) || getPdfPublicViewUrl(pdf));
+  const compact = Boolean(options.compact);
+  const viewLabel = compact ? 'Ver PDF' : `${pdfIconHtml('w-6 h-6')} Ver PDF`;
+  const downloadLabel = compact ? `${pdfIconHtml('w-5 h-5')} Descargar` : `${pdfIconHtml('w-6 h-6')} Descargar PDF`;
+  const viewClass = compact
+    ? 'inline-flex items-center gap-1.5 text-[10px] text-maroon border border-maroon rounded-lg px-3 py-2 font-bold hover:bg-maroon hover:text-white transition'
+    : 'self-start inline-flex items-center gap-2 border border-maroon text-maroon hover:bg-maroon hover:text-white font-bold px-5 py-3 rounded-xl transition text-sm';
+  const downloadClass = compact
+    ? 'inline-flex items-center gap-1.5 text-[10px] text-white bg-maroon rounded-lg px-3 py-2 font-bold hover:bg-gold transition'
+    : 'self-start inline-flex items-center gap-2 bg-maroon hover:bg-gold text-white font-bold px-5 py-3 rounded-xl transition text-sm';
+  return `<a href="${viewUrl}" target="_blank" rel="noopener" class="${viewClass}">${viewLabel}</a><a href="${downloadUrl}" target="_blank" rel="noopener" class="${downloadClass}">${downloadLabel}</a>`;
+}
+
 function getSignedCloudinaryPdfUrl(publicId = '', format = 'pdf', resourceType = 'raw') {
   if (!publicId || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) return '';
   try {
@@ -5160,7 +5188,8 @@ function resourceCoverHtml({ imageUrl = '', title = '', label = 'CatólicosGPT',
   `;
 }
 
-app.get('/ninos', (req, res) => {
+app.get('/ninos', async (req, res) => {
+  await recursosPdf.refreshFromCloud();
   const filtro = String(req.query.tipo || 'todo').toLowerCase();
   const allInfografias = (infografias.loadCatalog().infografias || []).filter(i => i.publicado !== false);
   const childrenInfografias = allInfografias.filter(isChildrenInfografia);
@@ -5250,13 +5279,13 @@ app.get('/ninos', (req, res) => {
                   <div class="shrink-0">${pdfIconHtml('w-10 h-10')}</div>
                   <div class="min-w-0">
                     <span class="text-[10px] font-bold text-gold font-mono uppercase tracking-widest">Cartilla PDF · Niños</span>
-                    <h3 class="font-display text-maroon font-bold text-lg leading-tight">${escapeHtml(pdf.titulo)}</h3>
+                    <h3 class="font-display text-maroon font-bold text-lg leading-tight"><a href="/catequesis-ia/recursos/${pdf.slug}" class="hover:underline hover:text-gold">${escapeHtml(pdf.titulo)}</a></h3>
                     <p class="text-xs text-ink2 leading-relaxed line-clamp-4">${escapeHtml(pdf.descripcion || 'Guía descargable de catequesis infantil preparada por CatólicosGPT.')}</p>
                   </div>
                 </div>
                 <div class="flex flex-wrap gap-2 mt-auto">
                   <a href="/catequesis-ia/recursos/${pdf.slug}" class="text-[10px] text-maroon border border-maroon rounded-lg px-3 py-2 font-bold hover:bg-maroon hover:text-white transition">Ver ficha</a>
-                  ${pdfResourceHasFile(pdf) ? `<a href="/catequesis-ia/recursos/${pdf.slug}/ver" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-[10px] text-maroon border border-maroon rounded-lg px-3 py-2 font-bold hover:bg-maroon hover:text-white transition">Ver PDF</a><a href="/catequesis-ia/recursos/${pdf.slug}/descargar" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-[10px] text-white bg-gold rounded-lg px-3 py-2 font-bold hover:bg-maroon transition">${pdfIconHtml('w-5 h-5')} Descargar</a>` : ''}
+                  ${pdfExternalButtonsHtml(pdf, { compact: true })}
                 </div>
                 <div class="pt-2 border-t border-border/40">
                   ${shareButtonsHtml({ title: pdf.titulo, path: `/catequesis-ia/recursos/${pdf.slug}`, description: pdf.descripcion || 'Cartilla PDF para niños de CatólicosGPT', compact: true })}
@@ -5338,7 +5367,8 @@ app.get('/ninos/recursos/:slug/imagen/:index/descargar', (req, res) => {
 // RUTAS DE LA APP — BLOG CATÓLICO
 // ════════════════════════════════════════════════════════════════════════════
 
-app.get('/catequesis-ia', (req, res) => {
+app.get('/catequesis-ia', async (req, res) => {
+  await recursosPdf.refreshFromCloud();
   const audience = req.query.audiencia || 'todo';
   const q = String(req.query.q || '').trim();
   const normalizeSearch = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -5468,13 +5498,13 @@ app.get('/catequesis-ia', (req, res) => {
                 <div class="flex items-start gap-3">
                   <div class="shrink-0">${pdfIconHtml('w-10 h-10')}</div>
                   <div class="min-w-0">
-                <h3 class="font-display text-espresso font-bold text-lg leading-tight">${escapeHtml(pdf.titulo)}</h3>
+                <h3 class="font-display text-espresso font-bold text-lg leading-tight"><a href="/catequesis-ia/recursos/${pdf.slug}" class="hover:text-maroon hover:underline">${escapeHtml(pdf.titulo)}</a></h3>
                 <p class="text-xs text-ink2 leading-relaxed line-clamp-4">${escapeHtml(pdf.descripcion || 'Documento descargable de formación católica listo para consultar y compartir.')}</p>
                   </div>
                 </div>
                 <div class="flex gap-2 mt-auto pt-2">
                   <a href="/catequesis-ia/recursos/${pdf.slug}" class="text-[10px] text-maroon font-bold border border-maroon rounded-lg px-3 py-2 hover:bg-maroon hover:text-white transition">Ver detalle</a>
-                  ${pdfResourceHasFile(pdf) ? `<a href="/catequesis-ia/recursos/${pdf.slug}/ver" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-[10px] text-maroon border border-maroon rounded-lg px-3 py-2 font-bold hover:bg-maroon hover:text-white transition">Ver PDF</a><a href="/catequesis-ia/recursos/${pdf.slug}/descargar" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-[10px] text-white bg-maroon rounded-lg px-3 py-2 font-bold hover:bg-gold transition">${pdfIconHtml('w-5 h-5')} Descargar</a>` : ''}
+                  ${pdfExternalButtonsHtml(pdf, { compact: true })}
                 </div>
                 <div class="pt-2 border-t border-border/40">
                   ${shareButtonsHtml({ title: pdf.titulo, path: `/catequesis-ia/recursos/${pdf.slug}`, description: pdf.descripcion || 'Recurso PDF católico descargable', compact: true })}
@@ -5536,7 +5566,8 @@ app.get('/catequesis-ia', (req, res) => {
   }));
 });
 
-app.get('/catequesis-ia/recursos/:slug', (req, res) => {
+app.get('/catequesis-ia/recursos/:slug', async (req, res) => {
+  await recursosPdf.refreshFromCloud();
   const pdf = recursosPdf.getBySlug(req.params.slug);
   if (!pdf || pdf.publicado === false) {
     return res.status(404).send(renderPage('Recurso no encontrado', `<div class="p-12 text-center text-ink">Recurso PDF no encontrado. <a href="/catequesis-ia" class="text-maroon underline font-bold">Volver a Catequesis IA</a></div>`, req));
@@ -5567,7 +5598,7 @@ app.get('/catequesis-ia/recursos/:slug', (req, res) => {
           <span class="bg-cream border border-border rounded-full px-3 py-1">${escapeHtml(pdf.categoria || 'catequesis')}</span>
           ${pdf.tags ? String(pdf.tags).split(',').slice(0, 6).map(tag => `<span class="bg-cream border border-border rounded-full px-3 py-1">${escapeHtml(tag.trim())}</span>`).join('') : ''}
         </div>
-        ${pdfResourceHasFile(pdf) ? `<div class="flex flex-col sm:flex-row gap-2"><a href="/catequesis-ia/recursos/${pdf.slug}/ver" target="_blank" rel="noopener" class="self-start inline-flex items-center gap-2 border border-maroon text-maroon hover:bg-maroon hover:text-white font-bold px-5 py-3 rounded-xl transition text-sm">${pdfIconHtml('w-6 h-6')} Ver PDF</a><a href="/catequesis-ia/recursos/${pdf.slug}/descargar" target="_blank" rel="noopener" class="self-start inline-flex items-center gap-2 bg-maroon hover:bg-gold text-white font-bold px-5 py-3 rounded-xl transition text-sm">${pdfIconHtml('w-6 h-6')} Descargar PDF</a></div>` : `<p class="text-sm text-red-800">Este recurso aún no tiene PDF enlazado.</p>`}
+        ${pdfResourceHasFile(pdf) ? `<div class="flex flex-col sm:flex-row gap-2">${pdfExternalButtonsHtml(pdf)}</div>` : `<p class="text-sm text-red-800">Este recurso aún no tiene PDF enlazado.</p>`}
         <div class="pt-3 border-t border-border/40">
           ${shareButtonsHtml({ title: pdf.titulo, path: `/catequesis-ia/recursos/${pdf.slug}`, description: pdf.descripcion || 'Recurso PDF católico descargable de CatólicosGPT', label: 'Compartir recurso' })}
         </div>
@@ -5587,9 +5618,15 @@ app.get('/catequesis-ia/recursos/:slug', (req, res) => {
 });
 
 async function servePdfResource(req, res, dispositionMode = 'attachment') {
+  await recursosPdf.refreshFromCloud();
   const pdf = recursosPdf.getBySlug(req.params.slug);
   if (!pdf || pdf.publicado === false || !pdfResourceHasFile(pdf)) {
     return res.status(404).send(renderPage('PDF no encontrado', `<div class="p-12 text-center text-ink">PDF no encontrado. <a href="/catequesis-ia" class="text-maroon underline font-bold">Volver a Catequesis IA</a></div>`, req));
+  }
+
+  const externalUrl = dispositionMode === 'inline' ? getPdfPublicViewUrl(pdf) : getPdfPublicDownloadUrl(pdf);
+  if (externalUrl && (extractGoogleDriveFileId(externalUrl) || !String(externalUrl).includes('res.cloudinary.com'))) {
+    return res.redirect(302, externalUrl);
   }
 
   const driveInfo = getPdfDriveInfo(pdf);
@@ -7618,14 +7655,14 @@ CatólicosGPT es una IA católica en español para formación, catequesis, oraci
 `);
 });
 
-app.get('/sitemap.xml', (req, res) => {
+app.get('/sitemap.xml', async (req, res) => {
   const infCatalog = infografias.loadCatalog();
   const blogCatalog = blog.loadBlog();
   const sementeras = seoTopics.getTemasSEO();
   const saintsList = santoral.getAllSaints();
   const videosCatalog = videos.loadVideos();
   const podcastsCatalog = podcast.loadPodcasts();
-  const pdfCatalog = recursosPdf.loadCatalog();
+  const pdfCatalog = await recursosPdf.refreshFromCloud();
 
   const xml = seo.generateSitemapXML({
     infografias: infCatalog.infografias || [],
@@ -7976,7 +8013,7 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-app.get('/admin', (req, res) => {
+app.get('/admin', async (req, res) => {
   const user = getAuthedUser(req);
   if (!isStrictAdminUser(user)) {
     return res.status(403).send(renderPage('No autorizado', `<div class="p-12 text-center text-ink flex flex-col justify-center items-center gap-4 max-w-md mx-auto my-12 bg-white border border border-[#E6DFD4] rounded-2xl shadow-sm">
@@ -7995,7 +8032,7 @@ app.get('/admin', (req, res) => {
   const blogCatalog = blog.loadBlog();
   const videosCatalog = videos.loadVideos();
   const podcastsCatalog = podcast.loadPodcasts();
-  const pdfCatalog = recursosPdf.loadCatalog();
+  const pdfCatalog = await recursosPdf.refreshFromCloud({ force: true });
   const cloudName = CLOUDINARY_CLOUD_NAME;
 
   const html = `
@@ -8664,7 +8701,7 @@ app.get('/admin', (req, res) => {
         <div class="bg-white border border-border rounded-2xl p-6 shadow-sm flex flex-col gap-4">
           <div class="border-b pb-3">
             <h3 id="pdf_form_title" class="font-display font-semibold text-espresso text-lg">Administrar PDFs de Catequesis IA</h3>
-            <p class="text-ink-2 text-xs leading-relaxed mt-1">Primero sube tus PDFs directamente a Cloudinary. Luego selecciónalos aquí desde la biblioteca para publicarlos en Catequesis IA, Niños y recomendaciones del chat.</p>
+            <p class="text-ink-2 text-xs leading-relaxed mt-1">Crea una ficha pública e indexable en CatólicosGPT. Pega el enlace público de Google Drive del PDF y usa Cloudinary solo para la portada del recurso.</p>
           </div>
 
           <form method="POST" action="/admin/recursos-pdf/guardar" id="pdfResourceForm" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm">
@@ -8703,9 +8740,9 @@ app.get('/admin', (req, res) => {
             <div class="flex flex-col gap-1.5 md:col-span-2">
               <div class="flex items-center justify-between gap-2">
                 <label class="font-semibold text-espresso text-xs">URL pública del PDF</label>
-                <span class="text-[10px] text-ink2">Acepta enlace público de Google Drive o Cloudinary RAW.</span>
+                <span class="text-[10px] text-ink2">Pega el enlace público de Google Drive. El archivo abrirá en una pestaña nueva.</span>
               </div>
-              <input type="url" name="pdfUrl" id="pdf_url" placeholder="https://drive.google.com/file/d/.../view o https://res.cloudinary.com/.../archivo.pdf" class="border border-border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs bg-white">
+              <input type="url" name="pdfUrl" id="pdf_url" required placeholder="https://drive.google.com/file/d/.../view" class="border border-border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs bg-white">
             </div>
 
             <div class="flex flex-col gap-1.5 md:col-span-3">
@@ -8720,26 +8757,15 @@ app.get('/admin', (req, res) => {
             </div>
 
             <div class="flex flex-col gap-2 md:col-span-3 bg-cream/40 border border-dashed rounded-xl p-4">
-              <label class="font-semibold text-espresso text-xs">Subir o seleccionar PDF</label>
-              <div class="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-3">
-                <div class="flex items-center gap-3 flex-1 min-w-0 bg-white border border-border rounded-xl px-3 py-2">
-                  ${pdfIconHtml('w-9 h-9')}
-                  <div class="min-w-0">
-                    <div id="pdf_selected_name" class="text-xs font-bold text-espresso truncate">Ningún PDF seleccionado</div>
-                    <div class="text-[10px] text-ink2">Destino seguro: catolicosgpt/recursos-pdf como RAW/PDF</div>
-                  </div>
-                </div>
-                <div class="flex flex-col sm:flex-row gap-2">
-                  <label class="inline-flex items-center justify-center bg-white border border-border hover:border-gold text-espresso px-4 py-2 rounded-lg font-bold text-xs transition cursor-pointer">
-                    Elegir archivo
-                    <input type="file" id="pdf_file_input" accept="application/pdf,.pdf" class="sr-only">
-                  </label>
-                  <button type="button" onclick="uploadPdfToCloudinary(this)" class="bg-maroon hover:bg-gold text-white px-4 py-2 rounded-lg font-bold text-xs transition cursor-pointer border-0">Subir PDF RAW</button>
-                  <button type="button" onclick="openDrivePdfExplorer()" class="bg-white border border-gold text-maroon hover:bg-gold hover:text-white px-4 py-2 rounded-lg font-bold text-xs transition cursor-pointer">Seleccionar Drive</button>
-                  <button type="button" onclick="openCloudinaryExplorer('recursos-pdf')" class="bg-cream border border-maroon text-maroon hover:bg-maroon hover:text-white px-4 py-2 rounded-lg font-bold text-xs transition cursor-pointer">Seleccionar existente</button>
+              <label class="font-semibold text-espresso text-xs">Archivo PDF enlazado</label>
+              <div class="flex items-center gap-3 flex-1 min-w-0 bg-white border border-border rounded-xl px-3 py-2">
+                ${pdfIconHtml('w-9 h-9')}
+                <div class="min-w-0">
+                  <div id="pdf_selected_name" class="text-xs font-bold text-espresso truncate">Pega arriba el link público de Google Drive</div>
+                  <div class="text-[10px] text-ink2">La ficha vive en CatólicosGPT; el PDF se abre desde tu enlace público.</div>
                 </div>
               </div>
-              <p id="pdf_upload_status" class="text-[11px] text-ink2 italic">Recomendado: sube PDFs grandes a Google Drive y selecciónalos aquí. CatólicosGPT completa título, descripción SEO y keywords con OpenAI.</p>
+              <p id="pdf_upload_status" class="text-[11px] text-ink2 italic">Al guardar, CatólicosGPT conserva la URL interna, el SEO, la descripción y las palabras clave. La portada se toma de Cloudinary si la asignas.</p>
             </div>
 
             <div class="flex flex-col gap-1.5 md:col-span-3">
@@ -8790,7 +8816,7 @@ app.get('/admin', (req, res) => {
                 </div>
                 <div class="flex flex-wrap gap-2 shrink-0">
                   <button type="button" onclick='editPdfResource(${JSON.stringify(pdf).replace(/'/g, '&#39;')})' class="text-maroon border border-maroon px-3 py-1 rounded-lg font-bold hover:bg-maroon hover:text-white transition">Editar</button>
-                  ${pdfResourceHasFile(pdf) ? `<a href="/catequesis-ia/recursos/${escapeHtml(pdf.slug)}/ver" target="_blank" class="inline-flex items-center gap-1 text-maroon border border-maroon px-3 py-1 rounded-lg font-bold hover:bg-maroon hover:text-white transition">Ver</a><a href="/catequesis-ia/recursos/${escapeHtml(pdf.slug)}/descargar" target="_blank" class="inline-flex items-center gap-1 text-gold border border-gold px-3 py-1 rounded-lg font-bold hover:bg-gold hover:text-white transition">${pdfIconHtml('w-4 h-4')} PDF</a>` : ''}
+                  ${pdfResourceHasFile(pdf) ? `<a href="${escapeHtml(getPdfPublicViewUrl(pdf))}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-maroon border border-maroon px-3 py-1 rounded-lg font-bold hover:bg-maroon hover:text-white transition">Ver</a><a href="${escapeHtml(getPdfPublicDownloadUrl(pdf) || getPdfPublicViewUrl(pdf))}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-gold border border-gold px-3 py-1 rounded-lg font-bold hover:bg-gold hover:text-white transition">${pdfIconHtml('w-4 h-4')} PDF</a>` : ''}
                   <a href="/admin/recursos-pdf/eliminar?slug=${encodeURIComponent(pdf.slug)}" onclick="return confirm('¿Eliminar este registro PDF? No borra el archivo de Cloudinary.')" class="text-red-700 border border-red-200 px-3 py-1 rounded-lg font-bold hover:bg-red-50 transition">Eliminar</a>
                 </div>
               </div>
@@ -11288,7 +11314,7 @@ app.post('/api/admin/recursos-pdf/upload', async (req, res) => {
   }
 });
 
-app.post('/admin/recursos-pdf/guardar', (req, res) => {
+app.post('/admin/recursos-pdf/guardar', async (req, res) => {
   const user = getAuthedUser(req);
   if (!isStrictAdminUser(user)) return res.status(403).send('No autorizado');
 
@@ -11296,7 +11322,7 @@ app.post('/admin/recursos-pdf/guardar', (req, res) => {
     const safePdfUrl = isCloudinaryConsoleUrl(req.body.pdfUrl) ? '' : req.body.pdfUrl;
     const safeSecureUrl = isCloudinaryConsoleUrl(req.body.cloudinarySecureUrl) ? '' : req.body.cloudinarySecureUrl;
     const driveFileId = String(req.body.driveFileId || '').trim() || extractGoogleDriveFileId(safePdfUrl) || extractGoogleDriveFileId(req.body.driveViewUrl) || extractGoogleDriveFileId(req.body.driveDownloadUrl);
-    recursosPdf.upsertResource({
+    await recursosPdf.upsertResourceAsync({
       originalSlug: req.body.originalSlug,
       titulo: req.body.titulo,
       descripcion: req.body.descripcion,
@@ -11333,9 +11359,10 @@ app.get('/admin/recursos-pdf/eliminar', (req, res) => {
   res.redirect('/admin#recursos-pdf');
 });
 
-app.get('/api/admin/recursos-pdf', (req, res) => {
+app.get('/api/admin/recursos-pdf', async (req, res) => {
   const user = getAuthedUser(req);
   if (!isStrictAdminUser(user)) return res.status(403).json({ error: 'No autorizado' });
+  await recursosPdf.refreshFromCloud({ force: true });
   res.json(recursosPdf.getRecursos({ publicado: null, limit: 500 }));
 });
 

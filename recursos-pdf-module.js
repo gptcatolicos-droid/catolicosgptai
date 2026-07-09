@@ -4,6 +4,7 @@ const path = require('path');
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'recursos-pdf.json');
 let cloudSyncStarted = false;
+let lastCloudRefreshAt = 0;
 
 function getFirebaseSync() {
   try {
@@ -98,12 +99,43 @@ function syncFromCloudOnce() {
     });
 }
 
+async function refreshFromCloud(options = {}) {
+  const force = Boolean(options.force);
+  const now = Date.now();
+  if (!force && now - lastCloudRefreshAt < 30000) return loadCatalog();
+  lastCloudRefreshAt = now;
+
+  const firebaseSync = getFirebaseSync();
+  if (!firebaseSync || typeof firebaseSync.syncDownloadRecursosPdf !== 'function') {
+    return loadCatalog();
+  }
+
+  const localCatalog = loadCatalog();
+  try {
+    const mergedItems = await firebaseSync.syncDownloadRecursosPdf(localCatalog.recursos || []);
+    if (Array.isArray(mergedItems)) {
+      const merged = mergeCatalogItems(localCatalog.recursos || [], mergedItems);
+      return saveCatalog({ recursos: merged });
+    }
+  } catch (err) {
+    console.warn('[Recursos PDF] No se pudo refrescar desde Firestore:', err.message);
+  }
+  return localCatalog;
+}
+
 function syncResourceToCloud(resource) {
   const firebaseSync = getFirebaseSync();
   if (!firebaseSync || typeof firebaseSync.syncUploadRecursoPdf !== 'function') return;
   firebaseSync.syncUploadRecursoPdf(resource).catch((err) => {
     console.warn('[Recursos PDF] No se pudo guardar en Firestore:', err.message);
   });
+}
+
+async function syncResourceToCloudNow(resource) {
+  const firebaseSync = getFirebaseSync();
+  if (!firebaseSync || typeof firebaseSync.syncUploadRecursoPdf !== 'function') return false;
+  await firebaseSync.syncUploadRecursoPdf(resource);
+  return true;
 }
 
 function syncDeleteFromCloud(slug) {
@@ -217,6 +249,12 @@ function upsertResource(input = {}) {
   return resource;
 }
 
+async function upsertResourceAsync(input = {}) {
+  const resource = upsertResource(input);
+  await syncResourceToCloudNow(resource);
+  return resource;
+}
+
 function deleteBySlug(slug) {
   const catalog = loadCatalog();
   const before = catalog.recursos.length;
@@ -254,9 +292,11 @@ module.exports = {
   normalizeText,
   loadCatalog,
   saveCatalog,
+  refreshFromCloud,
   getRecursos,
   getBySlug,
   upsertResource,
+  upsertResourceAsync,
   deleteBySlug,
   searchRelated
 };
