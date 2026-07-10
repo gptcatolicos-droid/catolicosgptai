@@ -31,6 +31,7 @@ function optionalRequire(modulePath, fallback) {
 // Importar todos los subsistemas creados
 const auth          = require('./auth-module');
 const infografias  = require('./infografias-module');
+const oraciones     = require('./oraciones-module');
 const liturgia      = require('./liturgia-cache');
 const misas         = require('./misas-module');
 const blog          = require('./blog-module');
@@ -1383,6 +1384,10 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
                 Infografías
               </a>
+              <a href="/oraciones" class="nav-link ${req.originalUrl.startsWith('/oraciones')?'active':''}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-hands-praying"><path d="M8 11V7a4 4 0 0 1 8 0v4"/><path d="M12 3v18"/><path d="M7 21h10"/><path d="M6 11c0 4 2 7 6 10 4-3 6-6 6-10"/></svg>
+                Oraciones
+              </a>
               <a href="/ninos" class="nav-link ${req.originalUrl.startsWith('/ninos')?'active':''}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-palette"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.1 2 11.2c0 3.4 2.7 6.3 6.4 6.3h1.1c.8 0 1.5.7 1.5 1.5 0 1.1.9 2 2 2h.4c4.7 0 8.6-3.8 8.6-8.5C22 6.7 17.5 2 12 2z"/></svg>
                 Niños
@@ -1485,6 +1490,7 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
               <nav class="flex flex-col gap-1">
                 <a href="/santoral" onclick="toggleMobileMenu()" class="nav-link">Santoral</a>
                 <a href="/infografias" onclick="toggleMobileMenu()" class="nav-link">Infografías</a>
+                <a href="/oraciones" onclick="toggleMobileMenu()" class="nav-link">Oraciones</a>
                 <a href="/ninos" onclick="toggleMobileMenu()" class="nav-link">Niños</a>
                 <a href="/videos" onclick="toggleMobileMenu()" class="nav-link">Videos</a>
                 <a href="/podcasts" onclick="toggleMobileMenu()" class="nav-link">Podcast</a>
@@ -4248,6 +4254,153 @@ function formatResponseText(txt) {
   res = res.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   return '<p>' + res + '</p>';
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// RUTAS DE LA APP — SECCIÓN DE ORACIONES
+// ════════════════════════════════════════════════════════════════════════════
+
+app.get('/oraciones', (req, res) => {
+  const page = parseInt(req.query.page, 10) || 1;
+  const cat = req.query.categoria || 'all';
+  const q = req.query.q || '';
+  const { items, total, totalPages } = oraciones.getOraciones({ categoria: cat, q, page, limit: 12 });
+  const cats = ['devocional', 'rosario', 'novena', 'consagracion', 'santos', 'mariana'];
+
+  const filters = `
+    <div class="bg-white border border-border rounded-xl p-5 shadow-sm flex flex-col gap-4">
+      <div class="flex flex-wrap gap-2">
+        <a href="/oraciones?categoria=all" class="px-4 py-1.5 rounded-full text-xs font-semibold ${cat==='all'?'bg-maroon text-white':'bg-cream border text-ink hover:bg-cream2'} transition">Todo</a>
+        ${cats.map(c => `
+          <a href="/oraciones?categoria=${c}" class="px-4 py-1.5 rounded-full text-xs font-semibold capitalize ${cat===c?'bg-maroon text-white':'bg-cream border text-ink hover:bg-cream2'} transition">${c}</a>
+        `).join('')}
+      </div>
+      <form action="/oraciones" method="GET" class="flex flex-col sm:flex-row gap-2">
+        <input type="hidden" name="categoria" value="${escapeHtml(cat)}">
+        <input type="text" name="q" value="${escapeHtml(q)}" placeholder="Buscar oración, novena, santo o intención..." class="border border-border rounded-full px-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-gold flex-1 bg-white">
+        <button type="submit" class="bg-maroon text-white px-5 py-2 rounded-full text-xs font-bold hover:bg-gold transition">Buscar</button>
+      </form>
+    </div>
+  `;
+
+  const list = items.length ? `
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      ${items.map(o => {
+        const cover = o.coverUrl || (o.imagenes && o.imagenes[0] && o.imagenes[0].url) || '';
+        return `
+          <article class="seo-card flex flex-col overflow-hidden">
+            ${cover ? `
+              <a href="/oraciones/${o.slug}" class="block aspect-[4/5] bg-cream overflow-hidden rounded-lg mb-4">
+                <img src="${cover}" alt="${escapeHtml(o.titulo)}" class="w-full h-full object-cover hover:scale-105 transition duration-200" loading="lazy" referrerPolicy="no-referrer">
+              </a>
+            ` : ''}
+            <div class="flex flex-col gap-2 flex-1">
+              <div class="flex items-center justify-between text-[10px] font-semibold text-gold font-mono uppercase tracking-widest">
+                <span>${escapeHtml(o.categoria || o.tipo || 'Oración')}</span>
+                <span>${(o.imagenes || []).length} ${(o.imagenes || []).length === 1 ? 'imagen' : 'imágenes'}</span>
+              </div>
+              <h2 class="font-display font-bold text-espresso text-base leading-snug">
+                <a href="/oraciones/${o.slug}" class="hover:text-maroon">${escapeHtml(o.titulo)}</a>
+              </h2>
+              <p class="text-ink2 text-xs leading-relaxed line-clamp-3">${escapeHtml(o.metaDescription || o.descripcion || '')}</p>
+              <a href="/oraciones/${o.slug}" class="text-maroon text-xs font-bold mt-auto hover:underline">Ver oración →</a>
+              <div class="pt-3 border-t border-border/40">
+                ${shareButtonsHtml({ title: o.titulo || 'Oración CatólicosGPT', path: `/oraciones/${o.slug}`, description: o.metaDescription || o.descripcion || 'Oración católica de CatólicosGPT', compact: true })}
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('')}
+    </div>
+    ${totalPages > 1 ? `
+      <div class="flex items-center justify-center gap-2 mt-8">
+        ${page > 1 ? `<a href="/oraciones?page=${page-1}&categoria=${encodeURIComponent(cat)}&q=${encodeURIComponent(q)}" class="px-3 py-1.5 rounded bg-white border text-xs text-ink hover:bg-cream2">Anterior</a>` : ''}
+        <span class="text-xs text-ink2">Página ${page} de ${totalPages}</span>
+        ${page < totalPages ? `<a href="/oraciones?page=${page+1}&categoria=${encodeURIComponent(cat)}&q=${encodeURIComponent(q)}" class="px-3 py-1.5 rounded bg-white border text-xs text-ink hover:bg-cream2">Siguiente</a>` : ''}
+      </div>
+    ` : ''}
+  ` : `
+    <div class="bg-white border rounded-2xl p-12 text-center shadow-sm">
+      <p class="text-ink2 text-sm">Aún no hay oraciones publicadas en este catálogo.</p>
+    </div>
+  `;
+
+  const html = `
+    <div class="max-w-6xl mx-auto w-full px-4 py-8 flex flex-col gap-6">
+      <div class="flex flex-col gap-2">
+        <span class="text-gold font-mono text-xs uppercase tracking-[0.18em] font-bold">Oraciones Católicas</span>
+        <h1 class="font-display font-bold text-2xl sm:text-3xl text-maroon tracking-wide">Banco de oraciones CatólicosGPT</h1>
+        <p class="font-serif text-ink2 text-sm italic max-w-3xl">Oraciones, novenas, consagraciones y recursos devocionales en imágenes para rezar, compartir e imprimir.</p>
+      </div>
+      ${filters}
+      <div class="flex items-center justify-between text-xs text-gold font-bold font-mono uppercase tracking-wider">
+        <span>Oraciones publicadas</span>
+        <span>${total} recursos</span>
+      </div>
+      ${list}
+    </div>
+  `;
+
+  res.send(renderPage('Oraciones Católicas | CatólicosGPT', html, req, {
+    description: 'Banco de oraciones católicas de CatólicosGPT: novenas, rosario, consagraciones y oraciones en imágenes para rezar y compartir.',
+    keywords: 'oraciones catolicas, novenas catolicas, rosario, oraciones para imprimir, CatólicosGPT'
+  }));
+});
+
+app.get('/oraciones/:slug', (req, res) => {
+  const oracion = oraciones.getOracionBySlug(req.params.slug);
+  if (!oracion || oracion.publicado === false) {
+    return res.status(404).send(renderPage('Oración no encontrada', `<div class="p-12 text-center text-ink">Oración no encontrada. <a href="/oraciones" class="text-maroon underline font-bold">Volver a Oraciones</a></div>`, req));
+  }
+  const imagenes = Array.isArray(oracion.imagenes) ? oracion.imagenes : [];
+  const cover = oracion.coverUrl || (imagenes[0] && imagenes[0].url) || '';
+  const imageList = imagenes.map((img, index) => `
+    <div class="bg-white border border-border rounded-2xl overflow-hidden p-2.5 flex flex-col gap-3 shadow-sm max-w-md mx-auto">
+      <img src="${img.url}" alt="${escapeHtml(img.alt || oracion.titulo)}" class="w-full h-auto object-contain rounded-xl" loading="lazy" referrerPolicy="no-referrer">
+      <div class="flex items-center justify-between text-xs px-2 py-1 text-ink2 font-mono">
+        <span>Imagen ${index + 1} de ${imagenes.length}</span>
+        <a href="/oraciones/${oracion.slug}/descargar/${index + 1}" class="text-maroon font-bold hover:underline">Descargar</a>
+      </div>
+    </div>
+  `).join('');
+
+  const html = `
+    <div class="max-w-5xl mx-auto w-full px-4 py-8 flex flex-col gap-8">
+      <a href="/oraciones" class="text-xs text-maroon font-bold hover:underline">← Volver a Oraciones</a>
+      <article class="bg-white border border-border rounded-2xl p-6 sm:p-8 shadow-sm flex flex-col gap-5 sacred-border">
+        <div class="flex flex-col gap-2">
+          <span class="text-gold font-mono text-xs uppercase tracking-[0.18em] font-bold">${escapeHtml(oracion.tipo || 'Oración')} · ${escapeHtml(oracion.categoria || 'devocional')}</span>
+          <h1 class="font-display text-maroon text-3xl sm:text-4xl font-bold leading-tight">${escapeHtml(oracion.titulo)}</h1>
+          <p class="text-ink2 leading-relaxed font-serif">${escapeHtml(oracion.descripcion || oracion.metaDescription || '')}</p>
+          ${shareButtonsHtml({ title: oracion.titulo, path: `/oraciones/${oracion.slug}`, description: oracion.metaDescription || oracion.descripcion || 'Oración católica de CatólicosGPT', label: 'Compartir oración' })}
+        </div>
+        ${imagenes.length > 1 ? `
+          <div class="bg-cream border border-gold/25 rounded-xl p-4 text-xs text-espresso font-semibold">
+            Esta oración contiene ${imagenes.length} imágenes. Ideal para novenas, rosarios o carruseles devocionales.
+          </div>
+        ` : ''}
+      </article>
+      <div class="${imagenes.length > 1 ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'flex flex-col gap-6'}">
+        ${imageList || '<div class="bg-white border rounded-2xl p-8 text-center text-ink2">Esta oración aún no tiene imágenes vinculadas.</div>'}
+      </div>
+    </div>
+  `;
+
+  res.send(renderPage(oracion.seoTitle || oracion.titulo, html, req, {
+    description: oracion.metaDescription || oracion.descripcion || `Oración católica: ${oracion.titulo}`,
+    keywords: oracion.keywords || 'oraciones catolicas, CatólicosGPT',
+    image: cover,
+    canonical: `/oraciones/${oracion.slug}`
+  }));
+});
+
+app.get('/oraciones/:slug/descargar/:index', (req, res) => {
+  const oracion = oraciones.getOracionBySlug(req.params.slug);
+  const index = Math.max(1, parseInt(req.params.index, 10) || 1) - 1;
+  const img = oracion && Array.isArray(oracion.imagenes) ? oracion.imagenes[index] : null;
+  if (!img || !img.url) return res.status(404).send('Imagen no encontrada');
+  const filename = `${oraciones.generateSlug(oracion.titulo || 'oracion-catolicosgpt')}-${index + 1}`;
+  res.redirect(cloudinaryAttachmentUrl(img.url, filename));
+});
 
 // ════════════════════════════════════════════════════════════════════════════
 // RUTAS DE LA APP — SECCIÓN DE INFOGRAFÍAS
@@ -8050,6 +8203,7 @@ app.get('/admin/backup-completo', (req, res) => {
       };
     }),
     recursosPdf: backupSection('recursosPdf', () => recursosPdf.loadCatalog()),
+    oraciones: backupSection('oraciones', () => oraciones.loadCatalog()),
     videos: backupSection('videos', () => videos.loadVideos()),
     podcasts: backupSection('podcasts', () => podcast.loadPodcasts()),
     santoral: backupSection('santoral', () => ({ santos: santoral.getAllSaints() }))
@@ -8066,6 +8220,7 @@ app.get('/admin/backup-completo', (req, res) => {
       feCatolica: countBackupItems(sections.feCatolica, ['posts', 'items']),
       catequesis: countBackupItems(sections.catequesis, ['posts', 'items']),
       recursosPdf: countBackupItems(sections.recursosPdf, ['recursos', 'items']),
+      oraciones: countBackupItems(sections.oraciones, ['oraciones', 'items']),
       videos: countBackupItems(sections.videos, ['videos', 'items']),
       podcasts: countBackupItems(sections.podcasts, ['podcasts', 'items']),
       santoral: countBackupItems(sections.santoral, ['santos', 'items'])
@@ -8099,6 +8254,7 @@ app.get('/admin', async (req, res) => {
   const videosCatalog = videos.loadVideos();
   const podcastsCatalog = podcast.loadPodcasts();
   const pdfCatalog = await recursosPdf.refreshFromCloud({ force: true });
+  const oracionesCatalog = oraciones.loadCatalog();
   const cloudName = CLOUDINARY_CLOUD_NAME;
 
   const html = `
@@ -8129,6 +8285,9 @@ app.get('/admin', async (req, res) => {
       <div class="admin-tabs flex border-b border-[#E6DFD4] overflow-x-auto whitespace-nowrap gap-1">
         <button onclick="switchTab('infografias')" id="tab-btn-infografias" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 border-transparent text-ink-2 hover:text-maroon transition flex items-center gap-2">
           🎨 Infografías (${catalog.infografias.length})
+        </button>
+        <button onclick="switchTab('oraciones')" id="tab-btn-oraciones" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 border-transparent text-ink-2 hover:text-maroon transition flex items-center gap-2">
+          🙏 Oraciones (${(oracionesCatalog.oraciones || []).length})
         </button>
         <button onclick="switchTab('blog')" id="tab-btn-blog" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 border-transparent text-ink-2 hover:text-maroon transition flex items-center gap-2">
           ✍️ Fe Católica (${blogCatalog.posts.length})
@@ -8619,6 +8778,303 @@ app.get('/admin', async (req, res) => {
               `).join('')}
           </div>
         </div>
+      </div>
+
+      <!-- ORACIONES -->
+      <div id="tab-content-oraciones" class="tab-pane hidden flex flex-col gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="bg-white border border-border rounded-2xl p-6 shadow-sm flex flex-col gap-4">
+            <h3 id="oracion-form-title" class="font-display font-semibold text-espresso text-lg border-b pb-2 flex items-center gap-2">
+              🙏 Registrar Oración / Novena desde Cloudinary
+            </h3>
+            <p class="text-ink-2 text-xs leading-relaxed">Crea páginas públicas de oraciones usando imágenes de Cloudinary. Sirve para Padre Nuestro, rosarios, novenas, consagraciones y devociones con una o varias imágenes.</p>
+
+            <form method="POST" action="/admin/crear-oracion" id="oracionForm" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm">
+              <input type="hidden" name="oracion_original_slug" id="oracion_original_slug" value="">
+              <div class="flex flex-col gap-1.5 md:col-span-2">
+                <label class="font-semibold text-espresso text-xs">Título de la oración</label>
+                <input type="text" name="titulo" id="oracion_titulo" required placeholder="Ej: Padre Nuestro" class="border border-border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs bg-white">
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label class="font-semibold text-espresso text-xs">Tipo</label>
+                <select name="tipo" id="oracion_tipo" class="border border-border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-gold text-xs bg-white">
+                  <option value="oracion">Oración</option>
+                  <option value="novena">Novena</option>
+                  <option value="rosario">Rosario</option>
+                  <option value="consagracion">Consagración</option>
+                  <option value="letanias">Letanías</option>
+                  <option value="santos">Oración a Santos</option>
+                  <option value="mariana">Oración Mariana</option>
+                </select>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label class="font-semibold text-espresso text-xs">Categoría SEO</label>
+                <input type="text" name="categoria" id="oracion_categoria" placeholder="Ej: oración mariana, novena, rosario" class="border border-border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs bg-white">
+              </div>
+              <div class="flex flex-col gap-1.5 md:col-span-2">
+                <label class="font-semibold text-espresso text-xs">Descripción pública</label>
+                <textarea name="descripcion" id="oracion_descripcion" rows="3" placeholder="Breve explicación de la oración y su uso espiritual..." class="border border-border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs bg-white"></textarea>
+              </div>
+
+              <div class="md:col-span-2 border border-gold/25 bg-[#FFFCF4] rounded-xl p-3 flex flex-col gap-3">
+                <div class="flex items-center justify-between flex-wrap gap-3">
+                  <div class="flex flex-col gap-0.5">
+                    <span class="text-xs font-bold text-espresso">Imágenes desde Cloudinary</span>
+                    <span class="text-[10px] text-ink-2">Selecciona una o varias imágenes. Si es novena, quedará como carrusel/galería 9:16.</span>
+                  </div>
+                  <button type="button" onclick="openCloudinaryExplorer('oraciones')" class="text-xs bg-maroon hover:bg-gold text-white py-2 px-4 rounded-lg font-bold transition flex items-center gap-1 cursor-pointer border-0">
+                    ☁️ Seleccionar imágenes
+                  </button>
+                </div>
+                <div id="oracion-images-container" class="flex flex-col gap-3"></div>
+                <button type="button" onclick="addOracionImageRow({ cover: document.querySelectorAll('.oracion-image-row').length === 0 })" class="self-start text-xs border border-maroon text-maroon hover:bg-maroon hover:text-white py-1.5 px-3 rounded-lg font-bold transition cursor-pointer bg-white">
+                  Añadir imagen manual
+                </button>
+              </div>
+
+              <div class="flex flex-col gap-1.5 md:col-span-2">
+                <label class="font-semibold text-espresso text-xs">Tipo de visualización</label>
+                <select name="tipoVisualizacion" id="oracion_tipo_visualizacion" class="border border-border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-gold text-xs bg-white">
+                  <option value="continua">Continua</option>
+                  <option value="carrusel">Carrusel</option>
+                  <option value="cuadricula">Cuadrícula</option>
+                </select>
+              </div>
+
+              <div class="flex flex-col gap-3 md:col-span-2 bg-cream/40 p-4 border border-dashed rounded-xl">
+                <div class="flex items-center justify-between gap-2 flex-wrap">
+                  <span class="font-mono font-bold text-[10px] text-maroon uppercase tracking-wider">SEO de la oración con OpenAI</span>
+                  <button type="button" onclick="generateSeoField('oracion', 'all', this)" class="bg-gold text-white text-[10px] px-3 py-1 rounded-md font-bold uppercase tracking-wider hover:bg-espresso transition border-0 cursor-pointer">
+                    ✨ Generar todo
+                  </button>
+                </div>
+                <div class="flex flex-col gap-1">
+                  <div class="flex items-center justify-between gap-2">
+                    <label class="font-semibold text-espresso text-xs">Título SEO</label>
+                    <button type="button" onclick="generateSeoField('oracion', 'seoTitle', this)" class="text-[10px] text-maroon border border-maroon hover:bg-maroon hover:text-white px-2 py-0.5 rounded font-bold transition cursor-pointer">OpenAI</button>
+                  </div>
+                  <input type="text" name="seoTitle" id="oracion_seo_title" placeholder="Título SEO para Google..." class="border border-border rounded-lg px-3 py-1.5 text-xs bg-white">
+                </div>
+                <div class="flex flex-col gap-1">
+                  <div class="flex items-center justify-between gap-2">
+                    <label class="font-semibold text-espresso text-xs">Meta descripción</label>
+                    <button type="button" onclick="generateSeoField('oracion', 'metaDescription', this)" class="text-[10px] text-maroon border border-maroon hover:bg-maroon hover:text-white px-2 py-0.5 rounded font-bold transition cursor-pointer">OpenAI</button>
+                  </div>
+                  <input type="text" name="metaDescription" id="oracion_meta_description" placeholder="Descripción breve para Search Console..." class="border border-border rounded-lg px-3 py-1.5 text-xs bg-white">
+                </div>
+                <div class="flex flex-col gap-1">
+                  <div class="flex items-center justify-between gap-2">
+                    <label class="font-semibold text-espresso text-xs">Keywords</label>
+                    <button type="button" onclick="generateSeoField('oracion', 'keywords', this)" class="text-[10px] text-maroon border border-maroon hover:bg-maroon hover:text-white px-2 py-0.5 rounded font-bold transition cursor-pointer">OpenAI</button>
+                  </div>
+                  <input type="text" name="keywords" id="oracion_keywords" placeholder="oración católica, novena, devoción..." class="border border-border rounded-lg px-3 py-1.5 text-xs bg-white">
+                </div>
+              </div>
+
+              <label class="md:col-span-2 flex items-center gap-2 text-xs font-semibold text-espresso">
+                <input type="checkbox" name="publicado" id="oracion_publicado" value="true" checked class="accent-maroon">
+                Publicado
+              </label>
+              <div class="md:col-span-2 flex gap-2.5">
+                <button type="submit" id="oracion_submit_btn" class="flex-1 bg-maroon hover:bg-gold text-white font-bold py-2.5 rounded-lg transition uppercase tracking-wider shadow duration-300 text-xs border-0 cursor-pointer">
+                  Guardar Oración →
+                </button>
+                <button type="button" onclick="resetOracionForm()" class="px-5 py-2.5 bg-[#E6DFD4] hover:bg-[#D1C7BD] text-espresso font-bold text-xs uppercase tracking-wider rounded-lg transition duration-200 cursor-pointer border-0">
+                  Limpiar
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="bg-white border rounded-2xl p-6 shadow-sm flex flex-col gap-3">
+            <h3 class="font-display font-semibold text-espresso text-base flex items-center justify-between">
+              <span>🙏 Oraciones publicadas</span>
+              <span class="text-xs text-ink-2 font-serif">${(oracionesCatalog.oraciones || []).length} elementos</span>
+            </h3>
+            <div class="max-h-[620px] overflow-y-auto border border-border rounded-xl divide-y text-xs bg-white">
+              ${(oracionesCatalog.oraciones || []).length === 0 ? '<div class="p-4 text-center text-ink-2 italic">Aún no hay oraciones publicadas.</div>' :
+                (oracionesCatalog.oraciones || []).map(o => `
+                  <div class="p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-cream/10">
+                    <div class="flex items-center gap-3 min-w-0">
+                      <img src="${(o.imagenes && o.imagenes[0] && o.imagenes[0].url) || ''}" class="w-12 h-16 object-cover rounded border bg-cream-2">
+                      <div class="flex flex-col gap-0.5 min-w-0">
+                        <span class="font-bold text-espresso truncate">${escapeHtml(o.titulo || 'Oración')}</span>
+                        <span class="text-[10px] text-ink-2 truncate">${escapeHtml(o.tipo || 'oracion')} · /oraciones/${escapeHtml(o.slug || '')}</span>
+                        <span class="text-[10px] text-gold font-bold uppercase">${(o.imagenes || []).length} imagen(es)</span>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                      <button type="button" data-oracion="${escapeHtml(JSON.stringify(o))}" onclick="cargarEditarOracion(this)" class="text-[10px] text-indigo-700 hover:text-indigo-900 border border-indigo-200 px-2 py-0.5 rounded-md font-bold bg-white cursor-pointer">Editar</button>
+                      <a href="/oraciones/${o.slug}" target="_blank" class="text-[10px] text-maroon hover:underline font-bold">Ver</a>
+                      <a href="/admin/eliminar-oracion?slug=${o.slug}" onclick="return confirm('¿Eliminar esta oración? No afecta infografías ni blogs.')" class="text-[10px] text-red-700 hover:underline font-bold">Eliminar</a>
+                    </div>
+                  </div>
+                `).join('')}
+            </div>
+          </div>
+        </div>
+
+        <script>
+          let oracionRowIndex = 0;
+
+          function addOracionImageRow(data) {
+            const container = document.getElementById('oracion-images-container');
+            if (!container) return;
+            const currentRows = container.querySelectorAll('.oracion-image-row');
+            if (currentRows.length >= 30) {
+              alert('Puedes agregar máximo 30 imágenes por oración o novena.');
+              return;
+            }
+            const rowId = 'oracion-row-' + (++oracionRowIndex);
+            const row = document.createElement('div');
+            row.className = 'oracion-image-row bg-white border border-border rounded-xl p-3 flex flex-col gap-3';
+            row.id = rowId;
+            row.innerHTML =
+              '<div class="flex items-center justify-between border-b border-border/40 pb-1.5">' +
+                '<span class="text-xs font-bold text-espresso font-mono">Imagen #<span class="oracion-row-number"></span></span>' +
+                '<div class="flex items-center gap-1.5">' +
+                  '<button type="button" onclick="moveOracionImageRow(\\'' + rowId + '\\', -1)" class="text-[10px] border border-border bg-white hover:bg-cream px-2 py-1 rounded font-bold text-espresso">↑</button>' +
+                  '<button type="button" onclick="moveOracionImageRow(\\'' + rowId + '\\', 1)" class="text-[10px] border border-border bg-white hover:bg-cream px-2 py-1 rounded font-bold text-espresso">↓</button>' +
+                  '<button type="button" onclick="removeOracionImageRow(\\'' + rowId + '\\')" class="text-[10px] border border-red-200 bg-white hover:bg-red-50 px-2 py-1 rounded font-bold text-red-700">Eliminar</button>' +
+                '</div>' +
+              '</div>' +
+              '<div class="grid grid-cols-1 md:grid-cols-2 gap-3">' +
+                '<label class="flex flex-col gap-1 text-xs font-semibold text-espresso">URL Cloudinary<input type="text" name="oracionImageUrls[]" required class="border border-[#D1C7BD] rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-gold text-xs bg-white" placeholder="https://res.cloudinary.com/..."></label>' +
+                '<label class="flex flex-col gap-1 text-xs font-semibold text-espresso">Alt SEO<input type="text" name="oracionImageAlts[]" class="border border-[#D1C7BD] rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-gold text-xs bg-white" placeholder="Oración católica CatólicosGPT..."></label>' +
+              '</div>' +
+              '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">' +
+                '<label class="flex flex-col gap-1 text-xs font-semibold text-espresso">Nombre archivo<input type="text" name="oracionImageNames[]" class="border border-[#D1C7BD] rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-gold text-xs bg-white" placeholder="oracion-padre-nuestro.jpg"></label>' +
+                '<div class="flex items-center justify-between gap-3">' +
+                  '<input type="hidden" name="oracionImageWidths[]" value="1080"><input type="hidden" name="oracionImageHeights[]" value="1920"><input type="hidden" name="oracionImageCovers[]" class="oracion-cover-flag" value="0">' +
+                  '<label class="flex items-center gap-1.5 font-semibold text-espresso cursor-pointer select-none text-xs"><input type="radio" name="oracionImageCoverRadio" class="accent-maroon cursor-pointer scale-110" onchange="updateOracionCoverFlags(\\'' + rowId + '\\')"> Portada</label>' +
+                  '<img class="oracion-preview w-12 h-16 object-cover rounded border bg-cream-2 hidden" referrerPolicy="no-referrer">' +
+                '</div>' +
+              '</div>';
+            container.appendChild(row);
+            fillOracionRow(row, data || {});
+            reindexOracionRows();
+          }
+
+          function fillOracionRow(row, resource) {
+            if (!row) return;
+            const url = resource.url || '';
+            const rawName = resource.name || (resource.public_id ? resource.public_id.split('/').pop() : '');
+            const label = readableCloudinaryName(resource) || document.getElementById('oracion_titulo')?.value || 'Oración católica';
+            const urlInput = row.querySelector('input[name="oracionImageUrls[]"]');
+            const altInput = row.querySelector('input[name="oracionImageAlts[]"]');
+            const nameInput = row.querySelector('input[name="oracionImageNames[]"]');
+            const widthInput = row.querySelector('input[name="oracionImageWidths[]"]');
+            const heightInput = row.querySelector('input[name="oracionImageHeights[]"]');
+            const preview = row.querySelector('.oracion-preview');
+            const radio = row.querySelector('input[name="oracionImageCoverRadio"]');
+            if (urlInput) urlInput.value = url;
+            if (altInput) altInput.value = resource.alt || ('Oración católica CatólicosGPT IA Católica: ' + label);
+            if (nameInput) nameInput.value = rawName || resource.name || '';
+            if (widthInput) widthInput.value = resource.width || 1080;
+            if (heightInput) heightInput.value = resource.height || 1920;
+            if (preview && url) { preview.src = url; preview.classList.remove('hidden'); }
+            if (resource.cover && radio) {
+              radio.checked = true;
+              updateOracionCoverFlags(row.id);
+            } else if (!document.querySelector('.oracion-image-row input[name="oracionImageCoverRadio"]:checked') && radio) {
+              radio.checked = true;
+              updateOracionCoverFlags(row.id);
+            }
+          }
+
+          function addOracionBlocks(resources) {
+            const selected = Array.isArray(resources) ? resources.filter(r => r && r.url) : [];
+            if (!selected.length) return;
+            selected.forEach((resource, index) => {
+              addOracionImageRow(Object.assign({}, resource, { cover: document.querySelectorAll('.oracion-image-row').length === 0 && index === 0 }));
+            });
+          }
+
+          function removeOracionImageRow(rowId) {
+            const row = document.getElementById(rowId);
+            if (!row) return;
+            const wasChecked = row.querySelector('input[name="oracionImageCoverRadio"]')?.checked;
+            row.remove();
+            if (wasChecked) {
+              const firstRadio = document.querySelector('.oracion-image-row input[name="oracionImageCoverRadio"]');
+              if (firstRadio) firstRadio.checked = true;
+            }
+            reindexOracionRows();
+          }
+
+          function moveOracionImageRow(rowId, direction) {
+            const row = document.getElementById(rowId);
+            const parent = row ? row.parentElement : null;
+            if (!row || !parent) return;
+            if (direction < 0 && row.previousElementSibling) parent.insertBefore(row, row.previousElementSibling);
+            if (direction > 0 && row.nextElementSibling) parent.insertBefore(row.nextElementSibling, row);
+            reindexOracionRows();
+          }
+
+          function updateOracionCoverFlags() {
+            const rows = Array.from(document.querySelectorAll('.oracion-image-row'));
+            let checkedIndex = rows.findIndex(row => row.querySelector('input[name="oracionImageCoverRadio"]')?.checked);
+            if (checkedIndex < 0 && rows.length) {
+              const radio = rows[0].querySelector('input[name="oracionImageCoverRadio"]');
+              if (radio) radio.checked = true;
+              checkedIndex = 0;
+            }
+            rows.forEach((row, index) => {
+              const flag = row.querySelector('.oracion-cover-flag');
+              if (flag) flag.value = index === checkedIndex ? '1' : '0';
+            });
+          }
+
+          function reindexOracionRows() {
+            document.querySelectorAll('.oracion-image-row').forEach((row, index) => {
+              const number = row.querySelector('.oracion-row-number');
+              if (number) number.textContent = String(index + 1);
+            });
+            updateOracionCoverFlags();
+          }
+
+          function resetOracionForm() {
+            const form = document.getElementById('oracionForm');
+            if (form) form.reset();
+            document.getElementById('oracion_original_slug').value = '';
+            document.getElementById('oracion-form-title').innerText = '🙏 Registrar Oración / Novena desde Cloudinary';
+            document.getElementById('oracion_submit_btn').innerText = 'Guardar Oración →';
+            document.getElementById('oracion-images-container').innerHTML = '';
+            oracionRowIndex = 0;
+            addOracionImageRow({ cover: true });
+          }
+
+          function cargarEditarOracion(btn) {
+            const data = JSON.parse(btn.getAttribute('data-oracion') || '{}');
+            document.getElementById('oracion_original_slug').value = data.slug || '';
+            document.getElementById('oracion-form-title').innerText = '✏️ Editar Oración: ' + (data.titulo || '');
+            document.getElementById('oracion_submit_btn').innerText = '✓ Guardar Cambios de la Oración';
+            document.getElementById('oracion_titulo').value = data.titulo || '';
+            document.getElementById('oracion_tipo').value = data.tipo || 'oracion';
+            document.getElementById('oracion_categoria').value = data.categoria || '';
+            document.getElementById('oracion_descripcion').value = data.descripcion || '';
+            document.getElementById('oracion_tipo_visualizacion').value = data.tipoVisualizacion || 'continua';
+            document.getElementById('oracion_seo_title').value = data.seoTitle || '';
+            document.getElementById('oracion_meta_description').value = data.metaDescription || '';
+            document.getElementById('oracion_keywords').value = data.keywords || '';
+            document.getElementById('oracion_publicado').checked = data.publicado !== false;
+            const container = document.getElementById('oracion-images-container');
+            container.innerHTML = '';
+            oracionRowIndex = 0;
+            const imgs = Array.isArray(data.imagenes) ? data.imagenes : [];
+            if (imgs.length) imgs.forEach((img, idx) => addOracionImageRow({
+              url: img.url || '',
+              alt: img.alt || '',
+              name: img.name || '',
+              width: img.width || 1080,
+              height: img.height || 1920,
+              cover: img.esPortada === true || idx === 0
+            }));
+            else addOracionImageRow({ cover: true });
+            const form = document.getElementById('oracionForm');
+            if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        </script>
       </div>
 
       <!-- 2. BLOG DE FORMACIÓN -->
@@ -9703,6 +10159,18 @@ app.get('/admin', async (req, res) => {
             keywords: document.getElementById('pdf_keywords')?.value || ''
           };
         }
+        if (entityType === 'oracion') {
+          return {
+            titulo: document.getElementById('oracion_titulo')?.value || '',
+            tipo: document.getElementById('oracion_tipo')?.value || '',
+            categoria: document.getElementById('oracion_categoria')?.value || '',
+            descripcion: document.getElementById('oracion_descripcion')?.value || '',
+            contenido: document.getElementById('oracion_descripcion')?.value || '',
+            seoTitle: document.getElementById('oracion_seo_title')?.value || '',
+            metaDescription: document.getElementById('oracion_meta_description')?.value || '',
+            keywords: document.getElementById('oracion_keywords')?.value || ''
+          };
+        }
         return {};
       }
 
@@ -9726,6 +10194,11 @@ app.get('/admin', async (req, res) => {
           'recurso-pdf': {
             metaDescription: 'pdf_descripcion',
             keywords: 'pdf_keywords'
+          },
+          oracion: {
+            seoTitle: 'oracion_seo_title',
+            metaDescription: 'oracion_meta_description',
+            keywords: 'oracion_keywords'
           }
         };
         const map = mappings[entityType] || {};
@@ -10336,7 +10809,7 @@ app.get('/admin', async (req, res) => {
 
       window.addEventListener('DOMContentLoaded', () => {
         let hash = window.location.hash.replace('#', '') || 'infografias';
-        if (!['infografias', 'blog', 'catequesis', 'videos', 'podcasts', 'santoral'].includes(hash)) {
+        if (!['infografias', 'oraciones', 'blog', 'catequesis', 'recursos-pdf', 'videos', 'podcasts', 'santoral'].includes(hash)) {
           hash = 'infografias';
         }
         switchTab(hash);
@@ -10347,6 +10820,12 @@ app.get('/admin', async (req, res) => {
           const container = document.getElementById('manual-images-container');
           if (container && container.querySelectorAll('.manual-image-row').length === 0) {
             addManualImageRow();
+          }
+        }
+        if (typeof addOracionImageRow === 'function') {
+          const oracionContainer = document.getElementById('oracion-images-container');
+          if (oracionContainer && oracionContainer.querySelectorAll('.oracion-image-row').length === 0) {
+            addOracionImageRow({ cover: true });
           }
         }
       });
@@ -10664,6 +11143,9 @@ app.get('/admin', async (req, res) => {
         const folderFilter = document.getElementById('cl-folder-filter');
         
         if (context === 'infografias') {
+          typeFilter.value = 'image';
+          setSelectValueEnsuringOption(folderFilter, '', '-- Todas las carpetas --');
+        } else if (context === 'oraciones') {
           typeFilter.value = 'image';
           setSelectValueEnsuringOption(folderFilter, '', '-- Todas las carpetas --');
         } else if (context === 'blog_cover') {
@@ -11007,6 +11489,8 @@ app.get('/admin', async (req, res) => {
 
         if (activeExplorerContext === 'infografias') {
           addInfografiaBlocks(list);
+        } else if (activeExplorerContext === 'oraciones') {
+          addOracionBlocks(list);
         } else if (activeExplorerContext === 'blog_cover') {
           document.getElementById('blog_imagen_portada').value = list[0].url;
         } else if (activeExplorerContext === 'santo_photo') {
@@ -11313,7 +11797,9 @@ function buildLocalSeoByEntity({ entityType, context } = {}) {
         ? 'Video CatólicosGPT'
         : entityType === 'podcast'
           ? 'Podcast CatólicosGPT'
-          : 'CatólicosGPT IA Católica';
+          : entityType === 'oracion'
+            ? 'Oraciones CatólicosGPT'
+            : 'CatólicosGPT IA Católica';
   const seoTitle = `${baseTitle} | ${suffix}`.slice(0, 60).trim();
   const metaRaw = `${baseTitle}: guía católica de CatólicosGPT | La IA Católica #1 en Español sobre ${tema}${text ? `. ${text.slice(0, 60)}` : ''}.`;
   const metaDescription = metaRaw.length > 155 ? metaRaw.slice(0, 152).trim() + '...' : metaRaw;
@@ -11325,6 +11811,9 @@ function buildLocalSeoByEntity({ entityType, context } = {}) {
     entityType === 'blog' ? 'blog catolico' : '',
     entityType === 'video' ? 'video catolico' : '',
     entityType === 'podcast' ? 'podcast catolico' : '',
+    entityType === 'oracion' ? 'oracion catolica' : '',
+    entityType === 'oracion' ? 'oraciones catolicas' : '',
+    entityType === 'oracion' ? 'novenas catolicas' : '',
     'CatolicosGPT',
     'CatólicosGPT',
     'catolicos gpt',
@@ -11344,6 +11833,82 @@ function buildLocalSeoByEntity({ entityType, context } = {}) {
     altText: `${baseTitle} | CatólicosGPT IA Católica`
   };
 }
+
+function normalizeArrayField(value) {
+  if (Array.isArray(value)) return value;
+  if (value === undefined || value === null) return [];
+  return [value];
+}
+
+app.post('/admin/crear-oracion', (req, res) => {
+  const user = getAuthedUser(req);
+  if (!isStrictAdminUser(user)) return res.status(403).send('No autorizado');
+
+  try {
+    const urls = normalizeArrayField(req.body.oracionImageUrls).map(v => String(v || '').trim()).filter(Boolean);
+    if (!String(req.body.titulo || '').trim()) {
+      return res.status(400).send('Debes escribir el título de la oración.');
+    }
+    if (urls.length === 0) {
+      return res.status(400).send('Debes agregar al menos una imagen de Cloudinary.');
+    }
+
+    const alts = normalizeArrayField(req.body.oracionImageAlts);
+    const names = normalizeArrayField(req.body.oracionImageNames);
+    const widths = normalizeArrayField(req.body.oracionImageWidths);
+    const heights = normalizeArrayField(req.body.oracionImageHeights);
+    const covers = normalizeArrayField(req.body.oracionImageCovers);
+
+    const imagenes = urls.map((url, index) => ({
+      url,
+      alt: String(alts[index] || `Oración católica CatólicosGPT: ${req.body.titulo}`).trim(),
+      name: String(names[index] || '').trim(),
+      width: Number(widths[index]) || 1080,
+      height: Number(heights[index]) || 1920,
+      esPortada: String(covers[index] || '') === '1'
+    }));
+    if (!imagenes.some(img => img.esPortada)) imagenes[0].esPortada = true;
+
+    const localSeo = buildLocalSeoByEntity({
+      entityType: 'oracion',
+      context: {
+        titulo: req.body.titulo,
+        tipo: req.body.tipo,
+        categoria: req.body.categoria,
+        descripcion: req.body.descripcion,
+        seoTitle: req.body.seoTitle,
+        metaDescription: req.body.metaDescription,
+        keywords: req.body.keywords
+      }
+    });
+
+    oraciones.upsertOracion({
+      originalSlug: req.body.oracion_original_slug,
+      titulo: req.body.titulo,
+      tipo: req.body.tipo || 'oracion',
+      categoria: req.body.categoria || req.body.tipo || 'oracion',
+      descripcion: req.body.descripcion || localSeo.metaDescription,
+      seoTitle: req.body.seoTitle || localSeo.seoTitle,
+      metaDescription: req.body.metaDescription || req.body.descripcion || localSeo.metaDescription,
+      keywords: req.body.keywords || localSeo.keywords,
+      tipoVisualizacion: req.body.tipoVisualizacion || (imagenes.length > 1 ? 'carrusel' : 'continua'),
+      imagenes,
+      publicado: req.body.publicado === 'true' || req.body.publicado === 'on'
+    });
+
+    res.redirect('/admin#oraciones');
+  } catch (e) {
+    res.status(400).send('No se pudo guardar la oración: ' + escapeHtml(e.message));
+  }
+});
+
+app.get('/admin/eliminar-oracion', (req, res) => {
+  const user = getAuthedUser(req);
+  if (!isStrictAdminUser(user)) return res.status(403).send('No autorizado');
+  const slug = String(req.query.slug || '').trim();
+  if (slug) oraciones.deleteOracion(slug);
+  res.redirect('/admin#oraciones');
+});
 
 app.post('/api/admin/recursos-pdf/upload', async (req, res) => {
   const user = getAuthedUser(req);
@@ -11474,7 +12039,7 @@ app.post('/api/admin/seo/openai', async (req, res) => {
   if (!isStrictAdminUser(user)) return res.status(403).json({ error: 'No autorizado' });
 
   const { entityType, requestedField, context } = req.body || {};
-  const allowedEntities = ['blog', 'santoral', 'infografia', 'video', 'podcast', 'recurso-pdf', 'pdf'];
+  const allowedEntities = ['blog', 'santoral', 'infografia', 'video', 'podcast', 'recurso-pdf', 'pdf', 'oracion'];
   const allowedFields = ['seoTitle', 'metaDescription', 'keywords', 'altText', 'all'];
 
   if (!allowedEntities.includes(entityType)) {

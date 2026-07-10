@@ -1,0 +1,51 @@
+PAQUETE: ORACIONES CLOUDINARY - CATOLICOSGPT
+
+Base recomendada:
+- Usar como base el commit funcional: 545baee5d5121f1cfe399e599684aeef122092ec
+
+Archivos incluidos:
+- server.js
+- oraciones-module.js
+
+Que agrega:
+- Nueva seccion publica /oraciones
+- Pagina individual /oraciones/:slug
+- Nueva pestana "Oraciones" en el admin
+- Creacion y edicion de oraciones con imagenes de Cloudinary
+- Soporte para una imagen o varias imagenes, util para novenas o carruseles 9:16
+- SEO con IA para titulo, descripcion y palabras clave
+- Oraciones incluidas en el backup completo
+
+Importante:
+- Este paquete NO incluye carpeta data.
+- No subir ni reemplazar la carpeta data.
+- No toca infografias, Fe Catolica, Catequesis IA, PDFs, videos, podcasts ni santoral.
+- El catalogo de oraciones queda aislado en data/oraciones-catalog.json.
+
+Antes del deploy:
+1. Entrar al admin funcional actual.
+2. Descargar backup completo.
+3. Verificar que el backup tenga infografias, Fe Catolica, Catequesis IA, PDFs, videos y podcasts.
+
+Despues del deploy:
+1. Abrir /admin.
+2. Verificar los conteos de:
+   - Infografias
+   - Fe Catolica
+   - Catequesis IA
+   - Recursos PDF
+   - Videos
+   - Podcasts
+3. Si algun conteo aparece en cero o baja inesperadamente, hacer rollback inmediato a la revision funcional.
+
+Uso:
+- En el admin, abrir la pestana Oraciones.
+- Crear una oracion o novena.
+- Seleccionar imagenes desde Cloudinary.
+- Generar SEO con OpenAI.
+- Publicar.
+
+Rutas:
+- /oraciones
+- /oraciones/:slug
+- /oraciones/:slug/descargar/:index
