@@ -2319,17 +2319,105 @@ AUTHORITY_SEO_PAGES
 // HELPER DE DESCUBRIMIENTO Y RECOMENDACIÓN DE CONTENIDOS EN EL CHAT
 // ════════════════════════════════════════════════════════════════════════════
 
+function normalizeChatText(value = '') {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function chatSearchTokens(value = '') {
+  const stop = new Set(['para', 'como', 'quiero', 'dame', 'sobre', 'acerca', 'necesito', 'mostrar', 'muestrame', 'ver', 'una', 'uno', 'unos', 'unas', 'los', 'las', 'del', 'con', 'por', 'que', 'cual', 'cuales']);
+  return normalizeChatText(value)
+    .replace(/[^a-z0-9ñ\s]/gi, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 2 && !stop.has(w));
+}
+
+function detectChatIntent(query = '') {
+  const q = normalizeChatText(query);
+  if (/\b(oracion|oraciones|rezar|rezo|rosario|novena|padre nuestro|ave maria|credo|gloria|salve|angelus|consagracion)\b/.test(q)) return 'oraciones';
+  if (/\b(suicid|quitarme la vida|hacerme dano|hacerme daño|no quiero vivir|me quiero morir)\b/.test(q)) return 'riesgo';
+  if (/\b(me siento deprimido|estoy deprimido|deprimido|triste|tristeza|ansiedad|angustiado|desanimado|solo|me siento solo)\b/.test(q)) return 'consuelo';
+  if (/\b(guia|guía|catequesis|charla|taller|retiro|clase|curso)\b/.test(q)) return 'guia';
+  if (/\b(cronologia|cronología|linea de tiempo|línea de tiempo|historia de)\b/.test(q)) return 'cronologia';
+  if (/\b(guion|guión|podcast|presentacion|presentación|diapositivas|slides)\b/.test(q)) return 'formato';
+  return 'general';
+}
+
+function chatTopicLabel(query = '') {
+  const tokens = chatSearchTokens(query).filter(w => !['catolica', 'catolicas', 'catolico', 'catolicos'].includes(w));
+  if (tokens.length === 0) return 'este tema';
+  return tokens.slice(0, 4).join(' ');
+}
+
+function buildFollowupQuestions(query = '') {
+  const intent = detectChatIntent(query);
+  if (intent === 'oraciones') {
+    return `\n\n---\n**Para seguir:**\n\n1. ¿Te gustaría que te comparta el texto completo del Padre Nuestro, Ave María y Gloria?\n2. Te sugiero que exploremos cómo rezar el Rosario paso a paso. ¿Quieres verlo?`;
+  }
+  if (intent === 'consuelo' || intent === 'riesgo') {
+    return `\n\n---\n**Para seguir:**\n\n1. ¿Te gustaría que te comparta una oración breve para este momento?\n2. Te sugiero que exploremos un camino sencillo para recuperar paz interior hoy. ¿Quieres que lo hagamos?`;
+  }
+  const tema = chatTopicLabel(query);
+  return `\n\n---\n**Para seguir:**\n\n1. ¿Te gustaría que te diera más información sobre ${tema}?\n2. Te sugiero que exploremos una guía práctica sobre ${tema}. ¿Quieres que la prepare?`;
+}
+
+function appendFollowupQuestions(text = '', query = '') {
+  const clean = String(text || '').trim();
+  if (!clean) return buildFollowupQuestions(query).trim();
+  if (clean.includes('**Para seguir:**') || clean.includes('¿Te gustaría')) return clean;
+  return clean + buildFollowupQuestions(query);
+}
+
+function buildOracionesCatolicasAnswer(query = '') {
+  return appendFollowupQuestions(`### Oraciones católicas principales\n\nClaro. Si preguntas por **oraciones católicas**, las más básicas para comenzar son:\n\n1. **Padre Nuestro**: la oración que Jesús enseñó a sus discípulos.\n2. **Ave María**: oración mariana central, muy unida al Rosario.\n3. **Gloria**: alabanza breve a la Santísima Trinidad.\n4. **Credo**: profesión de fe de la Iglesia.\n5. **Salve**: oración de confianza a la Virgen María.\n6. **Ángelus**: oración mariana tradicional, especialmente al mediodía.\n7. **Santo Rosario**: meditación de los misterios de Cristo con María.\n8. **Acto de contrición**: oración de arrepentimiento y conversión.\n9. **Oración de la mañana**: ofrecimiento del día a Dios.\n10. **Oración de la noche**: examen breve, gratitud y descanso en Dios.\n\nPara una vida diaria sencilla: al levantarte reza un ofrecimiento, durante el día una jaculatoria breve, y en la noche agradece, pide perdón y encomiéndate a Dios.`, query);
+}
+
+function buildConsueloHumanoAnswer(query = '') {
+  const q = normalizeChatText(query);
+  const riesgo = detectChatIntent(q) === 'riesgo';
+  const aviso = riesgo
+    ? `\n\nSi en este momento sientes que podrías hacerte daño, no te quedes solo: busca ahora mismo a una persona cercana y quédate acompañado.`
+    : '';
+  return appendFollowupQuestions(`Siento mucho que estés pasando por esto. No voy a responderte con una teoría larga: primero quiero decirte algo sencillo y verdadero desde la fe: **tu vida importa, y no tienes que cargar esto solo.**${aviso}\n\nHoy intenta dar un paso pequeño, no resolverlo todo:\n\n1. Respira despacio y dile a Dios: “Señor, quédate conmigo en esta hora”.\n2. Escríbele o llama a alguien de confianza, aunque solo digas: “no estoy bien”.\n3. Si puedes, busca un momento de silencio ante el Santísimo o una iglesia abierta.\n4. No conviertas la tristeza en culpa. La fe no niega el dolor: lo acompaña con esperanza.\n\nUna oración breve:\n\n**Jesús, estoy cansado y necesito tu paz. Quédate conmigo, ilumina mi mente, sostiene mi corazón y ayúdame a dar el siguiente paso. Amén.**`, query);
+}
+
+function limitarRecursosRelacionados(recursosObj, max = 4) {
+  const order = recursosObj.intent === 'oraciones'
+    ? ['oraciones', 'pdfs', 'blogs', 'infografias', 'videos']
+    : recursosObj.intent === 'pdf'
+      ? ['pdfs', 'blogs', 'infografias', 'videos', 'oraciones']
+      : recursosObj.intent === 'infografia'
+        ? ['infografias', 'blogs', 'videos', 'pdfs', 'oraciones']
+        : recursosObj.intent === 'video'
+          ? ['videos', 'blogs', 'infografias', 'pdfs', 'oraciones']
+          : ['blogs', 'oraciones', 'pdfs', 'infografias', 'videos'];
+  const out = { intent: recursosObj.intent || null, infografias: [], blogs: [], videos: [], pdfs: [], oraciones: [] };
+  let remaining = max;
+  for (const key of order) {
+    if (remaining <= 0) break;
+    const items = Array.isArray(recursosObj[key]) ? recursosObj[key] : [];
+    out[key] = items.slice(0, remaining);
+    remaining -= out[key].length;
+  }
+  return out;
+}
+
 function obtenerRecursosRelacionados(query, opts = {}) {
-  if (!query) return { infografias: [], blogs: [], videos: [], pdfs: [], intent: null };
+  if (!query) return { infografias: [], blogs: [], videos: [], pdfs: [], oraciones: [], intent: null };
   
   const qClean = query.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
   const explicitInfografia = /\binfograf(i|í)a(s)?\b/.test(qClean);
   const explicitVideo = /\bvideos?\b/.test(qClean);
   const explicitPdf = /\b(pdf|gu(i|í)a|guias|guías|cartilla|descarga|descargar|recurso|recursos|colorear|actividad|examen de conciencia)\b/.test(qClean);
+  const explicitOracion = /\b(oracion|oraciones|rezar|rezo|rosario|novena|padre nuestro|ave maria|credo|gloria|salve|angelus|consagracion)\b/.test(qClean);
   const queryForMatching = qClean
     .replace(/\binfograf(i|í)a(s)?\b/g, ' ')
     .replace(/\bvideos?\b/g, ' ')
     .replace(/\b(pdf|gu(i|í)a|guias|guías|cartilla|descarga|descargar|recurso|recursos|colorear|actividad)\b/g, ' ')
+    .replace(/\b(oracion|oraciones|rezar|rezo)\b/g, ' ')
     .replace(/\b(de|del|sobre|acerca|quiero|busco|muestrame|muéstrame|mostrar|ver|necesito|una|un|el|la|los|las)\b/g, ' ')
     .replace(/\s+/g, ' ')
     .trim() || qClean;
@@ -2347,11 +2435,15 @@ function obtenerRecursosRelacionados(query, opts = {}) {
   let allPdfs = [];
   try { allPdfs = recursosPdf.getRecursos({ limit: 300 }).items || []; } catch(e) {}
 
+  let allOraciones = [];
+  try { allOraciones = (oraciones.loadCatalog().oraciones || []).filter(o => o.publicado !== false); } catch(e) {}
+
   // Definir conjuntos de palabras clave para coincidencia semántica
   const marianoKws = ['maria', 'virgen', 'inmaculada', 'asuncion', 'maternidad', 'rosario', 'marianos', 'mariologia', 'concebida', 'pecado original', 'madre de dios'];
   const eucaristicoKws = ['eucaristia', 'misa', 'comunion', 'transubstanciacion', 'milagro', 'presencia real', 'hostia', 'comulgar', 'sacramento', 'pan de vida'];
   const novisimosKws = ['purgatorio', 'indulgencia', 'comunion de los santos', 'difunto', 'muerte', 'juicio', 'alma', 'oracion por los', 'novisimos', 'escatologia'];
   const petrinoKws = ['sucesion', 'sucesor', 'papa', 'leon xiv', 'pedro', 'vaticano', 'magisterio', 'enciclica'];
+  const oracionKws = ['oracion', 'oraciones', 'rezar', 'rosario', 'novena', 'padre nuestro', 'ave maria', 'credo', 'gloria', 'salve', 'angelus', 'consagracion', 'devocion'];
 
   // Función para calificar un recurso
   const calificarRecurso = (titulo, descripcion, keywords, categoria) => {
@@ -2440,6 +2532,24 @@ function obtenerRecursosRelacionados(query, opts = {}) {
   .filter(item => item._score > 0)
   .sort((a, b) => b._score - a._score);
 
+  const scoredOraciones = allOraciones.map(oracion => {
+    const title = oracion.titulo || '';
+    const desc = oracion.descripcion || oracion.metaDescription || '';
+    const keywords = oracion.keywords || '';
+    const cat = `${oracion.categoria || ''} ${oracion.tipo || ''}`;
+    let score = calificarRecurso(title, desc, keywords, cat);
+    const target = `${title} ${desc} ${keywords} ${cat}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    if (explicitOracion) score += 40;
+    if (oracionKws.some(kw => qClean.includes(kw)) && oracionKws.some(kw => target.includes(kw))) score += 45;
+    if (qClean.includes('padre nuestro') && target.includes('padre nuestro')) score += 70;
+    if (qClean.includes('ave maria') && target.includes('ave maria')) score += 70;
+    if (qClean.includes('rosario') && target.includes('rosario')) score += 70;
+    if (qClean.includes('novena') && target.includes('novena')) score += 70;
+    return { ...oracion, _score: score };
+  })
+  .filter(item => item._score > 0)
+  .sort((a, b) => b._score - a._score);
+
   // Asegurar siempre contenido por fallback si no hay coincidencias directas
   let finalPdfs = scoredPdfs.slice(0, explicitPdf ? 4 : 2);
   if (finalPdfs.length === 0 && !opts.directOnly && explicitPdf) {
@@ -2461,21 +2571,46 @@ function obtenerRecursosRelacionados(query, opts = {}) {
     finalVideos = allVideos.slice(0, 1);
   }
 
-  return {
-    intent: explicitPdf ? 'pdf' : explicitInfografia ? 'infografia' : explicitVideo ? 'video' : null,
+  const intent = explicitOracion ? 'oraciones' : explicitPdf ? 'pdf' : explicitInfografia ? 'infografia' : explicitVideo ? 'video' : null;
+  let finalOraciones = scoredOraciones.slice(0, explicitOracion ? 4 : 1);
+
+  return limitarRecursosRelacionados({
+    intent,
     infografias: finalInfs,
     blogs: finalBlogs,
     videos: finalVideos,
-    pdfs: finalPdfs
-  };
+    pdfs: finalPdfs,
+    oraciones: finalOraciones
+  }, opts.max || 4);
 }
 
 function renderRelacionadosHtml(recursosObj) {
-  const { infografias: infs, blogs, videos: vids, pdfs } = recursosObj;
-  const total = (infs ? infs.length : 0) + (blogs ? blogs.length : 0) + (vids ? vids.length : 0) + (pdfs ? pdfs.length : 0);
+  const { infografias: infs, blogs, videos: vids, pdfs, oraciones: oracs } = recursosObj;
+  const total = (infs ? infs.length : 0) + (blogs ? blogs.length : 0) + (vids ? vids.length : 0) + (pdfs ? pdfs.length : 0) + (oracs ? oracs.length : 0);
   if (total === 0) return '';
 
   let cardsHtml = '';
+
+  if (oracs && oracs.length > 0) {
+    oracs.forEach(o => {
+      const imgUrl = o.coverUrl || (Array.isArray(o.imagenes) && o.imagenes[0] && o.imagenes[0].url) || '';
+      cardsHtml += `
+<a href="/oraciones/${o.slug}" target="_blank" class="no-underline block group">
+<div class="bg-white border border-[#E6DFD4] hover:border-gold/50 rounded-xl overflow-hidden shadow-xs transition duration-300 flex flex-col h-full">
+${imgUrl ? `<div class="aspect-video w-full overflow-hidden bg-cream-2 border-b"><img src="${imgUrl}" alt="${escapeHtml(o.titulo || 'Oración CatólicosGPT')}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300"></div>` : ''}
+<div class="p-3.5 flex-1 flex flex-col justify-between">
+<div class="inline-block">
+<span class="inline-block text-[9px] font-bold text-maroon bg-cream/80 border border-maroon/10 px-2 py-0.5 rounded font-mono uppercase tracking-wider mb-1.5">Oración</span>
+<h4 class="font-display font-semibold text-espresso text-xs leading-snug group-hover:text-maroon transition-colors">${escapeHtml(o.titulo || 'Oración CatólicosGPT')}</h4>
+<p class="text-ink-2 text-[10px] line-clamp-2 mt-1 leading-normal italic">${escapeHtml(o.metaDescription || o.descripcion || 'Oración católica para rezar y compartir.')}</p>
+</div>
+<span class="text-[10px] text-maroon font-semibold mt-2.5 block group-hover:underline">Ver oración &rarr;</span>
+</div>
+</div>
+</a>
+      `;
+    });
+  }
 
   if (pdfs && pdfs.length > 0) {
     pdfs.forEach(pdf => {
@@ -2747,6 +2882,29 @@ app.post('/api/chat', async (req, res) => {
       return res.end();
     }
 
+    // ── INTERCEPTOR HUMANO: ORACIONES CATÓLICAS BÁSICAS ──
+    if (
+      /\boraciones? catolicas?\b/.test(cleanNoAccents) ||
+      /\bcuales son las oraciones\b/.test(cleanNoAccents) ||
+      /\bque oraciones debo rezar\b/.test(cleanNoAccents) ||
+      /\boraciones principales\b/.test(cleanNoAccents)
+    ) {
+      const recomendados = obtenerRecursosRelacionados(query, { max: 4 });
+      res.write(buildOracionesCatolicasAnswer(query));
+      const htmlCards = renderRelacionadosHtml(recomendados);
+      if (htmlCards) res.write("\n\n" + htmlCards);
+      return res.end();
+    }
+
+    // ── INTERCEPTOR HUMANO: CONSUELO PASTORAL SIN RESPUESTA CLÍNICA ──
+    if (detectChatIntent(query) === 'consuelo' || detectChatIntent(query) === 'riesgo') {
+      const recomendados = obtenerRecursosRelacionados(`${query} oración consuelo esperanza`, { max: 4 });
+      res.write(buildConsueloHumanoAnswer(query));
+      const htmlCards = renderRelacionadosHtml(recomendados);
+      if (htmlCards) res.write("\n\n" + htmlCards);
+      return res.end();
+    }
+
     // ── INTERCEPTOR DIRECTO: "INFOGRAFÍA DE..." / "VIDEO DE..." / "GUÍA PDF..." ──
     const directResources = obtenerRecursosRelacionados(query, { directOnly: true });
     const hasDirectResource = directResources.intent === 'infografia'
@@ -2771,8 +2929,8 @@ app.post('/api/chat', async (req, res) => {
     const cachedResponse = advancedEngine.buscarEnCacheDoctrinal(query);
     if (cachedResponse) {
       console.log(`[Cache Engine] HIT: Retornando respuesta doctrinal de alta definición de inmediato.`);
-      res.write(cachedResponse);
-      const recomendados = obtenerRecursosRelacionados(query);
+      res.write(appendFollowupQuestions(cachedResponse, query));
+      const recomendados = obtenerRecursosRelacionados(query, { max: 4 });
       const htmlCards = renderRelacionadosHtml(recomendados);
       if (htmlCards) {
         res.write("\n\n" + htmlCards);
@@ -2809,13 +2967,13 @@ app.post('/api/chat', async (req, res) => {
           formattedText += `---\n*Fuente: Martirologio Romano e Historiografía Eclesiástica de CatólicosGPT*`;
 
           // Añadir recursos relacionados
-          const recomendados = obtenerRecursosRelacionados(query);
+          const recomendados = obtenerRecursosRelacionados(query, { max: 4 });
           const htmlCards = renderRelacionadosHtml(recomendados);
           if (htmlCards) {
             formattedText += "\n\n" + htmlCards;
           }
 
-          res.write(formattedText);
+          res.write(appendFollowupQuestions(formattedText, query));
           return res.end();
         }
       } catch (errSanto) {
@@ -2863,13 +3021,13 @@ Asegúrate de proporcionar el enlace exacto o bien estructurado del Vaticano (us
           let formattedText = response.text ? response.text.trim() : '';
           
           // Añadir recursos relacionados
-          const recomendados = obtenerRecursosRelacionados(query);
+          const recomendados = obtenerRecursosRelacionados(query, { max: 4 });
           const htmlCards = renderRelacionadosHtml(recomendados);
           if (htmlCards) {
             formattedText += "\n\n" + htmlCards;
           }
 
-          res.write(formattedText);
+          res.write(appendFollowupQuestions(formattedText, query));
           return res.end();
         } catch (errEnc) {
           console.error('[Encíclica Interceptor Error]', errEnc);
@@ -2913,13 +3071,13 @@ Asegúrate de proporcionar el enlace exacto o bien estructurado del Vaticano (us
           formattedText += `*Fuente: Liturgia de las Horas, iBreviary de CatólicosGPT y Dominicos*`;
 
           // Añadir recursos relacionados
-          const recomendados = obtenerRecursosRelacionados(query);
+          const recomendados = obtenerRecursosRelacionados(query, { max: 4 });
           const htmlCards = renderRelacionadosHtml(recomendados);
           if (htmlCards) {
             formattedText += "\n\n" + htmlCards;
           }
 
-          res.write(formattedText);
+          res.write(appendFollowupQuestions(formattedText, query));
           return res.end();
         }
       } catch (errLect) {
@@ -2956,13 +3114,13 @@ Asegúrate de proporcionar el enlace exacto o bien estructurado del Vaticano (us
           formattedText += `---\n*Fuente: Liturgia de las Horas de CatólicosGPT (${lData.fuente || 'iBreviary/Ordo'})*`;
 
           // Añadir recursos relacionados
-          const recomendados = obtenerRecursosRelacionados(query);
+          const recomendados = obtenerRecursosRelacionados(query, { max: 4 });
           const htmlCards = renderRelacionadosHtml(recomendados);
           if (htmlCards) {
             formattedText += "\n\n" + htmlCards;
           }
 
-          res.write(formattedText);
+          res.write(appendFollowupQuestions(formattedText, query));
           return res.end();
         }
       } catch (errHoras) {
@@ -3031,13 +3189,13 @@ El resto de la respuesta debe tener una introducción narrativa impecable y conc
       }
 
       // Añadir recursos relacionados
-      const recomendados = obtenerRecursosRelacionados(query);
+      const recomendados = obtenerRecursosRelacionados(query, { max: 4 });
       const htmlCards = renderRelacionadosHtml(recomendados);
       if (htmlCards) {
         historyText += "\n\n" + htmlCards;
       }
 
-      res.write(historyText);
+      res.write(appendFollowupQuestions(historyText, query));
       return res.end();
     }
 
@@ -3077,13 +3235,13 @@ El resto de la respuesta debe tener una introducción narrativa impecable y conc
         formattedText += data.texto;
 
         // Añadir descubrimiento de recursos complementarios pastorales
-        const recomendados = obtenerRecursosRelacionados(query);
+        const recomendados = obtenerRecursosRelacionados(query, { max: 4 });
         const htmlCards = renderRelacionadosHtml(recomendados);
         if (htmlCards) {
           formattedText += "\n\n" + htmlCards;
         }
 
-        res.write(formattedText);
+        res.write(appendFollowupQuestions(formattedText, query));
         return res.end();
       }
     }
@@ -3095,10 +3253,10 @@ El resto de la respuesta debe tener una introducción narrativa impecable y conc
       if (!render.includes('No se encontró')) {
         let textResult = render + `\n\n*Cita extraída del corpus bíblico en español en tiempo real o localmente.*`;
         // Recomendar recursos también para citas
-        const recomendados = obtenerRecursosRelacionados(query);
+        const recomendados = obtenerRecursosRelacionados(query, { max: 4 });
         const htmlCards = renderRelacionadosHtml(recomendados);
         if (htmlCards) textResult += "\n\n" + htmlCards;
-        res.write(textResult);
+        res.write(appendFollowupQuestions(textResult, query));
         return res.end();
       }
     }
@@ -3215,25 +3373,28 @@ Tus respuestas deben estar profundamente ancladas en la verdad doctrinal y pasto
       if (advancedEngine.esConsultaCombinada(query)) {
         const success = await advancedEngine.ejecutarModoCombinado(query, res, activeAi, magisteriumSourceResponse);
         if (success) {
-          const recomendados = obtenerRecursosRelacionados(query);
+          const recomendados = obtenerRecursosRelacionados(query, { max: 4 });
           const htmlCards = renderRelacionadosHtml(recomendados);
           if (htmlCards) res.write("\n\n" + htmlCards);
+          res.write(buildFollowupQuestions(query));
           return res.end();
         }
       } else if (advancedEngine.esConsultaBiblica(query)) {
         const success = await advancedEngine.ejecutarModoBiblicoAvanzado(query, res, activeAi, magisteriumSourceResponse);
         if (success) {
-          const recomendados = obtenerRecursosRelacionados(query);
+          const recomendados = obtenerRecursosRelacionados(query, { max: 4 });
           const htmlCards = renderRelacionadosHtml(recomendados);
           if (htmlCards) res.write("\n\n" + htmlCards);
+          res.write(buildFollowupQuestions(query));
           return res.end();
         }
       } else if (advancedEngine.esConsultaCatecismo(query)) {
         const success = await advancedEngine.ejecutarModoCatecismo(query, res, activeAi, magisteriumSourceResponse);
         if (success) {
-          const recomendados = obtenerRecursosRelacionados(query);
+          const recomendados = obtenerRecursosRelacionados(query, { max: 4 });
           const htmlCards = renderRelacionadosHtml(recomendados);
           if (htmlCards) res.write("\n\n" + htmlCards);
+          res.write(buildFollowupQuestions(query));
           return res.end();
         }
       }
@@ -3255,6 +3416,15 @@ PROHIBICIONES ABSOLUTAS:
 3. Si la fuente doctrinal provista (MAGISTERIUM) o el contexto local es insuficiente o no existe información veraz para responder la pregunta (como afirmaciones teológicas o morales dudosas, heréticas, especulativas o no oficiales), debes responder EXPLÍCITA y LITERALMENTE con la siguiente frase, sin añadir nada más:
 "No encontré una fuente doctrinal confiable para afirmar eso."
 Sin embargo, para verdades de fe universalmente reconocidas de la Iglesia Católica (como los Diez Mandamientos, Siete Sacramentos, Oraciones comunes, dogmas marianos y cristológicos, el Credo o Santos de gran renombre), tienes libertad para redactar una respuesta fiel, clara y pastoral, siempre ajustando extensión y formato a la intención concreta del usuario.
+
+REGLA SUPERIOR DE HUMANIDAD, BREVEDAD Y PRECISIÓN:
+Esta regla prevalece sobre cualquier plantilla posterior cuando la consulta sea sencilla, emocional o práctica.
+- Responde como una IA católica cercana, humana y prudente: cálida, directa y concreta.
+- No conviertas preguntas simples en catequesis largas. Si el usuario no pidió una guía extensa, evita tablas, cronologías y secciones académicas.
+- Para consultas emocionales como tristeza, soledad, desánimo o "me siento deprimido", NO uses tono clínico, NO des líneas de salud mental, NO hagas tabla y NO escribas sermones largos. Acompaña con ternura, una verdad de fe, 2-4 pasos humanos sencillos y una oración breve. Solo si el usuario expresa intención explícita de hacerse daño, invita a quedarse acompañado y buscar ayuda inmediata cercana.
+- Para "oraciones católicas", "oraciones", "qué oración rezo" o "quiero rezar", enumera oraciones concretas: Padre Nuestro, Ave María, Gloria, Credo, Salve, Ángelus, Rosario, Acto de Contrición, oración de la mañana y oración de la noche.
+- Extensión por defecto: 120 a 350 palabras. Para guías, catequesis, podcast o presentaciones, usa estructura útil pero no excedas 900 palabras salvo que el usuario pida profundidad.
+- Termina siempre con EXACTAMENTE dos preguntas de seguimiento: una de profundización y una sugerencia concreta de siguiente tema. No agregues más preguntas finales.
 
 REGLA SUPERIOR DE INTENCIÓN Y FORMATO:
 Antes de responder, identifica silenciosamente qué necesita el usuario:
@@ -3442,7 +3612,7 @@ CASO 4: BIBLIA (Si se solicita exégesis de un versículo, capítulo o pasaje b�
 ## Aplicación práctica
 
 CASO 5: SUFRIMIENTO / CRISIS EXTREMA (Consuelo ante crisis de vida o muerte)
-- Actúa inmediatamente con ternura e infinito consuelo pastoral. Queda EXPRESAMENTE PROHIBIDO colocar títulos académicos, cuadros, tablas, "Resúmenes Sinópticos" o material académico de estudio. Habla con el corazón herido de un pastor ante su oveja. Ofrece de forma CLARA y DESTACADA ayuda práctica en el texto (ej. Línea unificada de emergencia 988, recurrir a un sacerdote o hospital cercano) y acompaña con una oración devota y terna que restaure la luz en su espíritu sufriente.
+- Actúa inmediatamente con ternura y consuelo pastoral. Queda EXPRESAMENTE PROHIBIDO colocar títulos académicos, cuadros, tablas, "Resúmenes Sinópticos" o material académico de estudio. Habla como alguien cercano: breve, humano y esperanzador. No incluyas líneas de salud mental por defecto. Solo si el usuario expresa intención explícita de hacerse daño, dile que no se quede solo y que busque ayuda inmediata cercana.
 
 CASO 7: HISTORIA DE... / CRONOLOGÍA DE... (Si el fiel pregunta por la historia, orígenes, desarrollo o cronología de algún hecho, institución, dogma, concilio, orden religiosa, etc.)
 Entrega una introducción breve y una tabla de línea de tiempo con formato claro y ordenado cronológicamente:
@@ -3457,7 +3627,7 @@ Responde de forma sintética y formativa, normalmente 250 a 500 palabras:
 ## Respuesta breve (Respuesta sumaria directa y esperanzadora)
 ## Explicación (Desarrollo conceptual riguroso, didáctico y contextualizado en subtítulos ricos)
 ## Puntos clave
-## Tabla resumen (Aspecto | Explicación)
+## Tabla resumen (Aspecto | Explicación) — incluir solo si realmente ayuda o si el usuario pide tabla.
 ## Fundamento doctrinal (Doctrina de la Iglesia hilada finamente mediante numerales auténticos del Catecismo y pasajes de las Escrituras usando el formato HTML bíblico interactivo)
 ## Para profundizar (Puntos para guiar el diálogo o meditación e invitación a la biblioteca de CatólicosGPT)
 
@@ -3491,10 +3661,14 @@ Si la fuente doctrinal o el contexto provisto es insuficiente o no existe inform
 
 Analiza si del tenor de la consulta original se infiere que solicita: resumen, explicación breve, guía, charla, catequesis, predicación, enseñanza, retiro, cronología, guion de podcast, presentación por diapositivas, formación, estudio bíblico, preparación sacramental, taller, conferencia, encuentro, lección o curso. Adapta el formato a esa intención concreta. Si pide "guía", "catequesis" o "charla", entrega estructura formativa usable. Si pide "cronología", entrega tabla temporal. Si pide "guion de podcast", entrega bloques de audio. Si pide "presentación", entrega diapositivas sugeridas.
 
+Si la consulta es emocional o de acompañamiento humano, responde como una IA católica cercana: breve, cálida, sin tono clínico y sin líneas de salud mental. Para "me siento deprimido", "estoy triste", "me siento solo" o similares, acompaña con esperanza, pasos sencillos y una oración breve. No uses tablas ni estructura académica. Solo si el usuario expresa intención explícita de hacerse daño, invítalo a no quedarse solo y a buscar ayuda inmediata cercana.
+
+Si la consulta es sobre oraciones católicas, menciona nombres concretos de oraciones y prácticas: Padre Nuestro, Ave María, Gloria, Credo, Salve, Ángelus, Rosario, Acto de Contrición, oración de la mañana y oración de la noche. Sé concreto.
+
 Si el tema es sobre la vida de un Santo, una Encíclica, un Papa o un pasaje de la Biblia sin requerir formato catequético de guía, aplica con estolidez y fineza las secciones detalladas como CASO correspondiente en las instrucciones principales.
 Para cualquier otra duda teológica o moral común, usa la arquitectura enriquecida del Caso Genérico (CASO 6).
 
-Es de máxima importancia evitar respuestas demasiado largas si el usuario no las pidió. Responde con síntesis pastoral, profundidad suficiente y formato útil. Para preguntas comunes, prioriza claridad y brevedad; para solicitudes de material formativo, usa estructura. Antes de redactar, clasifica internamente la intención del usuario, pero no muestres esa clasificación. Devuelve la respuesta final directamente en español, con hipervínculos para cada cita de las Sagradas Escrituras: <a href="https://www.biblegateway.com/passage/?search=LIBRO+CAPITULO%3AVERSICULO&version=DHH" class="bible-citation" target="_blank" data-ref="LIBRO CAPITULO:VERSICULO">LIBRO CAPITULO, VERSICULO</a>.`;
+Es de máxima importancia evitar respuestas demasiado largas si el usuario no las pidió. Responde con síntesis pastoral, profundidad suficiente y formato útil. Para preguntas comunes, prioriza claridad y brevedad; para solicitudes de material formativo, usa estructura. Antes de redactar, clasifica internamente la intención del usuario, pero no muestres esa clasificación. Termina exactamente con dos preguntas de seguimiento: una para ampliar el tema y otra sugiriendo un siguiente tema concreto. Devuelve la respuesta final directamente en español, con hipervínculos para cada cita de las Sagradas Escrituras: <a href="https://www.biblegateway.com/passage/?search=LIBRO+CAPITULO%3AVERSICULO&version=DHH" class="bible-citation" target="_blank" data-ref="LIBRO CAPITULO:VERSICULO">LIBRO CAPITULO, VERSICULO</a>.`;
 
       try {
         if (openaiChat.isConfigured()) {
@@ -3594,11 +3768,11 @@ Es de máxima importancia evitar respuestas demasiado largas si el usuario no la
     if (!finalResponseText && !hasWrittenSomething) {
       console.log('[Local Engine] Generando respuesta teológica con motor local de alta fidelidad.');
       finalResponseText = generateOfflineTheologicalResponse(query, magisteriumSourceResponse, groundingsLocal);
-      res.write(finalResponseText);
+      res.write(appendFollowupQuestions(finalResponseText, query));
     }
 
     // 7. Descubrir infografías, blogs, videos, podcasts relacionados de forma interactiva y agregarlos al pie
-    const recomendados = obtenerRecursosRelacionados(query);
+    const recomendados = obtenerRecursosRelacionados(query, { max: 4 });
     const recomendadosHtml = renderRelacionadosHtml(recomendados);
     if (recomendadosHtml) {
       res.write("\n\n" + recomendadosHtml);
@@ -3817,28 +3991,18 @@ function generateOfflineTheologicalResponse(query, magisteriumSourceResponse, gr
     qLower.includes('sin fuerzas') || 
     qLower.includes('triste')
   ) {
-    return `¡Hermano o hermana mía en Cristo Jesús, por favor escúchame! 
+    return appendFollowupQuestions(`Siento mucho que estés pasando por esto. Te respondo con sencillez: **Dios no te abandona en esta hora, y tu vida tiene valor incluso cuando hoy no lo sientas con claridad.**
 
-Siento en mi corazón el peso de lo que estás viviendo y me conmueve profundamente saber que te encuentras así de agobiado/a, triste o cansado/a de luchar. En momentos de oscuridad tan densa, quiero que recuerdes una verdad eterna, grabada por el amor divino: **Tu vida es valiosísima y sagrada para Dios. No estás solo/a en este desierto.**
+No intentes resolver todo ahora. Da un paso pequeño:
 
-Él te creó con un propósito infinito de amor y de gracia, y aunque hoy sientas que las fuerzas te han abandonado por completo y no veas la salida, **Él camina a tu lado sosteniendo tus pasos silenciosamente.**
+1. Respira despacio y repite: “Jesús, quédate conmigo”.
+2. Escríbele a alguien de confianza y dile: “no estoy bien”.
+3. Si puedes, busca un lugar de silencio: una iglesia, una capilla o un rincón tranquilo.
+4. No conviertas tu tristeza en culpa. La fe no niega el dolor; lo acompaña con esperanza.
 
-Refúgiate de todo corazón en la dulce consolación de los santos y de la Palabra de Dios:
+Oración breve:
 
-*   **La Palabra del Señor:** *«Vengan a mí todos los que están cansados y agobiados, y yo los aliviaré.»* (Mateo 11, 28) y *«El Señor está muy cerca de los corazones quebrantados; Él salva a los de espíritu abatido.»* (Salmo 34, 18).
-*   **La Sabiduría de Santa Teresa de Jesús:** 
-    > *«Nada te turbe, nada te espante, todo se pasa, Dios no se muda; la paciencia todo lo alcanza; quien a Dios tiene nada le falta: solo Dios basta.»*
-*   **El consejo del Santo Padre Pío de Pietrelcina:** *«Reza, ten fe y no te preocupes. La preocupación es inútil. Dios es misericordioso y escuchará tu oración.»*
-
-#### ⚠️ **Por favor, busca ayuda de inmediato — No lleves esta carga a solas:**
-Si sientes que el desespero te supera o estás teniendo pensamientos relacionados con tu deceso, por favor hable con alguien ahora mismo. Hay personas de gran corazón listas para escucharte y ayudarte las 24 horas del día:
-*   **Línea de Crisis Nacional:** Marca el **988** (si estás en Colombia, Estados Unidos u otros países con este servicio unificado) o ponte en contacto inmediato con el teléfono de emergencia de prevención del suicidio de tu país o ciudad.
-*   **Apoyo Pastoral:** Busca ayuda de inmediato con un sacerdote amigo, acude a tu parroquia local o dirígete al centro médico u hospital más cercano. Hay personas dispuestas a escucharte libre de juicio, con el infinito amor de Cristo Jesús.
-
-**Déjame hacer una oración por ti en este instante:**
-*«Señor Jesús, Luz del mundo y Consolador de los afligidos, te ruego que entres hoy en el corazón de mi querido/a hermano/a. Disipa toda sombra de desespero y soledad con tu amor filial. Envía tu Espíritu Santo para infundirle fuerza, paz y la dulce esperanza de la vida. Pon en su camino consejeros y amigos que le brinden amparo. Cubre a tu hijo/a con el rezo materno de María Santísima. Amén.»*
-
-**Dime de corazón, ¿qué es lo que te aflige hoy? Cuéntame, quiero escucharte y acompañarte en la fe.**`;
+**Señor Jesús, sostén mi corazón cansado. Dame luz para este momento, paz para respirar y fuerza para dar el siguiente paso. Amén.**`, query);
   }
 
   // 2. INTERCEPCIÓN DE DEVOCIÓN: VISITA AL SANTÍSIMO

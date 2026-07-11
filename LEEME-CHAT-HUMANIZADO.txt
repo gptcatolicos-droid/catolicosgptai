@@ -1,0 +1,39 @@
+CatolicosGPT - Ajuste de chat humanizado y recomendaciones relacionadas
+
+Base usada:
+- Copia funcional basada en commit 545baee5d5121f1cfe399e599684aeef122092ec.
+
+Archivos incluidos en este paquete:
+- server.js
+- oraciones-module.js
+- LEEME-ORACIONES.txt
+- LEEME-CHAT-HUMANIZADO.txt
+
+Importante:
+- Este paquete NO incluye carpeta data.
+- Este paquete NO borra infografias, blogs, catequesis, videos, podcasts, PDFs ni oraciones ya publicadas.
+- Antes de cualquier deploy, descarga backup desde el admin y verifica que el trafico activo siga apuntando a una revision funcional.
+
+Cambios realizados:
+1. Chat mas humano y concreto:
+   - Para consultas emocionales como "me siento deprimido", responde con tono pastoral cercano, breve y humano.
+   - No usa lineas de salud mental ni respuestas clinicas por defecto.
+   - No genera tablas ni catequesis largas para preguntas simples.
+
+2. Oraciones catolicas:
+   - Si el usuario pregunta por oraciones catolicas, enumera oraciones concretas:
+     Padre Nuestro, Ave Maria, Gloria, Credo, Salve, Angelus, Rosario, Acto de Contricion,
+     oracion de la manana y oracion de la noche.
+
+3. Recomendaciones relacionadas:
+   - Maximo 4 contenidos recomendados.
+   - Da prioridad a recursos segun intencion:
+     oraciones, PDFs, Fe Catolica, infografias, videos.
+   - Evita mostrar recursos aleatorios cuando el usuario pide un tema concreto.
+
+4. Preguntas de seguimiento:
+   - Las respuestas terminan con 2 preguntas de continuidad:
+     una para profundizar y otra como sugerencia de siguiente tema.
+
+Verificacion:
+- node --check server.js ejecutado correctamente.
