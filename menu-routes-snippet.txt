@@ -1,0 +1,55 @@
+// === ADMIN MENU SETTINGS ROUTES ===
+app.get('/admin/menu', requireStrictAdminPage, (req, res) => {
+  const config = getMenuConfig();
+  const labels = {
+    chatIA: 'Chat IA',
+    santoDelDia: 'Santo del día',
+    oracionDelDia: 'Oración del día',
+    santoral: 'Santoral',
+    infografias: 'Infografías',
+    oraciones: 'Oraciones',
+    ninos: 'Niños',
+    videos: 'Videos',
+    podcasts: 'Podcast',
+    blog: 'Fe Católica',
+    catequesisIA: 'Catequesis IA',
+    misas: 'Horarios de Misa'
+  };
+
+  const rows = Object.keys(DEFAULT_MENU_CONFIG).map(key => `
+    <label class="flex items-center justify-between gap-4 border border-[#E6DFD4] rounded-xl px-4 py-3 bg-white hover:bg-[#FAF9F5] transition">
+      <span class="font-semibold text-espresso text-sm">${labels[key] || key}</span>
+      <span class="flex items-center gap-2 text-xs font-bold ${config[key] ? 'text-green-700' : 'text-red-700'}">
+        ${config[key] ? 'Visible' : 'Oculto'}
+        <input type="checkbox" name="${key}" value="true" ${config[key] ? 'checked' : ''} class="accent-maroon w-5 h-5">
+      </span>
+    </label>
+  `).join('');
+
+  res.send(renderPage('Administrar menú', `
+    <div class="max-w-3xl mx-auto w-full p-5 md:p-8 flex flex-col gap-6">
+      <div class="flex flex-col gap-2">
+        <span class="text-[10px] uppercase tracking-[0.2em] text-gold font-bold">Panel administrativo</span>
+        <h1 class="font-display text-3xl font-bold text-maroon">Visibilidad del menú</h1>
+        <p class="text-sm text-ink2">Activa o desactiva las opciones que verán los usuarios en el menú de escritorio y móvil.</p>
+      </div>
+      <form method="post" action="/admin/menu" class="flex flex-col gap-3">
+        ${rows}
+        <div class="flex flex-col sm:flex-row gap-3 pt-3">
+          <button type="submit" class="flex-1 bg-maroon hover:bg-gold text-white font-bold py-3 px-4 rounded-xl uppercase tracking-wider text-xs transition">Guardar cambios</button>
+          <a href="/admin" class="flex-1 text-center border border-maroon text-maroon hover:bg-maroon hover:text-white font-bold py-3 px-4 rounded-xl uppercase tracking-wider text-xs transition">Volver al admin</a>
+        </div>
+      </form>
+    </div>
+  `, req));
+});
+
+app.post('/admin/menu', requireStrictAdminPage, (req, res) => {
+  const nextConfig = Object.keys(DEFAULT_MENU_CONFIG).reduce((acc, key) => {
+    acc[key] = req.body[key] === 'true';
+    return acc;
+  }, {});
+  saveMenuConfig(nextConfig);
+  res.redirect('/admin/menu?saved=1');
+});
+// === END ADMIN MENU SETTINGS ROUTES ===
