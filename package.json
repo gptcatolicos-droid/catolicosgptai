@@ -3,9 +3,10 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "dev": "node -r ./mobile-css-preload.js server.js",
-    "build": "echo 'No build needed' & mkdir -p dist",
-    "start": "node -r ./mobile-css-preload.js server.js"
+    "css:build": "mkdir -p public && npx vite build --config vite.tailwind.config.mjs",
+    "dev": "node server.js",
+    "build": "npm run css:build && node apply-local-tailwind.js",
+    "start": "node server.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",
