@@ -3,9 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "dev": "node apply-menu-patch.js && node server.js",
+    "dev": "node server.js",
     "build": "echo 'No build needed' & mkdir -p dist",
-    "start": "node apply-menu-patch.js && node server.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",
@@ -25,7 +25,7 @@
     "node-cron": "^4.4.1",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
-    "slugify": "^1.6.9",
+    "slugify": "^6.1.9",
     "vite": "^6.2.3"
   },
   "devDependencies": {
