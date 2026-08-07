@@ -3,9 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "dev": "node server.js",
+    "dev": "node restore-infografias-if-empty.js && node server.js",
     "build": "echo 'No build needed' & mkdir -p dist",
-    "start": "node server.js"
+    "start": "node restore-infografias-if-empty.js && node server.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",
