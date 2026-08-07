@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #F9F6F0;
+  --color-cream2: #F1ECE3;
+  --color-gold: #BC8A36;
+  --color-goldDeep: #9F7124;
+  --color-maroon: #5E1B22;
+  --color-maroonDark: #320E12;
+  --color-espresso: #251B15;
+  --color-ink: #2D241E;
+  --color-ink2: #5A4E46;
+}
+
+/* CatólicosGPT: Tailwind se compila y sirve localmente para no depender del CDN. */
