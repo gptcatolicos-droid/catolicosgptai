@@ -1,0 +1,25 @@
+{
+  "app": "CatolicosGPT",
+  "type": "admin-content-backup-manifest",
+  "sourceFile": "catolicosgpt-backup-2026-08-07T02-03-49.json",
+  "exportedAt": "2026-08-07T02:03:49.097Z",
+  "commitBase": "545baee5d5121f1cfe399e599684aeef122092ec",
+  "sourceSizeBytes": 22891868,
+  "sha256": "56356fe4b5927b4e70759f96aae0174b9ac74ad86ba8ec788fbec195835f5a52",
+  "counts": {
+    "infografias": 42,
+    "feCatolica": 2128,
+    "catequesis": 517,
+    "recursosPdf": 6,
+    "oraciones": 0,
+    "videos": 12,
+    "podcasts": 4,
+    "santoral": 425
+  },
+  "safety": {
+    "doNotOverwriteProductionContent": true,
+    "doNotDeleteFirestoreData": true,
+    "doNotReplaceDataDirectoryOnDeploy": true,
+    "purpose": "Snapshot de control antes de cambios de interfaz/despliegue. El backup de administración es de contenidos y no debe sustituir el código fuente del servidor."
+  }
+}
