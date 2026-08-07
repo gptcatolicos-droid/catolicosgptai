@@ -3,9 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "dev": "node restore-infografias-if-empty.js && node sync-infografias-to-firestore.js && node hydrate-content-from-firestore.js && node apply-backup-safety-patch.js && node server.js",
+    "dev": "node restore-infografias-if-empty.js && node ensure-critical-content.js && node sync-infografias-to-firestore.js && node hydrate-content-from-firestore.js && node apply-backup-safety-patch.js && node server.js",
     "build": "echo 'No build needed' & mkdir -p dist",
-    "start": "node restore-infografias-if-empty.js && node sync-infografias-to-firestore.js && node hydrate-content-from-firestore.js && node apply-backup-safety-patch.js && node server.js"
+    "start": "node restore-infografias-if-empty.js && node ensure-critical-content.js && node sync-infografias-to-firestore.js && node hydrate-content-from-firestore.js && node apply-backup-safety-patch.js && node server.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",
