@@ -3,6 +3,7 @@ const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const CATALOG_FILE = path.join(DATA_DIR, 'oraciones-catalog.json');
+const CATALOG_BACKUP = path.join(__dirname, 'data', 'oraciones-catalog.json');
 
 function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -12,31 +13,66 @@ function emptyCatalog() {
   return { oraciones: [], updatedAt: null };
 }
 
-function loadCatalog() {
-  ensureDataDir();
-  if (!fs.existsSync(CATALOG_FILE)) return emptyCatalog();
+function readCatalogFile(filePath) {
   try {
-    const parsed = JSON.parse(fs.readFileSync(CATALOG_FILE, 'utf8'));
+    if (!fs.existsSync(filePath)) return null;
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
     return {
       ...emptyCatalog(),
       ...parsed,
       oraciones: Array.isArray(parsed.oraciones) ? parsed.oraciones : []
     };
   } catch (err) {
-    console.error('[Oraciones] No se pudo leer el catálogo:', err.message);
-    return emptyCatalog();
+    console.warn(`[Oraciones] No se pudo leer ${filePath}:`, err.message);
+    return null;
   }
 }
 
-function saveCatalog(catalog) {
+function loadCatalog() {
   ensureDataDir();
+  const primary = readCatalogFile(CATALOG_FILE);
+  if (primary && primary.oraciones.length > 0) return primary;
+
+  // Segundo respaldo empaquetado con el código. Evita quedar en cero tras un redeploy.
+  const backup = readCatalogFile(CATALOG_BACKUP);
+  if (backup && backup.oraciones.length > 0) return backup;
+
+  return primary || backup || emptyCatalog();
+}
+
+function saveCatalog(catalog, itemToSync = null) {
+  ensureDataDir();
+  const current = loadCatalog();
   const next = {
     ...emptyCatalog(),
     ...catalog,
     oraciones: Array.isArray(catalog.oraciones) ? catalog.oraciones : [],
     updatedAt: new Date().toISOString()
   };
-  fs.writeFileSync(CATALOG_FILE, JSON.stringify(next, null, 2));
+
+  // Nunca reemplazar un catálogo con datos por uno vacío de forma accidental.
+  if (next.oraciones.length === 0 && current.oraciones.length > 0) {
+    console.error('[Oraciones] BLOQUEADO: intento de guardar catálogo vacío sobre datos existentes.');
+    return current;
+  }
+
+  const json = JSON.stringify(next, null, 2);
+  fs.writeFileSync(CATALOG_FILE, json);
+  try { fs.writeFileSync(CATALOG_BACKUP, json); } catch (err) {}
+
+  if (itemToSync) {
+    try {
+      const firebaseSync = require('./firebase-module');
+      if (firebaseSync && typeof firebaseSync.syncUploadOracion === 'function') {
+        firebaseSync.syncUploadOracion(itemToSync).catch(err => {
+          console.error('[Oraciones] Error sincronizando con Firestore:', err.message);
+        });
+      }
+    } catch (err) {
+      console.error('[Oraciones] No se pudo cargar sincronización Firestore:', err.message);
+    }
+  }
+
   return next;
 }
 
@@ -104,14 +140,24 @@ function upsertOracion(payload = {}) {
   } else {
     catalog.oraciones.unshift(record);
   }
-  return saveCatalog(catalog);
+  return saveCatalog(catalog, record);
 }
 
 function deleteOracion(slug) {
   const catalog = loadCatalog();
   const before = catalog.oraciones.length;
   catalog.oraciones = catalog.oraciones.filter(item => item.slug !== slug && item.id !== slug);
-  if (catalog.oraciones.length !== before) saveCatalog(catalog);
+  if (catalog.oraciones.length !== before) {
+    saveCatalog(catalog);
+    try {
+      const firebaseSync = require('./firebase-module');
+      if (firebaseSync && typeof firebaseSync.syncDeleteOracion === 'function') {
+        firebaseSync.syncDeleteOracion(slug).catch(err => {
+          console.error('[Oraciones] Error eliminando en Firestore:', err.message);
+        });
+      }
+    } catch (err) {}
+  }
   return catalog.oraciones.length !== before;
 }
 
