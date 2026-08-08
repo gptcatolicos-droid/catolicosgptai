@@ -10,7 +10,7 @@ export default defineConfig({
     rollupOptions: {
       input: 'tailwind-entry.css',
       output: {
-        assetFileNames: (assetInfo) => assetInfo.name === 'style.css' ? 'tailwind.css' : '[name][extname]'
+        assetFileNames: 'tailwind.css'
       }
     }
   }
