@@ -3,10 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "dev": "npm run build:css && node prepare-production-css.js && node server.js",
-    "build:css": "vite build --config vite.tailwind.config.mjs",
-    "build": "npm run build:css && node prepare-production-css.js && mkdir -p dist",
-    "start": "node prepare-production-css.js && node server-with-restore.js"
+    "dev": "node server.js",
+    "build": "echo 'No build needed' & mkdir -p dist",
+    "start": "node server-with-restore.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",
