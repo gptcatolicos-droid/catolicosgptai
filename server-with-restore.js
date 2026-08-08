@@ -1,6 +1,9 @@
 const { installMobileCssFallback } = require('./mobile-css-fallback');
 installMobileCssFallback();
 
+const { installHomeChatHotfix } = require('./home-chat-hotfix');
+installHomeChatHotfix();
+
 require('./server');
 
 setTimeout(() => {
