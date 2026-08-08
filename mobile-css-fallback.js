@@ -51,6 +51,11 @@ const FALLBACK_STYLE = `
   .text-ink { color: #2D241E; }
   .bg-cream { background: #F9F6F0; }
   .bg-cream2 { background: #F1ECE3; }
+  .pointer-events-none { pointer-events: none !important; }
+  .opacity-0 { opacity: 0 !important; }
+  .opacity-100 { opacity: 1 !important; }
+  .-translate-x-full { transform: translateX(-100%) !important; }
+  .translate-x-0 { transform: translateX(0) !important; }
   .sidebar-desktop { display: flex; }
   #mobile-drawer { transition: opacity .3s ease; }
   #mobile-drawer-content { transition: transform .3s ease; }
