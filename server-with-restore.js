@@ -1,3 +1,6 @@
+const { installMobileCssFallback } = require('./mobile-css-fallback');
+installMobileCssFallback();
+
 require('./server');
 
 setTimeout(() => {
