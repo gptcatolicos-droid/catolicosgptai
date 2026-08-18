@@ -823,9 +823,29 @@ async function syncDeleteRecursoPdf(slug) {
 }
 
 async function syncDownloadOraciones(localList) {
+  const localItems = Array.isArray(localList) ? localList : [];
+  const mergePrayerLists = (base, incoming) => {
+    const merged = [...base];
+    for (const item of (Array.isArray(incoming) ? incoming : [])) {
+      if (!item || !item.slug) continue;
+      const index = merged.findIndex(existing =>
+        (existing?.slug && existing.slug === item.slug) ||
+        (existing?.id && item.id && existing.id === item.id)
+      );
+      if (index === -1) merged.push(item);
+      else merged[index] = { ...merged[index], ...item };
+    }
+    return merged.sort((a, b) => {
+      const ao = Number.isFinite(Number(a.orden)) ? Number(a.orden) : 999999;
+      const bo = Number.isFinite(Number(b.orden)) ? Number(b.orden) : 999999;
+      if (ao !== bo) return ao - bo;
+      return new Date(b.fechaCreacion || b.createdAt || 0) - new Date(a.fechaCreacion || a.createdAt || 0);
+    });
+  };
+
   if (!isFirebaseEnabled) {
     console.log('[Firebase Sync] Descarga de oraciones omitida (Firebase desactivado).');
-    return localList || [];
+    return localItems;
   }
   const path = 'oraciones';
   try {
@@ -836,17 +856,12 @@ async function syncDownloadOraciones(localList) {
         const data = docSnap.data();
         if (data && data.slug) cloudItems.push(data);
       });
-      cloudItems.sort((a, b) => {
-        const ao = Number.isFinite(Number(a.orden)) ? Number(a.orden) : 999999;
-        const bo = Number.isFinite(Number(b.orden)) ? Number(b.orden) : 999999;
-        if (ao !== bo) return ao - bo;
-        return new Date(b.fechaCreacion || 0) - new Date(a.fechaCreacion || 0);
-      });
-      console.log(`[Firebase Sync] ${cloudItems.length} oraciones descargadas desde Firestore.`);
-      return cloudItems;
+      const mergedItems = mergePrayerLists(localItems, cloudItems);
+      console.log(`[Firebase Sync] ${mergedItems.length} oraciones disponibles tras fusionar catálogo local y Firestore.`);
+      return mergedItems;
     }
     console.log('[Firebase Sync] Colección oraciones vacía. Se conserva catálogo local.');
-    return localList || [];
+    return localItems;
   } catch (err) {
     console.warn('[Firebase Sync] oraciones no disponible, probando respaldo admins/oraciones_catalog:', err.message);
     try {
@@ -855,15 +870,16 @@ async function syncDownloadOraciones(localList) {
         const data = backupSnap.data() || {};
         const items = Array.isArray(data.oraciones) ? data.oraciones : [];
         if (items.length > 0) {
-          console.log(`[Firebase Sync] ${items.length} oraciones descargadas desde respaldo.`);
-          return items;
+          const mergedItems = mergePrayerLists(localItems, items);
+          console.log(`[Firebase Sync] ${mergedItems.length} oraciones disponibles tras fusionar catálogo local y respaldo.`);
+          return mergedItems;
         }
       }
     } catch (backupErr) {
       console.error('[Firebase Sync] Error sincronizando oraciones desde respaldo:', backupErr.message);
     }
-    handleFirestoreError(err, OperationType.READ, path);
-    return localList || [];
+    handleFirestoreError(err, OperationType.GET, path);
+    return localItems;
   }
 }
 
