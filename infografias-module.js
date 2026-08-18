@@ -581,6 +581,11 @@ function getInfografias({ categoria, q, page=1, limit=20 } = {}) {
       return text.includes(ql);
     });
   }
+  items.sort((a, b) => {
+    const ta = Date.parse(a.fechaCreacion || a.createdAt || a.updatedAt || '') || 0;
+    const tb = Date.parse(b.fechaCreacion || b.createdAt || b.updatedAt || '') || 0;
+    return tb - ta;
+  });
   const total = items.length;
   return { items: items.slice((page-1)*limit, page*limit), total, page, totalPages: Math.ceil(total/limit) };
 }
