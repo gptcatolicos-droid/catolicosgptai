@@ -3,6 +3,7 @@ const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const CATALOG_FILE = path.join(DATA_DIR, 'oraciones-catalog.json');
+const LEGACY_FILE = path.join(DATA_DIR, 'oraciones.json');
 
 function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -12,7 +13,7 @@ function emptyCatalog() {
   return { oraciones: [], updatedAt: null };
 }
 
-function loadCatalog() {
+function loadRawCatalog() {
   ensureDataDir();
   if (!fs.existsSync(CATALOG_FILE)) return emptyCatalog();
   try {
@@ -28,12 +29,73 @@ function loadCatalog() {
   }
 }
 
+function normalizeLegacyPrayer(item, index) {
+  const source = item && typeof item === 'object' ? item : {};
+  const titulo = String(source.titulo || source.nombre || source.title || source.name || `Oración ${index + 1}`).trim();
+  const rawImages = source.imagenes || source.images || source.slides || [];
+  const images = normalizeImages(rawImages);
+  const createdAt = source.createdAt || source.fechaCreacion || new Date().toISOString();
+  return {
+    ...source,
+    id: source.id || generateSlug(titulo),
+    slug: source.slug || generateSlug(titulo),
+    titulo,
+    tipo: source.tipo || 'oracion',
+    categoria: source.categoria || 'devocional',
+    descripcion: source.descripcion || source.description || '',
+    seoTitle: source.seoTitle || titulo,
+    metaDescription: source.metaDescription || source.descripcion || source.description || '',
+    keywords: source.keywords || '',
+    imagenes: images,
+    coverUrl: source.coverUrl || (images[0] ? images[0].url : ''),
+    tipoVisualizacion: source.tipoVisualizacion || (images.length > 1 ? 'carrusel' : 'continua'),
+    publicado: source.publicado !== false,
+    createdAt,
+    updatedAt: source.updatedAt || createdAt
+  };
+}
+
+function legacyPrayerItems() {
+  try {
+    if (!fs.existsSync(LEGACY_FILE)) return [];
+    const parsed = JSON.parse(fs.readFileSync(LEGACY_FILE, 'utf8'));
+    const list = parsed.oraciones_principales || parsed.oraciones || parsed.items || [];
+    return Array.isArray(list) ? list.map(normalizeLegacyPrayer) : [];
+  } catch (err) {
+    console.warn('[Oraciones] No se pudo migrar el catálogo anterior:', err.message);
+    return [];
+  }
+}
+
+function mergeLegacyCatalog(catalog) {
+  const result = { ...catalog, oraciones: Array.isArray(catalog.oraciones) ? catalog.oraciones.slice() : [] };
+  const keys = new Set(result.oraciones.map(item => String(item.id || item.slug || item.titulo || '').trim().toLowerCase()).filter(Boolean));
+  legacyPrayerItems().forEach(item => {
+    const key = String(item.id || item.slug || item.titulo || '').trim().toLowerCase();
+    if (key && !keys.has(key)) {
+      result.oraciones.push(item);
+      keys.add(key);
+    }
+  });
+  return result;
+}
+
+function loadCatalog() {
+  return mergeLegacyCatalog(loadRawCatalog());
+}
+
 function saveCatalog(catalog) {
   ensureDataDir();
+  const current = loadRawCatalog();
+  const incoming = Array.isArray(catalog && catalog.oraciones) ? catalog.oraciones : [];
+  if (incoming.length === 0 && current.oraciones.length > 0) {
+    console.warn('[Oraciones] Se evitó reemplazar un catálogo existente por uno vacío.');
+    return current;
+  }
   const next = {
     ...emptyCatalog(),
     ...catalog,
-    oraciones: Array.isArray(catalog.oraciones) ? catalog.oraciones : [],
+    oraciones: incoming,
     updatedAt: new Date().toISOString()
   };
   fs.writeFileSync(CATALOG_FILE, JSON.stringify(next, null, 2));
