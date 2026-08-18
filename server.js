@@ -4571,35 +4571,16 @@ app.get('/oraciones/:slug/descargar/:index', (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 
 app.get('/infografias', (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const cat  = req.query.categoria || 'all';
-  const q    = req.query.q || '';
-  
-  const { items, total, totalPages } = infografias.getInfografias({ categoria: cat, q, page, limit: 12 });
-
-  const cats = ['doctrinal', 'santo', 'devocional', 'serie'];
-
-  const filterHtml = `
-    <div class="bg-white border border-border rounded-xl p-5 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-      <div class="flex flex-wrap gap-2 justify-center">
-        <a href="/infografias?categoria=all" class="px-4 py-1.5 rounded-full text-xs font-semibold ${cat==='all'?'bg-maroon text-white':'bg-cream border text-ink hover:bg-cream2'} transition">Todo</a>
-        ${cats.map(c => `
-          <a href="/infografias?categoria=${c}" class="px-4 py-1.5 rounded-full text-xs font-semibold capitalize ${cat===c?'bg-maroon text-white':'bg-cream border text-ink hover:bg-cream2'} transition">${c}</a>
-        `).join('')}
-      </div>
-      <form action="/infografias" method="GET" class="flex gap-2 w-full md:w-auto">
-        <input type="text" name="q" value="${q}" placeholder="Buscar infografías..." class="border border-border rounded-full px-4 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-gold flex-1">
-        <button type="submit" class="bg-maroon text-white px-4 py-1.5 rounded-full text-xs font-bold hover:bg-gold transition">Buscar</button>
-      </form>
-    </div>
-  `;
+  const items = (infografias.loadCatalog().infografias || [])
+    .filter(i => i && i.publicado !== false)
+    .sort((a, b) => new Date(b.fechaCreacion || b.createdAt || b.updatedAt || 0) - new Date(a.fechaCreacion || a.createdAt || a.updatedAt || 0));
 
   const listHtml = items.length > 0 ? `
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      ${items.map(i => {
+      ${items.map((i, index) => {
         const thumb = i.imagenes?.[0]?.url || 'https://res.cloudinary.com/df9vdt2da/image/upload/v1714498302/catolicosgpt_hero.png';
         return `
-          <div class="seo-card flex flex-col justify-between overflow-hidden">
+          <div data-infografia-card="${index}" style="${index >= 24 ? 'display:none;' : ''}" class="seo-card flex flex-col justify-between overflow-hidden">
             <a href="/infografias/${i.slug}" class="block overflow-hidden rounded-lg mb-4 aspect-square bg-cream">
               <img src="${thumb}" alt="${i.altText || i.tema}" class="w-full h-full object-cover hover:scale-105 duration-200" referrerPolicy="no-referrer">
             </a>
@@ -4623,14 +4604,6 @@ app.get('/infografias', (req, res) => {
       }).join('')}
     </div>
     
-    <!-- PAGINACIÓN -->
-    ${totalPages > 1 ? `
-      <div class="flex items-center justify-center gap-2 mt-8">
-        ${page > 1 ? `<a href="/infografias?page=${page-1}&categoria=${cat}&q=${q}" class="px-3 py-1.5 rounded bg-white border text-xs text-ink hover:bg-cream2">Anterior</a>` : ''}
-        <span class="text-xs text-ink2">Página ${page} de ${totalPages}</span>
-        ${page < totalPages ? `<a href="/infografias?page=${page+1}&categoria=${cat}&q=${q}" class="px-3 py-1.5 rounded bg-white border text-xs text-ink hover:bg-cream2">Siguiente</a>` : ''}
-      </div>
-    ` : ''}
   ` : `
     <div class="bg-white border rounded-2xl p-12 text-center shadow-sm flex flex-col items-center justify-center gap-4">
       <p class="text-ink2 text-sm">No se encontraron infografías en este catálogo.</p>
@@ -4645,11 +4618,29 @@ app.get('/infografias', (req, res) => {
         <p class="font-serif text-ink2 text-sm italic">Material catequético gráfico en alta definición para parroquias, retiros, catequesis o redes sociales.</p>
       </div>
       
-      ${filterHtml}
-      
-      <div class="flex flex-col gap-6">
+            <div class="flex flex-col gap-6">
         ${listHtml}
       </div>
+      <div id="infografias-load-more" class="h-8" aria-hidden="true"></div>
+      <script>
+        (() => {
+          const cards = [...document.querySelectorAll("[data-infografia-card]")];
+          let shown = cards.filter(card => card.style.display !== "none").length || 24;
+          const sentinel = document.getElementById("infografias-load-more");
+          if (!sentinel) return;
+          let observer;
+          const reveal = () => {
+            const next = cards.slice(shown, shown + 24);
+            next.forEach(card => { card.style.display = ""; });
+            shown += next.length;
+            if (!next.length || shown >= cards.length) observer.disconnect();
+          };
+          observer = new IntersectionObserver(entries => {
+            if (entries.some(entry => entry.isIntersecting)) reveal();
+          }, { rootMargin: "800px" });
+          observer.observe(sentinel);
+        })();
+      </script>
     </div>
     <nav aria-label="Páginas de autoridad de CatólicosGPT" class="max-w-5xl mx-auto px-4 pb-6 -mt-2 text-[11px] text-ink2 flex flex-wrap gap-2 justify-center">
       ${AUTHORITY_SEO_PAGES.map(page => `<a href="${page.path}" class="px-3 py-1 rounded-full border border-border bg-white hover:border-gold hover:text-maroon transition">${page.eyebrow}</a>`).join('')}
@@ -5507,23 +5498,16 @@ function resourceCoverHtml({ imageUrl = '', title = '', label = 'CatólicosGPT',
 
 app.get('/ninos', async (req, res) => {
   await recursosPdf.refreshFromCloud();
-  const filtro = String(req.query.tipo || 'todo').toLowerCase();
-  const allInfografias = (infografias.loadCatalog().infografias || []).filter(i => i.publicado !== false);
-  const childrenInfografias = allInfografias.filter(isChildrenInfografia);
-  const childrenPdfs = (recursosPdf.getRecursos({ audiencia: 'ninos', limit: 100 }).items || []).filter(p => p.publicado !== false);
-
-  const matchesFilter = (inf) => {
-    if (filtro === 'todo') return true;
-    const type = childrenResourceType(inf).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    const haystack = [inf.titulo, inf.tema, inf.categoria, inf.tipo, inf.keywords].join(' ').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    if (filtro === 'colorear') return type === 'colorear' || haystack.includes('colorear') || haystack.includes('dibujo');
-    if (filtro === 'pdf') return false;
-    return haystack.includes(filtro);
-  };
-
-  const visibleInfografias = childrenInfografias.filter(matchesFilter);
-  const visiblePdfs = filtro === 'todo' || filtro === 'pdf' ? childrenPdfs : [];
-  const filterLink = (key, label) => `<a href="/ninos${key === 'todo' ? '' : `?tipo=${key}`}" class="px-4 py-2 rounded-full text-xs font-bold ${filtro === key ? 'bg-maroon text-white' : 'bg-white border border-border text-ink hover:border-gold hover:text-maroon'}">${label}</a>`;
+  const newestFirst = (a, b) => new Date(b.fechaCreacion || b.createdAt || b.updatedAt || 0) - new Date(a.fechaCreacion || a.createdAt || a.updatedAt || 0);
+  const childrenInfografias = (infografias.loadCatalog().infografias || [])
+    .filter(i => i && i.publicado !== false)
+    .filter(isChildrenInfografia)
+    .sort(newestFirst);
+  const childrenPdfs = (recursosPdf.getRecursos({ audiencia: 'ninos', limit: 10000 }).items || [])
+    .filter(p => p && p.publicado !== false)
+    .sort(newestFirst);
+  const visibleInfografias = childrenInfografias;
+  const visiblePdfs = childrenPdfs;
 
   const html = `
     <div class="max-w-6xl mx-auto w-full px-4 py-8 flex flex-col gap-7">
@@ -5532,15 +5516,7 @@ app.get('/ninos', async (req, res) => {
           <span class="text-gold font-mono text-xs uppercase tracking-[0.18em] font-bold">Catequesis para niños</span>
           <h1 class="font-display font-bold text-3xl sm:text-4xl text-maroon tracking-wide leading-tight">Niños: dibujos, infografías y cartillas para imprimir</h1>
           <p class="font-serif text-ink2 text-sm sm:text-base leading-relaxed max-w-3xl">Recursos católicos visuales para familias, colegios, parroquias y catequistas: dibujos para colorear, imágenes imprimibles, infografías infantiles y guías PDF de formación.</p>
-          <div class="flex flex-wrap gap-2 pt-2">
-            ${filterLink('todo', 'Todo')}
-            ${filterLink('colorear', 'Colorear')}
-            ${filterLink('sacramentos', 'Sacramentos')}
-            ${filterLink('virgen', 'Virgen María')}
-            ${filterLink('santos', 'Santos')}
-            ${filterLink('oracion', 'Oración')}
-            ${filterLink('pdf', 'Cartillas PDF')}
-          </div>
+
         </div>
         <aside class="bg-cream border border-gold/25 rounded-2xl p-6 flex flex-col justify-center gap-3">
           <span class="text-[10px] font-mono text-gold uppercase tracking-[0.18em] font-bold">SEO CatólicosGPT</span>
@@ -5556,11 +5532,11 @@ app.get('/ninos', async (req, res) => {
         </div>
         ${visibleInfografias.length ? `
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            ${visibleInfografias.map(i => {
+            ${visibleInfografias.map((i, index) => {
               const cover = (i.imagenes || []).find(img => img.esPortada) || (i.imagenes || [])[0] || {};
               const tipo = childrenResourceType(i);
               return `
-                <article class="bg-white border border-border rounded-2xl shadow-sm overflow-hidden flex flex-col hover:border-gold transition">
+                <article data-ninos-card="${index}" style="${index >= 24 ? 'display:none;' : ''}" class="bg-white border border-border rounded-2xl shadow-sm overflow-hidden flex flex-col hover:border-gold transition">
                   <a href="/ninos/recursos/${i.slug}" class="block bg-cream/60">
                     ${cover.url ? `<img src="${cover.url}" alt="${escapeHtml(cover.alt || i.altText || i.titulo || i.tema || 'Recurso CatólicosGPT para niños')}" class="w-full aspect-[4/3] object-cover" referrerPolicy="no-referrer">` : `<div class="aspect-[4/3] flex items-center justify-center text-maroon font-display font-bold">CatólicosGPT</div>`}
                   </a>
@@ -5591,7 +5567,7 @@ app.get('/ninos', async (req, res) => {
         ${visiblePdfs.length ? `
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             ${visiblePdfs.map(pdf => `
-              <article class="bg-white border border-border rounded-2xl p-5 shadow-sm flex flex-col gap-3 hover:border-gold transition">
+              <article data-ninos-card="${visibleInfografias.length + index}" style="${visibleInfografias.length + index >= 24 ? 'display:none;' : ''}" class="bg-white border border-border rounded-2xl p-5 shadow-sm flex flex-col gap-3 hover:border-gold transition">
                 <div class="flex items-start gap-3">
                   <div class="shrink-0">${pdfIconHtml('w-10 h-10')}</div>
                   <div class="min-w-0">
@@ -5613,6 +5589,26 @@ app.get('/ninos', async (req, res) => {
         ` : `<div class="bg-white border border-border rounded-2xl p-8 text-center text-ink2 text-sm">Aún no hay cartillas PDF infantiles publicadas.</div>`}
       </section>
     </div>
+      <div id="ninos-load-more" class="h-8" aria-hidden="true"></div>
+      <script>
+        (() => {
+          const cards = [...document.querySelectorAll("[data-ninos-card]")];
+          let shown = cards.filter(card => card.style.display !== "none").length || 24;
+          const sentinel = document.getElementById("ninos-load-more");
+          if (!sentinel) return;
+          let observer;
+          const reveal = () => {
+            const next = cards.slice(shown, shown + 24);
+            next.forEach(card => { card.style.display = ""; });
+            shown += next.length;
+            if (!next.length || shown >= cards.length) observer.disconnect();
+          };
+          observer = new IntersectionObserver(entries => {
+            if (entries.some(entry => entry.isIntersecting)) reveal();
+          }, { rootMargin: "800px" });
+          observer.observe(sentinel);
+        })();
+      </script>
   `;
 
   res.send(renderPage('Niños | Dibujos para colorear y catequesis imprimible | CatólicosGPT', html, req, {
@@ -5795,7 +5791,7 @@ app.get('/catequesis-ia', async (req, res) => {
         </div>
         ${visiblePdfs.length ? `
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            ${visiblePdfs.map(pdf => {
+            ${visiblePdfs.map((pdf, index) => {
               const coverHtml = resourceCoverHtml({
                 imageUrl: pdf.coverUrl || '',
                 title: pdf.titulo,

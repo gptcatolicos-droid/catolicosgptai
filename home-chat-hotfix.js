@@ -2,7 +2,6 @@ const express = require('express');
 
 const HOME_CHAT_STYLE = `
 <style id="cgpt-home-chat-hotfix">
-  .welcome-cards,.welcome-card{display:none!important}
   .chat-input-wrap{
     position:sticky!important;bottom:0!important;z-index:35!important;width:100%!important;
     padding:12px 16px calc(12px + env(safe-area-inset-bottom))!important;
@@ -37,6 +36,11 @@ const HOME_CHAT_STYLE = `
     box-shadow:0 6px 16px rgba(94,27,34,.2)!important
   }
   .chat-disclaimer,.ai-disclaimer,.composer-disclaimer{display:none!important}
+  .chat-shell,.chat-panel,.main-chat{width:100%!important;max-width:none!important}
+  #welcome-screen{min-height:calc(100dvh - 180px)!important;display:flex!important;flex-direction:column!important;justify-content:center!important;padding:24px 16px 9rem!important}
+  .welcome-cards{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:16px!important;width:min(100%,820px)!important;margin:24px auto 0!important}
+  body.cgpt-chat-empty .chat-input-wrap{position:absolute!important;left:0!important;right:0!important;bottom:clamp(32px,15vh,140px)!important}
+  body.cgpt-chat-has-messages .chat-input-wrap{position:sticky!important;bottom:0!important}
   #welcome-screen{padding-bottom:1rem!important}
   @media(max-width:767px){
     .chat-input-wrap{padding-left:10px!important;padding-right:10px!important}
@@ -47,10 +51,13 @@ const HOME_CHAT_STYLE = `
 const HOME_CHAT_SCRIPT = `
 <script id="cgpt-home-chat-hotfix-js">
 (function(){
+  function syncState(){
+    var hasMessages=!!document.querySelector('.chat-message,.message,.user-message,.assistant-message,[data-role="message"]');
+    document.body.classList.toggle('cgpt-chat-empty',!hasMessages);
+    document.body.classList.toggle('cgpt-chat-has-messages',hasMessages);
+  }
   function cleanupHome(){
-    document.querySelectorAll('.welcome-cards,.welcome-card').forEach(function(el){
-      el.style.setProperty('display','none','important');
-    });
+    
 
     document.querySelectorAll('p,small,span').forEach(function(el){
       var text=(el.textContent||'').replace(/\\s+/g,' ').trim();
@@ -83,6 +90,10 @@ const HOME_CHAT_SCRIPT = `
   else{cleanupHome()}
   setTimeout(cleanupHome,250);
   setTimeout(cleanupHome,900);
+  syncState();
+  if(window.MutationObserver){
+    new MutationObserver(function(){syncState()}).observe(document.body,{childList:true,subtree:true});
+  }
 })();
 </script>`;
 

@@ -16,6 +16,22 @@ const podcast = safeRequire('./podcast-module');
 
 function arr(v) { return Array.isArray(v) ? v : []; }
 
+function recordKey(item) {
+  const source = item || {};
+  return String(source.id || source.slug || source.url || source.titulo || source.title || '').trim().toLowerCase();
+}
+
+function mergeRecords(local, remote) {
+  const merged = arr(local).filter(Boolean).map(item => ({ ...item }));
+  for (const item of arr(remote)) {
+    const key = recordKey(item);
+    const index = key ? merged.findIndex(existing => recordKey(existing) === key) : -1;
+    if (index < 0) merged.push(item);
+    else merged[index] = { ...merged[index], ...item };
+  }
+  return merged;
+}
+
 async function restoreContent() {
   const report = {};
   console.log('[Restore] Iniciando recuperación no bloqueante de contenido desde Firestore.');
