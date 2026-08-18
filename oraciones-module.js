@@ -114,6 +114,7 @@ function generateSlug(value = '') {
 
 function normalizeImages(images = []) {
   return (Array.isArray(images) ? images : [])
+    .map(img => typeof img === 'string' ? { url: img } : img)
     .filter(img => img && String(img.url || '').trim())
     .map((img, index) => ({
       url: String(img.url || '').trim(),
