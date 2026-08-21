@@ -1,6 +1,5 @@
-// CatolicosGPT recovery bootstrap — 2026-08-20
-// Basado en el commit exacto del que se exportó el backup: 545baee5...
-// Objetivo: recuperar datos SIN tocar el servidor original ni depender de Firestore para renderizar.
+// CatolicosGPT recovery bootstrap — 2026-08-21
+// Keeps server.js untouched and adds only recovery protections around it.
 const fs = require('fs');
 const path = require('path');
 const Module = require('module');
@@ -8,148 +7,95 @@ const Module = require('module');
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch (_) {}
 
-function readJson(file) {
-  try {
-    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch (_) {
-    return {};
-  }
-}
-
-function recordKey(item = {}) {
-  return String(item.id || item.slug || item.url || item.titulo || item.title || item.fecha || '').trim().toLowerCase();
-}
-
-function mergeLists(repoItems = [], runtimeItems = []) {
-  const merged = new Map();
-  for (const item of Array.isArray(repoItems) ? repoItems : []) {
-    const key = recordKey(item);
-    if (key) merged.set(key, item);
-  }
-  // El runtime gana si contiene una versión actual del mismo registro.
-  for (const item of Array.isArray(runtimeItems) ? runtimeItems : []) {
-    const key = recordKey(item);
-    if (key) merged.set(key, item);
-  }
-  return [...merged.values()];
-}
-
-function promoteRepoCatalog(filename, listKey) {
-  const repoFile = path.join(__dirname, 'data', filename);
-  const runtimeFile = path.join(DATA_DIR, filename);
-  const repo = readJson(repoFile);
-  const runtime = readJson(runtimeFile);
-  const repoItems = Array.isArray(repo[listKey]) ? repo[listKey] : [];
-  const runtimeItems = Array.isArray(runtime[listKey]) ? runtime[listKey] : [];
-
-  if (!repoItems.length) {
-    console.warn(`[Recovery] ${filename}: el catálogo del repo no contiene ${listKey}.`);
-    return runtimeItems.length;
-  }
-
-  const merged = mergeLists(repoItems, runtimeItems);
-  const result = { ...repo, ...runtime, [listKey]: merged };
-  if ('total' in repo || 'total' in runtime) result.total = merged.length;
-
-  // Solo escribimos cuando el runtime tiene menos datos que el catálogo sano del repo.
-  if (merged.length > runtimeItems.length || !fs.existsSync(runtimeFile)) {
-    try {
-      fs.writeFileSync(runtimeFile, JSON.stringify(result, null, 2), 'utf8');
-      console.log(`[Recovery] ${filename}: runtime promovido de ${runtimeItems.length} a ${merged.length} registros.`);
-    } catch (err) {
-      console.error(`[Recovery] ${filename}: no se pudo promover al runtime:`, err.message);
-    }
-  } else {
-    console.log(`[Recovery] ${filename}: runtime conserva ${runtimeItems.length} registros.`);
-  }
-  return merged.length;
-}
-
-// 1) Restaurar catálogos que sí están completos en el repo base del backup.
-// Fe Católica/Catequesis viven en blog-catalog.json; Santoral en santoral-db.json.
-promoteRepoCatalog('blog-catalog.json', 'posts');
-promoteRepoCatalog('santoral-db.json', 'santoral');
-
-// 2) Restaurar desde el backup adjunto los catálogos que estaban vacíos en el repo:
-// 51 infografías, 7 PDFs, 12 videos y 4 podcasts. Restauradores merge-only.
+// Existing lightweight bundled fallback for Infografías/PDF and hidden media.
 try {
   require('./bootstrap-content-restore').restoreBundledCatalogs();
-  console.log('[Recovery] Infografías y PDFs restaurados/verificados antes del arranque.');
+  console.log('[Recovery] Bundled Infografías/PDF restore executed.');
 } catch (err) {
-  console.error('[Recovery] Restauración Infografías/PDF falló sin bloquear arranque:', err.message);
+  console.warn('[Recovery] Bundled Infografías/PDF restore skipped:', err.message);
 }
-
 try {
   require('./bootstrap-hidden-content-restore').restoreHiddenCatalogs();
-  console.log('[Recovery] Videos y podcasts restaurados/verificados (seguirán ocultos del menú).');
+  console.log('[Recovery] Bundled Video/Podcast restore executed.');
 } catch (err) {
-  console.error('[Recovery] Restauración Video/Podcast falló sin bloquear arranque:', err.message);
+  console.warn('[Recovery] Bundled Video/Podcast restore skipped:', err.message);
 }
 
-// 3) /ninos nunca debe esperar a Firestore/Drive para renderizar.
-// Devuelve el catálogo local restaurado inmediatamente y refresca la nube en background.
+// /ninos must render local content immediately; cloud refresh runs in background.
 try {
   const recursosPdf = require('./recursos-pdf-module');
   if (recursosPdf && typeof recursosPdf.refreshFromCloud === 'function') {
     const originalRefresh = recursosPdf.refreshFromCloud.bind(recursosPdf);
     recursosPdf.refreshFromCloud = async function recoveryRefresh(...args) {
-      Promise.resolve()
-        .then(() => originalRefresh(...args))
-        .catch(err => console.warn('[Recovery] Refresh PDF en background:', err.message));
-      try {
-        return typeof recursosPdf.loadCatalog === 'function' ? recursosPdf.loadCatalog() : { recursos: [] };
-      } catch (err) {
-        console.warn('[Recovery] Lectura local PDF:', err.message);
-        return { recursos: [] };
-      }
+      Promise.resolve().then(() => originalRefresh(...args)).catch(err =>
+        console.warn('[Recovery] PDF background refresh:', err.message)
+      );
+      try { return recursosPdf.loadCatalog(); }
+      catch (_) { return { recursos: [] }; }
     };
-    console.log('[Recovery] /ninos desacoplado de sincronización externa.');
   }
 } catch (err) {
-  console.warn('[Recovery] No se pudo instalar protección de /ninos:', err.message);
+  console.warn('[Recovery] /ninos background protection unavailable:', err.message);
 }
 
-// 4) Validación PRE-STARTUP: deja en logs los conteos que deben llegar al renderer.
-try {
-  const inf = require('./infografias-module').loadCatalog();
-  const pdf = require('./recursos-pdf-module').loadCatalog();
-  const blog = readJson(path.join(DATA_DIR, 'blog-catalog.json'));
-  const santoral = readJson(path.join(DATA_DIR, 'santoral-db.json'));
-  const videos = readJson(path.join(DATA_DIR, 'videos-catalog.json'));
-  const podcasts = readJson(path.join(DATA_DIR, 'podcast-catalog.json'));
-  console.log('[Recovery Check]', JSON.stringify({
-    infografias: Array.isArray(inf.infografias) ? inf.infografias.length : 0,
-    recursosPdf: Array.isArray(pdf.recursos) ? pdf.recursos.length : 0,
-    feCatolicaBlogPosts: Array.isArray(blog.posts) ? blog.posts.length : 0,
-    santoral: Array.isArray(santoral.santoral) ? santoral.santoral.length : 0,
-    videos: Array.isArray(videos.videos) ? videos.videos.length : 0,
-    podcasts: Array.isArray(podcasts.podcasts) ? podcasts.podcasts.length : 0
-  }));
-} catch (err) {
-  console.error('[Recovery Check] Error de validación:', err.message);
-}
-
-// 5) Ocultar únicamente las cuatro secciones solicitadas del menú público.
-// No elimina rutas ni datos. "Oración del día" permanece porque usa otra ruta.
+// Patch server.js only in memory. The source file itself is never modified.
 try {
   const serverPath = require.resolve('./server');
   const originalJsLoader = Module._extensions['.js'];
   Module._extensions['.js'] = function recoveryLoader(mod, filename) {
     if (filename !== serverPath) return originalJsLoader(mod, filename);
     let source = fs.readFileSync(filename, 'utf8');
+
+    // Hide only the four requested navigation links; routes and data remain available.
     for (const route of ['/oraciones', '/videos', '/podcasts', '/misas']) {
       const escaped = route.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const anchor = new RegExp(`<a\\s+href=["']${escaped}["'][\\s\\S]*?<\\/a>`, 'g');
       source = source.replace(anchor, '');
     }
+
+    // Add protected full-backup restore routes immediately after body parsers.
+    const middlewareAnchor = "app.use(express.urlencoded({ extended: true, limit: '80mb' }));";
+    if (source.includes(middlewareAnchor) && !source.includes("/admin/restaurar-backup")) {
+      const restoreRoutes = [
+        '',
+        '// === RECOVERY: FULL BACKUP IMPORT (admin-only) ===',
+        "const backupRestore = require('./backup-restore-module');",
+        "app.get('/admin/restaurar-backup', requireStrictAdminPage, (req, res) => {",
+        "  try { res.type('html').send(fs.readFileSync(path.join(__dirname, 'backup-restore-page.html'), 'utf8')); }",
+        "  catch (err) { res.status(500).send('No se pudo cargar la herramienta de restauración.'); }",
+        '});',
+        "app.post('/admin/restaurar-backup', requireStrictAdminPage, (req, res) => {",
+        '  try {',
+        '    const result = backupRestore.restoreBackup(req.body);',
+        "    const inf = require('./infografias-module').loadCatalog();",
+        "    const pdf = require('./recursos-pdf-module').loadCatalog();",
+        "    const blog = (() => { try { return JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'blog-catalog.json'), 'utf8')); } catch (_) { return {}; } })();",
+        "    const saints = (() => { try { return JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'santoral-db.json'), 'utf8')); } catch (_) { return {}; } })();",
+        '    const live = {',
+        '      infografias: Array.isArray(inf.infografias) ? inf.infografias.length : 0,',
+        '      recursosPdf: Array.isArray(pdf.recursos) ? pdf.recursos.length : 0,',
+        '      feCatolica: Array.isArray(blog.posts) ? blog.posts.length : 0,',
+        '      santoral: Array.isArray(saints.santos) ? saints.santos.length : 0',
+        '    };',
+        "    console.log('[Full Backup Restore] LIVE COUNTS', JSON.stringify(live));",
+        '    res.json({ ...result, live });',
+        '  } catch (err) {',
+        "    console.error('[Full Backup Restore] FAILED', err.message);",
+        '    res.status(400).json({ ok:false, error:err.message });',
+        '  }',
+        '});',
+        '// === END RECOVERY ===',
+        ''
+      ].join('\n');
+      source = source.replace(middlewareAnchor, middlewareAnchor + restoreRoutes);
+    }
+
     Module._extensions['.js'] = originalJsLoader;
     return mod._compile(source, filename);
   };
-  console.log('[Recovery] Menú público filtrado: Oraciones, Videos, Podcast y Horarios de Misa.');
+  console.log('[Recovery] Menu filter + protected backup importer installed.');
 } catch (err) {
-  console.warn('[Recovery] No se pudo instalar filtro de menú:', err.message);
+  console.error('[Recovery] Server patch installation failed:', err.message);
 }
 
-// 6) Arranque normal del server.js original asociado al backup.
 require('./server');
