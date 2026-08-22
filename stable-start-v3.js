@@ -12,20 +12,22 @@ const HOME_CARD_REFINEMENT = `
   #welcome-screen .home-infografia-day{
     display:flex!important;
     flex-direction:column!important;
-    width:min(78vw,310px)!important;
+    width:min(68vw,270px)!important;
     height:auto!important;
-    max-width:310px!important;
-    margin:8px auto 4px!important;
-    padding:10px!important;
+    max-width:270px!important;
+    margin:6px auto 3px!important;
+    padding:9px!important;
     overflow:hidden!important;
     border:1px solid #E4DDD3!important;
-    border-radius:18px!important;
+    border-radius:17px!important;
     background:#fff!important;
-    box-shadow:0 5px 18px rgba(37,27,21,.06)!important;
+    box-shadow:0 4px 15px rgba(37,27,21,.055)!important;
     text-align:left!important;
     text-decoration:none!important;
     color:#2D241E!important;
+    cursor:pointer!important;
   }
+  #welcome-screen .home-infografia-day:active{transform:scale(.99)!important}
   #welcome-screen .home-infografia-day::before,
   #welcome-screen .home-infografia-day::after{display:none!important;content:none!important}
 
@@ -34,23 +36,23 @@ const HOME_CARD_REFINEMENT = `
     position:static!important;
     width:100%!important;
     height:auto!important;
-    max-width:none!important;
-    max-height:none!important;
+    max-width:100%!important;
+    max-height:245px!important;
     aspect-ratio:1/1!important;
-    object-fit:cover!important;
+    object-fit:contain!important;
     object-position:center!important;
     margin:0!important;
     padding:0!important;
     border:0!important;
-    border-radius:13px!important;
+    border-radius:12px!important;
     background:#F7F3ED!important;
   }
 
   #welcome-screen .home-infografia-day>.home-infografia-gallery-body{
     display:flex!important;
     flex-direction:column!important;
-    gap:7px!important;
-    padding:11px 4px 4px!important;
+    gap:6px!important;
+    padding:9px 3px 3px!important;
   }
   #welcome-screen .home-infografia-gallery-meta{
     display:flex!important;
@@ -59,17 +61,17 @@ const HOME_CARD_REFINEMENT = `
     gap:8px!important;
     color:#C38E2B!important;
     font-family:ui-monospace,SFMono-Regular,Menlo,monospace!important;
-    font-size:9px!important;
+    font-size:8px!important;
     line-height:1.1!important;
     font-weight:700!important;
-    letter-spacing:.12em!important;
+    letter-spacing:.11em!important;
     text-transform:uppercase!important;
   }
   #welcome-screen .home-infografia-gallery-title{
     margin:0!important;
     color:#6B1E26!important;
     font-family:Georgia,'Times New Roman',serif!important;
-    font-size:17px!important;
+    font-size:15px!important;
     line-height:1.18!important;
     font-weight:700!important;
     letter-spacing:0!important;
@@ -79,7 +81,7 @@ const HOME_CARD_REFINEMENT = `
     margin:0!important;
     color:#6F6258!important;
     font-family:Georgia,'Times New Roman',serif!important;
-    font-size:12px!important;
+    font-size:11px!important;
     line-height:1.38!important;
     text-align:left!important;
     display:-webkit-box!important;
@@ -88,7 +90,6 @@ const HOME_CARD_REFINEMENT = `
     overflow:hidden!important;
   }
 
-  /* Hide the legacy card copy only after the gallery body has been generated. */
   #welcome-screen .home-infografia-day.gallery-home-ready>*:not(.home-infografia-preview):not(.home-infografia-gallery-body){display:none!important}
 }
 </style>
@@ -105,6 +106,7 @@ const HOME_CARD_REFINEMENT = `
     let description='';
     let category='DOCTRINAL';
     let slides='';
+    let detailUrl='/infografia-del-dia';
 
     try{
       const response=await fetch('/infografia-del-dia',{credentials:'same-origin'});
@@ -112,19 +114,35 @@ const HOME_CARD_REFINEMENT = `
         const html=await response.text();
         const doc=new DOMParser().parseFromString(html,'text/html');
 
+        const canonical=doc.querySelector('link[rel="canonical"]');
+        if(canonical && canonical.href){
+          try{ detailUrl=new URL(canonical.href,window.location.origin).pathname; }catch(_){ }
+        } else if(response.url){
+          try{ detailUrl=new URL(response.url).pathname; }catch(_){ }
+        }
+
         const h1=doc.querySelector('main h1');
         if(h1) title=cleanText(h1.textContent);
 
-        const header= h1 ? h1.parentElement : null;
+        const metaDescription=doc.querySelector('meta[name="description"]');
+        if(metaDescription && metaDescription.content) description=cleanText(metaDescription.content);
+
+        const header=h1 ? h1.parentElement : null;
         if(header){
-          const p=header.querySelector('p');
-          if(p) description=cleanText(p.textContent);
+          if(!description){
+            const p=header.querySelector('p');
+            if(p) description=cleanText(p.textContent);
+          }
           const meta=cleanText(header.querySelector('div')?.textContent || '');
-          const imageMatch=meta.match(/Imágenes:\s*(\d+)/i);
+          const imageMatch=meta.match(/Imágenes:\\s*(\\d+)/i);
           if(imageMatch) slides=imageMatch[1];
           const categoryMatch=meta.match(/^([^•]+)/);
           if(categoryMatch && cleanText(categoryMatch[1])) category=cleanText(categoryMatch[1]);
         }
+
+        const image=doc.querySelector('#vista-continua img') || doc.querySelector('[data-infografia-frame] img') || doc.querySelector('main img');
+        const preview=card.querySelector('.home-infografia-preview');
+        if(image && preview && image.src) preview.src=image.src;
       }
     }catch(_){ }
 
@@ -133,8 +151,7 @@ const HOME_CARD_REFINEMENT = `
       title=legacy.replace(/infograf[ií]a del d[ií]a/ig,'').replace(/catequesis visual.*$/i,'').trim() || 'Infografía católica del día';
     }
     if(!description){
-      const match=legacy.match(/(Catequesis visual[^.]*\.?)/i);
-      description=match ? cleanText(match[1]) : 'Formación católica visual para aprender y compartir.';
+      description='Formación católica visual para aprender, compartir y profundizar en la fe.';
     }
 
     const body=document.createElement('div');
@@ -159,6 +176,15 @@ const HOME_CARD_REFINEMENT = `
     body.append(meta,heading,desc);
     card.appendChild(body);
     card.classList.add('gallery-home-ready');
+    card.setAttribute('role','link');
+    card.setAttribute('tabindex','0');
+    card.setAttribute('aria-label','Abrir '+title);
+
+    const openDetail=()=>{ window.location.href=detailUrl || '/infografia-del-dia'; };
+    card.addEventListener('click',openDetail);
+    card.addEventListener('keydown',event=>{
+      if(event.key==='Enter' || event.key===' '){ event.preventDefault(); openDetail(); }
+    });
     return true;
   }
 
@@ -184,8 +210,7 @@ fs.readFileSync = function homeCardRead(file, ...args) {
     const encoding = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].encoding);
     if (resolved !== path.resolve(serverPath) || !encoding) return result;
     let source = String(result);
-    // Remove the previous square-overlay refinement if it is present in generated source.
-    source = source.replace(/<style id="catolicosgpt-home-card-1x1">[\s\S]*?<\/script>/g, '');
+    source = source.replace(/<style id="catolicosgpt-home-card-1x1">[\\s\\S]*?<\\/script>/g, '');
     if (!source.includes('catolicosgpt-home-card-gallery-style')) {
       source = source.replace('</head>', HOME_CARD_REFINEMENT + '\n</head>');
     }
