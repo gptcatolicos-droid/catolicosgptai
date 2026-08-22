@@ -3,22 +3,27 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Restaurar Backup · CatólicosGPT</title>
+  <title>Backup · CatólicosGPT</title>
   <style>
     body{font-family:Arial,sans-serif;background:#f7f3ed;color:#3b2415;margin:0;padding:40px}
     .card{max-width:760px;margin:auto;background:#fff;border:1px solid #e6dfd4;border-radius:18px;padding:32px;box-shadow:0 10px 30px rgba(0,0,0,.06)}
     h1{color:#6d1922}.warn{background:#fff5e5;border:1px solid #d8ad58;padding:14px;border-radius:10px;margin:18px 0}
-    button{background:#6d1922;color:white;border:0;border-radius:10px;padding:13px 20px;font-weight:700;cursor:pointer}button:disabled{opacity:.5}
+    .actions{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}.btn,button{display:inline-flex;align-items:center;justify-content:center;background:#6d1922;color:white;border:0;border-radius:10px;padding:13px 20px;font-weight:700;cursor:pointer;text-decoration:none}.btn.secondary{background:#fff;color:#6d1922;border:1px solid #6d1922}button:disabled{opacity:.5}
     input{display:block;margin:20px 0;width:100%}pre{white-space:pre-wrap;background:#f5f5f5;padding:15px;border-radius:10px;max-height:360px;overflow:auto}
+    @media(max-width:640px){body{padding:16px}.card{padding:20px}.actions{flex-direction:column}.btn,button{width:100%}}
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>Restaurar backup completo</h1>
-    <p>Selecciona el JSON de backup de CatólicosGPT. El sistema valida los conteos y hace merge: no borra contenido actual.</p>
-    <div class="warn"><strong>Validación mínima:</strong> 40 infografías, 2.000 contenidos de Fe Católica, 5 PDFs y 300 santos.</div>
+    <h1>Backup completo de CatólicosGPT</h1>
+    <p>Desde aquí puedes descargar una copia completa del contenido actual o restaurar un backup anterior. La restauración hace merge y no borra contenido actual.</p>
+    <div class="actions">
+      <a class="btn" href="/admin/descargar-backup">Descargar backup actual</a>
+      <a class="btn secondary" href="/admin">Volver al admin</a>
+    </div>
+    <div class="warn"><strong>Validación mínima para restaurar:</strong> 40 infografías, 2.000 contenidos de Fe Católica, 5 PDFs y 300 santos.</div>
     <input id="file" type="file" accept="application/json,.json">
-    <button id="go">Validar y restaurar</button>
+    <button id="go">Validar y restaurar backup</button>
     <pre id="out">Esperando archivo…</pre>
   </div>
   <script>
