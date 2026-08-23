@@ -211,8 +211,8 @@ fs.readFileSync = function homeCardRead(file, ...args) {
     let source=String(result);
 
     /* Remove prior Home-card refinements so v4 is the only owner of this component. */
-    source=source.replace(/<style id="catolicosgpt-home-card-1x1">[\\s\\S]*?<\\/script>/g,'');
-    source=source.replace(/<style id="catolicosgpt-home-card-gallery-style">[\\s\\S]*?<\\/script>/g,'');
+    source=source.replace(/<style id="catolicosgpt-home-card-1x1">[\s\S]*?<\/script>/g,'');
+    source=source.replace(/<style id="catolicosgpt-home-card-gallery-style">[\s\S]*?<\/script>/g,'');
     if(!source.includes('catolicosgpt-home-card-clean-v4')){
       source=source.replace('</head>',HOME_CARD_REFINEMENT+'\\n</head>');
     }
