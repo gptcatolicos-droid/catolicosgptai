@@ -4,6 +4,14 @@
 const fs = require('fs');
 const Module = require('module');
 
+// Recover missing infographic records additively. Existing/current records win,
+// so this cannot erase newer Google Drive or Cloudinary content.
+try {
+  require('./infografias-safe-recovery').restoreInfografiasSafely();
+} catch (err) {
+  console.warn('[Production] Safe infographic recovery skipped:', err.message);
+}
+
 const stablePath = require.resolve('./stable-start');
 const originalLoader = Module._extensions['.js'];
 
