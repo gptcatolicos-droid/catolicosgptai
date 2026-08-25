@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "node server.js",
     "build": "echo 'No build needed' & mkdir -p dist",
-    "start": "node ui-style-lock.js"
+    "start": "node stable-ui-final.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",
