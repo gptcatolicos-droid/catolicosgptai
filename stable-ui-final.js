@@ -44,10 +44,10 @@ img{max-width:100%;height:auto}
   #mobile-drawer-content button[aria-label*="errar"],#mobile-drawer-content button[aria-label*="lose"]{width:38px!important;height:38px!important;min-height:38px!important;padding:0!important;justify-content:center!important;border:1px solid #E6DFD4!important;background:#fff!important;font-size:20px!important}
 
   /* HOME — chat first. No recommendation cards. */
-  body.cgpt-home #welcome-screen{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:10px!important;padding:18px 18px 8px!important;min-height:0!important}
-  body.cgpt-home #welcome-screen>div:first-child{display:flex!important}
-  body.cgpt-home #welcome-screen h1{font-size:24px!important;line-height:1.08!important;margin:0!important;text-align:center!important;color:#6B1E26!important}
-  body.cgpt-home #welcome-screen p{font-size:14px!important;line-height:1.35!important;margin:0!important;text-align:center!important;max-width:34rem!important}
+  body.cgpt-home #welcome-screen{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:10px!important;padding:18px 18px 8px!important;min-height:0!important;width:100%!important;max-width:100%!important}
+  body.cgpt-home #welcome-screen>div:nth-child(2){display:flex!important;flex-direction:column!important;align-items:center!important;width:100%!important;max-width:100%!important;min-width:0!important}
+  body.cgpt-home #welcome-screen h1{font-size:24px!important;line-height:1.08!important;margin:0!important;text-align:center!important;color:#6B1E26!important;width:100%!important;max-width:100%!important;white-space:normal!important;word-break:normal!important;overflow-wrap:normal!important}
+  body.cgpt-home #welcome-screen p{font-size:14px!important;line-height:1.35!important;margin:0!important;text-align:center!important;width:100%!important;max-width:34rem!important;white-space:normal!important;word-break:normal!important}
   body.cgpt-home #welcome-screen .welcome-cards,body.cgpt-home #welcome-screen .grid{display:none!important}
 
   /* READING / BLOG / SANTORAL */
@@ -107,7 +107,7 @@ img{max-width:100%;height:auto}
     var reading = p.indexOf('/santoral/')===0 || p==='/santo-del-dia' || p.indexOf('/fe-catolica/')===0 || p.indexOf('/blog/')===0 || p.indexOf('/articulo/')===0 || p.indexOf('/ia-catolica')===0 || p.indexOf('/chat-catolico')===0 || p.indexOf('/inteligencia-artificial-catolica')===0 || p.indexOf('/sobre-catolicosgpt')===0 || p.indexOf('/fuentes-doctrinales')===0 || p.indexOf('/mejor-ia-catolica')===0 || p.indexOf('/catequista-ia-catolica')===0;
     if(reading) b.classList.add('cgpt-reading');
 
-    // Home must remain chat-first: remove recommendation cards rather than restyling them.
+    // Home must remain chat-first: remove recommendation cards without changing positional DOM structure.
     if(b.classList.contains('cgpt-home')){
       var welcome=document.getElementById('welcome-screen');
       if(welcome){
@@ -115,7 +115,7 @@ img{max-width:100%;height:auto}
         if(cards) cards.remove();
         var first=welcome.firstElementChild;
         var firstText=first ? (first.textContent||'').trim() : '';
-        if(first && firstText.length<=4 && /^[✝✟✞✚➕]+$/.test(firstText)) first.remove();
+        if(first && firstText.length<=4 && /^[✝✟✞✚➕]+$/.test(firstText)) first.style.setProperty('display','none','important');
       }
     }
   }
