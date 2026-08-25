@@ -19,11 +19,18 @@ function itemKey(item) {
 
 function loadBaseline() {
   const parts = [];
-  for (let i = 0; i <= 6; i++) {
-    parts.push(fs.readFileSync(path.join(__dirname, 'recovery', `infografias-baseline.part${i}`), 'utf8').trim());
+  // Discover every consecutive recovery part that actually exists. This avoids
+  // relying on commit-message numbering and prevents truncated gzip streams.
+  for (let i = 0; i < 100; i++) {
+    const partPath = path.join(__dirname, 'recovery', `infografias-baseline.part${i}`);
+    if (!fs.existsSync(partPath)) break;
+    parts.push(fs.readFileSync(partPath, 'utf8').trim());
   }
+  if (!parts.length) throw new Error('No infographic recovery baseline parts found.');
   const compressed = Buffer.from(parts.join(''), 'base64');
-  return JSON.parse(zlib.gunzipSync(compressed).toString('utf8'));
+  const baseline = JSON.parse(zlib.gunzipSync(compressed).toString('utf8'));
+  console.log(`[Infografias Recovery] Baseline loaded from ${parts.length} parts.`);
+  return baseline;
 }
 
 function restoreInfografiasSafely() {
@@ -69,4 +76,4 @@ function restoreInfografiasSafely() {
   return { restored: true, total: items.length };
 }
 
-module.exports = { restoreInfografiasSafely };
+module.exports = { restoreInfografiasSafely, loadBaseline };
