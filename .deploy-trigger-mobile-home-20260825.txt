@@ -1,0 +1,3 @@
+Force Cloud Build trigger for mobile home visibility fix.
+Target commit already in main: 50651dde81bd5fe993ee3835af688e0c332239b2
+No application logic or data changed.
