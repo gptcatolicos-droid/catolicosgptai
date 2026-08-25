@@ -19,8 +19,11 @@ function itemKey(item) {
 
 function loadBaseline() {
   const parts = [];
-  for (let i = 0; i <= 6; i++) {
-    parts.push(fs.readFileSync(path.join(__dirname, 'recovery', `infografias-baseline.part${i}`), 'utf8').trim());
+  // The verified baseline is split in 8 parts: part0 ... part7.
+  // Reading only through part6 truncates the gzip stream and yields "unexpected end of file".
+  for (let i = 0; i <= 7; i++) {
+    const partPath = path.join(__dirname, 'recovery', `infografias-baseline.part${i}`);
+    parts.push(fs.readFileSync(partPath, 'utf8').trim());
   }
   const compressed = Buffer.from(parts.join(''), 'base64');
   return JSON.parse(zlib.gunzipSync(compressed).toString('utf8'));
