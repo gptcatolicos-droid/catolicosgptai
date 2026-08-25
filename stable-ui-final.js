@@ -45,7 +45,7 @@ img{max-width:100%;height:auto}
 
   /* HOME — chat first. No recommendation cards. */
   body.cgpt-home #welcome-screen{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:10px!important;padding:18px 18px 8px!important;min-height:0!important}
-  body.cgpt-home #welcome-screen>div:first-child{display:none!important}
+  body.cgpt-home #welcome-screen>div:first-child{display:flex!important}
   body.cgpt-home #welcome-screen h1{font-size:24px!important;line-height:1.08!important;margin:0!important;text-align:center!important;color:#6B1E26!important}
   body.cgpt-home #welcome-screen p{font-size:14px!important;line-height:1.35!important;margin:0!important;text-align:center!important;max-width:34rem!important}
   body.cgpt-home #welcome-screen .welcome-cards,body.cgpt-home #welcome-screen .grid{display:none!important}
@@ -114,7 +114,8 @@ img{max-width:100%;height:auto}
         var cards=welcome.querySelector('.welcome-cards') || welcome.querySelector('.grid');
         if(cards) cards.remove();
         var first=welcome.firstElementChild;
-        if(first && /[✝✟✞✚➕]/.test(first.textContent||'')) first.remove();
+        var firstText=first ? (first.textContent||'').trim() : '';
+        if(first && firstText.length<=4 && /^[✝✟✞✚➕]+$/.test(firstText)) first.remove();
       }
     }
   }
