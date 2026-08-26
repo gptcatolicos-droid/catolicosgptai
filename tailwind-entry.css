@@ -14,7 +14,7 @@
   --color-ink2: #5A4E46;
 }
 
-/* Mobile hardening only. Desktop remains untouched. */
+/* Mobile-only hardening. Desktop remains untouched. */
 @media (max-width: 767px) {
   html,
   body {
@@ -38,29 +38,29 @@
     box-sizing: border-box !important;
   }
 
-  /* Internal-page typography: compact, readable and consistent. */
+  /* Editorial scale for internal pages. */
   main h1:not(#welcome-screen h1) {
     max-width: 100% !important;
-    font-size: clamp(2rem, 8.4vw, 2.6rem) !important;
-    line-height: 1.08 !important;
-    letter-spacing: -0.015em !important;
-    overflow-wrap: normal !important;
+    font-size: clamp(1.65rem, 6.7vw, 1.95rem) !important;
+    line-height: 1.12 !important;
+    letter-spacing: -0.012em !important;
+    overflow-wrap: break-word !important;
     word-break: normal !important;
   }
 
-  main h2 {
+  main h2:not(#welcome-screen h2) {
     max-width: 100% !important;
-    font-size: clamp(1.45rem, 6.5vw, 1.9rem) !important;
-    line-height: 1.15 !important;
-    overflow-wrap: normal !important;
+    font-size: clamp(1.3rem, 5.3vw, 1.55rem) !important;
+    line-height: 1.18 !important;
+    overflow-wrap: break-word !important;
     word-break: normal !important;
   }
 
-  main h3 {
+  main h3:not(#welcome-screen h3) {
     max-width: 100% !important;
-    font-size: clamp(1.2rem, 5.3vw, 1.55rem) !important;
-    line-height: 1.2 !important;
-    overflow-wrap: normal !important;
+    font-size: clamp(1.08rem, 4.5vw, 1.28rem) !important;
+    line-height: 1.22 !important;
+    overflow-wrap: break-word !important;
     word-break: normal !important;
   }
 
@@ -75,19 +75,33 @@
   article li,
   main .prose p,
   main .prose li {
-    font-size: clamp(1rem, 4.25vw, 1.12rem) !important;
-    line-height: 1.55 !important;
+    font-size: clamp(0.98rem, 4vw, 1.06rem) !important;
+    line-height: 1.5 !important;
+  }
+
+  /* Cards must not inherit display typography. */
+  main article h1,
+  main article h2,
+  main article h3,
+  main [class*="rounded-xl"] h1,
+  main [class*="rounded-xl"] h2,
+  main [class*="rounded-xl"] h3,
+  main [class*="rounded-2xl"] h1,
+  main [class*="rounded-2xl"] h2,
+  main [class*="rounded-2xl"] h3 {
+    font-size: clamp(1.12rem, 4.8vw, 1.35rem) !important;
+    line-height: 1.2 !important;
   }
 
   /* Keep page shells away from viewport edges. */
   main > section,
   main > article,
   main > div:not(#welcome-screen) {
-    padding-left: max(0.9rem, env(safe-area-inset-left)) !important;
-    padding-right: max(0.9rem, env(safe-area-inset-right)) !important;
+    padding-left: max(1rem, env(safe-area-inset-left)) !important;
+    padding-right: max(1rem, env(safe-area-inset-right)) !important;
   }
 
-  /* Images / covers: never crop on mobile. */
+  /* Images / infographic covers always fit fully. */
   main img:not(header img):not(nav img) {
     display: block !important;
     max-width: 100% !important;
@@ -95,9 +109,11 @@
     height: auto !important;
     object-fit: contain !important;
     object-position: center !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
   }
 
-  /* Search/filter boxes: visual card, compact controls, no giant button. */
+  /* Search/filter controls stay compact. */
   main form {
     max-width: 100% !important;
     min-width: 0 !important;
@@ -110,20 +126,19 @@
   main input[type="password"],
   main select,
   main textarea {
-    width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
     box-sizing: border-box !important;
-    font-size: 1rem !important;
+    font-size: 0.98rem !important;
     line-height: 1.25 !important;
   }
 
   main input[type="search"],
   main input[placeholder*="Buscar"],
   main input[placeholder*="buscar"] {
-    height: 2.8rem !important;
-    padding: 0.65rem 0.8rem !important;
-    border-radius: 0.9rem !important;
+    height: 2.65rem !important;
+    padding: 0.58rem 0.75rem !important;
+    border-radius: 0.8rem !important;
   }
 
   main form:has(input[type="search"]),
@@ -131,9 +146,9 @@
   main form:has(input[placeholder*="buscar"]) {
     width: 100% !important;
     display: grid !important;
-    grid-template-columns: 1fr auto !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
     align-items: center !important;
-    gap: 0.55rem !important;
+    gap: 0.5rem !important;
   }
 
   main form:has(input[type="search"]) input,
@@ -147,37 +162,37 @@
   main form:has(input[placeholder*="Buscar"]) button,
   main form:has(input[placeholder*="buscar"]) button {
     width: auto !important;
-    min-width: 6.25rem !important;
-    min-height: 2.8rem !important;
-    padding: 0.6rem 1rem !important;
-    font-size: 1rem !important;
+    min-width: 5.5rem !important;
+    min-height: 2.65rem !important;
+    padding: 0.58rem 0.9rem !important;
+    font-size: 0.95rem !important;
     line-height: 1 !important;
-    border-radius: 0.9rem !important;
+    border-radius: 0.8rem !important;
     flex: none !important;
   }
 
-  /* Filter chips: compact inline pills instead of oversized labels. */
-  main form button:not([type="submit"]),
-  main [role="tab"],
-  main [class*="chip"],
-  main [class*="pill"] {
+  /* Filter bars wrap naturally without giant pills. */
+  main form + div,
+  main form ~ div[class*="flex"],
+  main [role="tablist"] {
     max-width: 100% !important;
-    white-space: normal !important;
+  }
+
+  main [role="tab"],
+  main [class*="rounded-full"],
+  main form a,
+  main form button:not([type="submit"]) {
+    font-size: 0.88rem !important;
+    line-height: 1.1 !important;
   }
 
   main a,
   main button,
   main span {
-    overflow-wrap: normal !important;
     word-break: normal !important;
   }
 
-  /* Visualization mode buttons and social/share controls stay compact. */
-  main button {
-    font-size: inherit;
-  }
-
-  /* Home mobile only: preserve desktop exactly as-is and force welcome copy into a single centered column. */
+  /* Home mobile only. */
   #welcome-screen {
     display: flex !important;
     flex-direction: column !important;
