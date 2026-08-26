@@ -2,6 +2,15 @@
 // No runtime source surgery is done here. The UI guard only injects presentation
 // CSS/JS into server.js while stable-start keeps recovery, backup and admin tools.
 
+// Restore the proven Drive URL normalizer before server.js is loaded. It changes
+// only the infographic-admin labels, previews and submitted Drive URLs; it does
+// not alter catalogs, routes, or any presentation CSS.
+try {
+  require('./drive-admin-preload');
+} catch (err) {
+  console.warn('[Production] Google Drive admin support unavailable:', err.message);
+}
+
 // Install presentation guard first so stable-start's server load receives the
 // deterministic mobile styles without depending on Tailwind/CDN timing.
 try {

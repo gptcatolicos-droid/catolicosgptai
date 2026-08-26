@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "node server.js",
     "build": "echo 'No build needed' & mkdir -p dist",
+    "test": "node test/backup-restore-module.test.js",
     "start": "node production-entry.js"
   },
   "dependencies": {
