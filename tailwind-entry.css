@@ -14,9 +14,126 @@
   --color-ink2: #5A4E46;
 }
 
-/* Home mobile only: preserve desktop exactly as-is and force the welcome copy
-   into a single centered column so it can never overflow horizontally. */
+/* Mobile hardening only. Desktop remains untouched. */
 @media (max-width: 767px) {
+  html,
+  body {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  main,
+  main > *,
+  article,
+  section {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  main {
+    width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Prevent public-page typography from inheriting desktop display sizes. */
+  main h1:not(#welcome-screen h1) {
+    max-width: 100% !important;
+    font-size: clamp(2rem, 10vw, 3rem) !important;
+    line-height: 1.05 !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+  }
+
+  main h2 {
+    max-width: 100% !important;
+    font-size: clamp(1.55rem, 7.5vw, 2.15rem) !important;
+    line-height: 1.12 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  main h3 {
+    max-width: 100% !important;
+    font-size: clamp(1.25rem, 6vw, 1.7rem) !important;
+    line-height: 1.18 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  article p,
+  article li,
+  main .prose p,
+  main .prose li {
+    font-size: clamp(1rem, 4.6vw, 1.22rem) !important;
+    line-height: 1.55 !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+  }
+
+  /* Images and infographic covers always fit inside the viewport without crop. */
+  main img:not(header img):not(nav img) {
+    display: block !important;
+    max-width: 100% !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain !important;
+    object-position: center !important;
+  }
+
+  /* Search/filter panels: stack safely and never overflow. */
+  main form,
+  main form > div,
+  main [class*="grid"],
+  main [class*="flex"] {
+    min-width: 0;
+  }
+
+  main input[type="text"],
+  main input[type="search"],
+  main input[type="email"],
+  main input[type="password"],
+  main select,
+  main textarea {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Keep filter/search controls readable instead of compressed into one row. */
+  main form:has(input[type="search"]),
+  main form:has(input[placeholder*="Buscar"]),
+  main form:has(input[placeholder*="buscar"]) {
+    width: 100% !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.6rem !important;
+  }
+
+  main form:has(input[type="search"]) input,
+  main form:has(input[placeholder*="Buscar"]) input,
+  main form:has(input[placeholder*="buscar"]) input {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+  }
+
+  main form:has(input[type="search"]) button,
+  main form:has(input[placeholder*="Buscar"]) button,
+  main form:has(input[placeholder*="buscar"]) button {
+    flex: 1 1 auto !important;
+    min-height: 2.75rem !important;
+  }
+
+  /* Long labels/titles inside cards must wrap naturally. */
+  main a,
+  main button,
+  main span,
+  main p,
+  main div {
+    overflow-wrap: break-word;
+  }
+
+  /* Home mobile only: preserve desktop exactly as-is and force the welcome copy
+     into a single centered column so it can never overflow horizontally. */
   #welcome-screen {
     display: flex !important;
     flex-direction: column !important;
