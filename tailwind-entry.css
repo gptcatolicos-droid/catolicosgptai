@@ -13,3 +13,68 @@
   --color-ink: #2D241E;
   --color-ink2: #5A4E46;
 }
+
+/* Home mobile only: preserve desktop exactly as-is and force the welcome copy
+   into a single centered column so it can never overflow horizontally. */
+@media (max-width: 767px) {
+  #welcome-screen {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  #welcome-screen > div:nth-child(2) {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    max-width: 36rem !important;
+    min-width: 0 !important;
+    margin: 0 auto !important;
+    padding: 0 0.75rem !important;
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
+    box-sizing: border-box !important;
+  }
+
+  #welcome-screen h1,
+  #welcome-screen p {
+    display: block !important;
+    position: static !important;
+    float: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    transform: none !important;
+    text-align: center !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    box-sizing: border-box !important;
+  }
+
+  #welcome-screen h1 {
+    font-size: clamp(1.75rem, 8vw, 2.15rem) !important;
+    line-height: 1.08 !important;
+  }
+
+  #welcome-screen p {
+    font-size: clamp(1rem, 4.5vw, 1.2rem) !important;
+    line-height: 1.3 !important;
+    margin-top: 0.5rem !important;
+  }
+}
