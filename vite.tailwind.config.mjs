@@ -6,7 +6,7 @@ export default defineConfig({
   build: {
     outDir: 'public',
     emptyOutDir: false,
-    cssCodeSplit: false,
+    cssCodeSplit: true,
     rollupOptions: {
       input: 'tailwind-entry.css',
       output: {
