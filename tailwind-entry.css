@@ -14,63 +14,74 @@
   --color-ink2: #5A4E46;
 }
 
-/* Mobile hardening only. Desktop remains untouched. */
+/* Mobile-only hardening. Desktop intentionally untouched. */
 @media (max-width: 767px) {
-  html,
-  body {
+  html, body {
     width: 100% !important;
     max-width: 100% !important;
     overflow-x: hidden !important;
   }
 
-  main,
-  main > *,
-  article,
-  section {
+  main, main > *, article, section {
+    width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
   }
 
   main {
-    width: 100% !important;
     overflow-x: hidden !important;
   }
 
-  /* Prevent public-page typography from inheriting desktop display sizes. */
+  /* Mobile typography: compact editorial scale, never desktop display sizes. */
   main h1:not(#welcome-screen h1) {
     max-width: 100% !important;
-    font-size: clamp(2rem, 10vw, 3rem) !important;
-    line-height: 1.05 !important;
-    overflow-wrap: anywhere !important;
+    font-size: clamp(1.9rem, 7.8vw, 2.35rem) !important;
+    line-height: 1.06 !important;
+    letter-spacing: -0.02em !important;
+    overflow-wrap: normal !important;
     word-break: normal !important;
   }
 
   main h2 {
     max-width: 100% !important;
-    font-size: clamp(1.55rem, 7.5vw, 2.15rem) !important;
-    line-height: 1.12 !important;
-    overflow-wrap: anywhere !important;
+    font-size: clamp(1.35rem, 5.8vw, 1.75rem) !important;
+    line-height: 1.14 !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
   }
 
   main h3 {
     max-width: 100% !important;
-    font-size: clamp(1.25rem, 6vw, 1.7rem) !important;
-    line-height: 1.18 !important;
-    overflow-wrap: anywhere !important;
+    font-size: clamp(1.1rem, 4.9vw, 1.4rem) !important;
+    line-height: 1.2 !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
   }
 
+  main p,
+  main li,
   article p,
   article li,
   main .prose p,
   main .prose li {
-    font-size: clamp(1rem, 4.6vw, 1.22rem) !important;
-    line-height: 1.55 !important;
+    font-size: clamp(0.98rem, 4vw, 1.08rem) !important;
+    line-height: 1.5 !important;
     overflow-wrap: break-word !important;
     word-break: normal !important;
   }
 
-  /* Images and infographic covers always fit inside the viewport without crop. */
+  /* Reduce excessive vertical rhythm inherited from desktop utilities. */
+  main h1, main h2, main h3, main p {
+    margin-top: 0 !important;
+  }
+
+  main [class*="py-"],
+  main [class*="my-"] {
+    max-width: 100% !important;
+  }
+
+  /* Images / infographic covers always fit fully, never crop or overflow. */
   main img:not(header img):not(nav img) {
     display: block !important;
     max-width: 100% !important;
@@ -78,14 +89,17 @@
     height: auto !important;
     object-fit: contain !important;
     object-position: center !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
   }
 
-  /* Search/filter panels: stack safely and never overflow. */
+  /* Search/filter panels: compact, stacked and touch-friendly. */
   main form,
   main form > div,
   main [class*="grid"],
   main [class*="flex"] {
-    min-width: 0;
+    min-width: 0 !important;
+    max-width: 100% !important;
   }
 
   main input[type="text"],
@@ -94,36 +108,72 @@
   main input[type="password"],
   main select,
   main textarea {
+    width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
+    min-height: 2.65rem !important;
+    font-size: 1rem !important;
     box-sizing: border-box !important;
   }
 
-  /* Keep filter/search controls readable instead of compressed into one row. */
   main form:has(input[type="search"]),
   main form:has(input[placeholder*="Buscar"]),
   main form:has(input[placeholder*="buscar"]) {
     width: 100% !important;
     display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 0.6rem !important;
+    flex-direction: column !important;
+    gap: 0.55rem !important;
   }
 
   main form:has(input[type="search"]) input,
   main form:has(input[placeholder*="Buscar"]) input,
-  main form:has(input[placeholder*="buscar"]) input {
-    flex: 1 1 100% !important;
+  main form:has(input[placeholder*="buscar"]) input,
+  main form:has(input[type="search"]) button,
+  main form:has(input[placeholder*="Buscar"]) button,
+  main form:has(input[placeholder*="buscar"]) button {
     width: 100% !important;
+    flex: 0 0 auto !important;
   }
 
   main form:has(input[type="search"]) button,
   main form:has(input[placeholder*="Buscar"]) button,
   main form:has(input[placeholder*="buscar"]) button {
-    flex: 1 1 auto !important;
-    min-height: 2.75rem !important;
+    min-height: 2.7rem !important;
+    padding: 0.65rem 1rem !important;
+    font-size: 1rem !important;
   }
 
-  /* Long labels/titles inside cards must wrap naturally. */
+  /* Filter chips: smaller and wrap naturally instead of giant outlined pills. */
+  main button:not([type="submit"]),
+  main a[class*="rounded"],
+  main span[class*="rounded"] {
+    max-width: 100% !important;
+  }
+
+  main form button,
+  main [class*="rounded-full"] {
+    font-size: 0.9rem !important;
+    line-height: 1.15 !important;
+  }
+
+  /* Cards and result lists should not inherit desktop display text. */
+  main article h1,
+  main article h2,
+  main article h3,
+  main [class*="rounded"] h1,
+  main [class*="rounded"] h2,
+  main [class*="rounded"] h3 {
+    font-size: clamp(1.2rem, 5.4vw, 1.55rem) !important;
+    line-height: 1.18 !important;
+  }
+
+  main article,
+  main [class*="rounded-xl"],
+  main [class*="rounded-2xl"],
+  main [class*="rounded-3xl"] {
+    overflow: hidden !important;
+  }
+
   main a,
   main button,
   main span,
@@ -132,8 +182,7 @@
     overflow-wrap: break-word;
   }
 
-  /* Home mobile only: preserve desktop exactly as-is and force the welcome copy
-     into a single centered column so it can never overflow horizontally. */
+  /* Home mobile only. */
   #welcome-screen {
     display: flex !important;
     flex-direction: column !important;
