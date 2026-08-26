@@ -8,6 +8,14 @@ try {
   console.warn('[Production] Local Tailwind runtime unavailable:', err.message);
 }
 
+// Enable manual Google Drive image URLs in Admin > Infografias before server.js
+// is compiled. Cloudinary remains fully supported.
+try {
+  require('./drive-admin-preload');
+} catch (err) {
+  console.warn('[Production] Google Drive admin preload unavailable:', err.message);
+}
+
 // Recover missing infographic records additively. Existing/current records win,
 // so this cannot erase newer Google Drive or Cloudinary content.
 try {
