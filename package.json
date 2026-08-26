@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "scripts": {
     "dev": "node server.js",
-    "build": "echo 'No build needed' & mkdir -p dist",
+    "build:css": "vite build --config vite.tailwind.config.mjs",
+    "build": "npm run build:css && mkdir -p dist",
     "start": "node production-entry.js"
   },
   "dependencies": {

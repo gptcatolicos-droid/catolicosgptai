@@ -1,13 +1,11 @@
-// CatolicosGPT production entrypoint — stable recovery + deterministic UI.
-// No runtime source surgery is done here. The UI guard only injects presentation
-// CSS/JS into server.js while stable-start keeps recovery, backup and admin tools.
+// CatolicosGPT production entrypoint — stable recovery + deterministic local CSS.
+// Presentation is delivered from a compiled local Tailwind bundle so mobile does
+// not depend on cdn.tailwindcss.com. Recovery/admin/content remain in stable-start.
 
-// Install presentation guard first so stable-start's server load receives the
-// deterministic mobile styles without depending on Tailwind/CDN timing.
 try {
-  require('./ui-regression-guard');
+  require('./local-tailwind-runtime');
 } catch (err) {
-  console.warn('[Production] UI regression guard unavailable:', err.message);
+  console.warn('[Production] Local Tailwind runtime unavailable:', err.message);
 }
 
 // Recover missing infographic records additively. Existing/current records win,
