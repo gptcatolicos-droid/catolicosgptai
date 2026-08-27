@@ -16,6 +16,14 @@ try {
   console.warn('[Production] Google Drive admin preload unavailable:', err.message);
 }
 
+// Release-scoped hotfix: preserve daily selections across deployments, keep
+// infographics newest-first and remove only the Fe Catolica index search panel.
+try {
+  require('./release-content-hotfix-20260827');
+} catch (err) {
+  console.warn('[Production] Release content hotfix unavailable:', err.message);
+}
+
 // Recover missing infographic records additively. Existing/current records win,
 // so this cannot erase newer Google Drive or Cloudinary content.
 try {
