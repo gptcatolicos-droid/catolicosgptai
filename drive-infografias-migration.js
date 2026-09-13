@@ -46,16 +46,23 @@ function restoreLocalDriveUrls() {
 
 async function persistDriveChanges(db, changes) {
   if (!db || !changes.length) return { saved: 0, failed: changes.length };
-  const { doc, setDoc } = require('firebase/firestore');
+  const { doc, getDoc, setDoc, updateDoc } = require('firebase/firestore');
   let saved = 0;
   let failed = 0;
-  // Preserve all existing Firestore fields while updating the recovered images.
-  // Using merge avoids the destructive replacement done by syncUploadInfografia.
+  // Recheck the cloud document before writing. Never revert a newer admin edit.
   for (const { item } of changes) {
     if (!item.id) { failed++; continue; }
     try {
-      await setDoc(doc(db, 'infografias', String(item.id)),
-        JSON.parse(JSON.stringify(item)), { merge: true });
+      const ref = doc(db, 'infografias', String(item.id));
+      const snapshot = await getDoc(ref);
+      if (snapshot.exists()) {
+        const current = snapshot.data() || {};
+        const result = migrateInfografiasToDrive([current]);
+        if (result.urlCount) await updateDoc(ref, { imagenes: result.items[0].imagenes });
+      } else {
+        // A record restored only from the bundled catalog needs its full metadata.
+        await setDoc(ref, JSON.parse(JSON.stringify(item)), { merge: true });
+      }
       saved++;
     } catch (error) {
       failed++;
