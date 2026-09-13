@@ -128,9 +128,15 @@ async function initFirebaseSync() {
     const infografiasModule = require('./infografias-module');
     let localInfografiasData = infografiasModule.loadCatalog();
     const mergedInfografias = await firebaseSync.syncDownloadInfografias(localInfografiasData.infografias || []);
-    localInfografiasData.infografias = mergedInfografias;
-    localInfografiasData.total = mergedInfografias.length;
+    const driveRecovery = require('./drive-infografias-migration');
+    const migrated = driveRecovery.migrateInfografiasToDrive(mergedInfografias);
+    localInfografiasData.infografias = migrated.items;
+    localInfografiasData.total = migrated.items.length;
     infografiasModule.saveCatalog(localInfografiasData);
+    if (migrated.urlCount) {
+      console.log(`[Drive Recovery] Sincronización: ${migrated.changes.length} infografías, ${migrated.urlCount} URLs recuperadas.`);
+      await driveRecovery.persistDriveChanges(firebaseSync.db, migrated.changes);
+    }
   } catch (err) {
     console.error('[Firebase Sync] Error sincronizando infografías en inicio:', err.message);
   }
