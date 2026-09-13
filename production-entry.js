@@ -32,5 +32,13 @@ try {
   console.warn('[Production] Safe infographic recovery skipped:', err.message);
 }
 
+// Show recovered Drive images immediately, even before the background cloud sync.
+// The cloud sync subsequently persists the same exact-URL replacements in Firestore.
+try {
+  require('./drive-infografias-migration').restoreLocalDriveUrls();
+} catch (err) {
+  console.warn('[Production] Local Drive infographic recovery skipped:', err.message);
+}
+
 // Stable-start remains the authoritative bootstrap for backup/admin/content tools.
 require('./stable-start');
