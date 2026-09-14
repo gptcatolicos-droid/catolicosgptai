@@ -40,5 +40,17 @@ try {
   console.warn('[Production] Local Drive infographic recovery skipped:', err.message);
 }
 
+// Restore the seven verified 16:9 PDF banners locally and persist only exact
+// broken Cloudinary matches in Firestore.
+try {
+  const pdfCovers = require('./drive-pdf-covers-migration');
+  pdfCovers.restoreLocalPdfCoverUrls();
+  pdfCovers.persistPdfCoverUrls().catch(err =>
+    console.warn('[Production] PDF cover Firestore migration pending:', err.message)
+  );
+} catch (err) {
+  console.warn('[Production] Local PDF cover recovery skipped:', err.message);
+}
+
 // Stable-start remains the authoritative bootstrap for backup/admin/content tools.
 require('./stable-start');
