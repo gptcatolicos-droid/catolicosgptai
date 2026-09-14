@@ -62,15 +62,18 @@ function restoreLocalPdfCoverUrls() {
 }
 
 async function persistPdfCoverUrls() {
-  const recursosPdf = require('./recursos-pdf-module');
-  await recursosPdf.refreshFromCloud({ force: true });
-  const current = recursosPdf.loadCatalog();
-  const result = migrateCatalog(current);
+  const firebaseSync = require('./firebase-module');
+  if (!firebaseSync || typeof firebaseSync.syncDownloadRecursosPdf !== 'function' ||
+      typeof firebaseSync.syncUploadRecursoPdf !== 'function') {
+    throw new Error('Sincronización PDF de Firestore no disponible');
+  }
+  const cloudItems = await firebaseSync.syncDownloadRecursosPdf([]);
+  const result = migrateCatalog({ recursos: Array.isArray(cloudItems) ? cloudItems : [] });
   let saved = 0;
   let failed = 0;
   for (const resource of result.changes) {
     try {
-      await recursosPdf.upsertResourceAsync(resource);
+      await firebaseSync.syncUploadRecursoPdf(resource);
       saved++;
     } catch (error) {
       failed++;
