@@ -35,7 +35,12 @@ try {
 // Show recovered Drive images immediately, even before the background cloud sync.
 // The cloud sync subsequently persists the same exact-URL replacements in Firestore.
 try {
-  require('./drive-infografias-migration').restoreLocalDriveUrls();
+  const driveMigration = require('./drive-infografias-migration');
+  const driveResult = driveMigration.restoreLocalDriveUrls();
+  const firebaseSync = require('./firebase-module');
+  driveMigration.persistDriveChanges(firebaseSync.db, driveResult.changes).catch(err =>
+    console.warn('[Production] Infographic Firestore migration pending:', err.message)
+  );
 } catch (err) {
   console.warn('[Production] Local Drive infographic recovery skipped:', err.message);
 }
