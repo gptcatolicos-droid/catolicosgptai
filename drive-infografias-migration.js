@@ -9,20 +9,16 @@ function migrateInfografiasToDrive(items) {
   const migrated = (Array.isArray(items) ? items : []).map(item => {
     const entries = mappings[item && item.slug];
     if (!entries || !Array.isArray(item.imagenes)) return item;
-    const byOldUrl = new Map(entries.map(entry => [entry.from, entry.to]));
     let count = 0;
-    const imagenes = item.imagenes.map(image => {
-      if (typeof image === 'string') {
-        const to = byOldUrl.get(image);
-        if (!to) return image;
-        count++;
-        return to;
-      }
-      if (!image || typeof image !== 'object') return image;
-      const to = byOldUrl.get(image.url);
-      if (!to) return image;
+    const imagenes = item.imagenes.map((image, index) => {
+      const url = typeof image === 'string' ? image : (image && image.url);
+      const slide = Number((image && image.slide) || index + 1);
+      const match = entries.find(entry =>
+        entry.from === url && (entry.slide === undefined || Number(entry.slide) === slide)
+      );
+      if (!match) return image;
       count++;
-      return { ...image, url: to };
+      return typeof image === 'string' ? match.to : { ...image, url: match.to };
     });
     if (!count) return item;
     const updated = { ...item, imagenes };
