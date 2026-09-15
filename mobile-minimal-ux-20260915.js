@@ -9,6 +9,7 @@ const previousLoader = Module._extensions['.js'];
 
 const MOBILE_MINIMAL_UX = `
 <style id="catolicosgpt-mobile-minimal-ux-20260915">
+body.cgpt-home-one-card .welcome-cards{grid-template-columns:minmax(0,420px)!important;justify-content:center!important}
 @media (max-width:767px){
   /* Shared mobile shell: keep the existing branded header, reduce visual noise. */
   body{background:#F9F6F0!important}
@@ -67,15 +68,16 @@ const MOBILE_MINIMAL_UX = `
       const hay=norm((input.getAttribute('placeholder')||'')+' '+form.textContent);
       if(!matchers.some(m=>hay.includes(m))) return;
       const parent=form.parentElement;
-      form.classList.add('cgpt-mobile-hidden-search');
       if(parent) parent.classList.add('cgpt-minimal-filter-shell');
+      form.remove();
     });
   }
 
   function setupHome(){
     const p=location.pathname.replace(/\\/+$/,'')||'/';
     if(p!=='/') return;
-    document.body.classList.add('cgpt-home-mobile-minimal');
+    document.body.classList.add('cgpt-home-one-card');
+    if(isMobile()) document.body.classList.add('cgpt-home-mobile-minimal');
     const welcome=document.getElementById('welcome-screen');
     if(!welcome) return;
 
@@ -97,19 +99,18 @@ const MOBILE_MINIMAL_UX = `
   function setupInfografias(){
     const p=location.pathname.replace(/\\/+$/,'');
     if(p!=='/infografias') return;
-    document.body.classList.add('cgpt-infografias-mobile-minimal');
+    if(isMobile()) document.body.classList.add('cgpt-infografias-mobile-minimal');
     removeSearchAndMinimizeShell(['buscar infografías','buscar infografias']);
   }
 
   function setupCatequesis(){
     const p=location.pathname.replace(/\\/+$/,'');
     if(p!=='/catequesis-ia'&&p!=='/recursos-pdf') return;
-    document.body.classList.add('cgpt-catequesis-mobile-minimal');
+    if(isMobile()) document.body.classList.add('cgpt-catequesis-mobile-minimal');
     removeSearchAndMinimizeShell(['buscar pdf','buscar recursos','buscar guías','buscar guias']);
   }
 
   function run(){
-    if(!isMobile()) return;
     setupHome();
     setupInfografias();
     setupCatequesis();
