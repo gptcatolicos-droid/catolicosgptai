@@ -48,6 +48,14 @@ try {
   console.warn('[Production] Historia de la Iglesia I-X publication skipped:', err.message);
 }
 
+// Publish Historia de la Iglesia — Siglos XI al XX additively. Existing records
+// are preserved, Drive URLs remain authoritative, and the item is idempotent.
+try {
+  require('./publish-historia-iglesia-siglos-xi-xx').publishHistoriaIglesiaXIXX();
+} catch (err) {
+  console.warn('[Production] Historia de la Iglesia XI-XX publication skipped:', err.message);
+}
+
 // Show recovered Drive images immediately, even before the background cloud sync.
 // The cloud sync subsequently persists the same exact-URL replacements in Firestore.
 try {
