@@ -57,5 +57,13 @@ try {
   console.warn('[Production] Local PDF cover recovery skipped:', err.message);
 }
 
+// Mobile-only presentation refinement. This patch does not touch content/admin data
+// and is installed before stable-start compiles server.js.
+try {
+  require('./mobile-minimal-ux-20260915');
+} catch (err) {
+  console.warn('[Production] Mobile minimal UX patch unavailable:', err.message);
+}
+
 // Stable-start remains the authoritative bootstrap for backup/admin/content tools.
 require('./stable-start');
