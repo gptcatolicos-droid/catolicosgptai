@@ -82,6 +82,9 @@ function getDailyContentModule() {
 app.use(cors());
 app.use(express.json({ limit: '80mb' }));
 app.use(express.urlencoded({ extended: true, limit: '80mb' }));
+require('./agent-routes').register(app);
+require('./children-guides').register(app, renderPage);
+require('./agent-about').register(app, renderPage);
 
 // Servidor de medios y estáticos locales
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
@@ -192,7 +195,7 @@ const mesesEnEspanol = {
 };
 
 function getPublicSiteUrl() {
-  return (process.env.PUBLIC_SITE_URL || process.env.APP_URL || 'https://ai.catolicosgpt.com').replace(/\/+$/, '');
+  return (process.env.PUBLIC_SITE_URL || process.env.APP_URL || 'https://www.catolicosgpt.com').replace(/\/+$/, '');
 }
 
 const AUTHORITY_SEO_PAGES = [
@@ -438,35 +441,30 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
   const defaultMetaTags = {
     description: "CatólicosGPT | La IA Católica #1 en Español. Chat católico con Magisterio, Catecismo, Biblia de Navarra, santoral, liturgia, oraciones, infografías, videos y podcast.",
     keywords: "CatólicosGPT, CatolicosGPT, catolicos gpt, ia catolica, IA católica, inteligencia artificial catolica, inteligencia artificial católica, chat catolico, chat católico, la ia catolica #1 en espanol, la ia católica #1 en español, magisterio de la iglesia, biblia de navarra, catecismo, santoral catolico, oraciones catolicas, infografias catolicas, videos catolicos, podcast catolico",
-    canonical: req.originalUrl || '/'
+    canonical: (req.originalUrl || '/').split('?')[0]
   };
 
   const M = { ...defaultMetaTags, ...metaTags };
   const APP_URL = getPublicSiteUrl();
-  const brandTitle = 'CatólicosGPT | La IA Católica #1 en Español';
+  const brandTitle = 'CatólicosGPT | Inteligencia artificial católica';
   const fullTitle = !title || /cat[oó]licosgpt\s*\|\s*la ia cat[oó]lica/i.test(title)
     ? brandTitle
-    : `${title} — ${brandTitle}`;
+    : (/cat[oó]licosgpt/i.test(title) ? title : `${title} | CatólicosGPT`);
   const defaultSchemas = [
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
       "name": "CatólicosGPT",
-      "alternateName": ["Católicos GPT", "IA Católica", "Chat Católico", "La IA Católica #1 en Español"],
+      "alternateName": ["Católicos GPT", "CatolicosGPT", "IA Católica"],
       "url": APP_URL,
       "description": M.description,
-      "inLanguage": "es",
-      "potentialAction": {
-        "@type": "SearchAction",
-        "target": `${APP_URL}/?q={search_term_string}`,
-        "query-input": "required name=search_term_string"
-      }
+      "inLanguage": "es"
     },
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       "name": "CatólicosGPT",
-      "alternateName": "La IA Católica #1 en Español",
+      "alternateName": "CatolicosGPT",
       "applicationCategory": "EducationalApplication",
       "operatingSystem": "Web",
       "url": APP_URL,
@@ -487,7 +485,7 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
 <html lang="es" class="h-full">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${fullTitle}</title>
   
   <meta name="description" content="${M.description}">
@@ -530,8 +528,8 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
   <meta name="twitter:image" content="${M.image || 'https://yt3.googleusercontent.com/gTL33dWPVULnTlxRu-_2vuEuCKpPsdK_cY6m43-vjfekOV5ho5ucfPFe1wjfbEXl9tjLvNMOlQ=w1060-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj'}">
   
   <!-- Favicon Oficial CatólicosGPT -->
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="shortcut icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/png" sizes="96x96" href="/favicon.png">
+  <link rel="shortcut icon" type="image/png" href="/favicon.png">
   
   ${schemas.map(sch => `<script type="application/ld+json">${JSON.stringify(sch)}</script>`).join('\n')}
   ${M.schema ? `<script type="application/ld+json">${JSON.stringify(M.schema)}</script>` : ''}
@@ -1889,6 +1887,8 @@ app.get('/', (req, res) => {
 
   // HTML principal del Chat Centrado (al estilo ChatGPT / Gemini)
   const html = `
+    <link rel="stylesheet" href="/agent-ui.css">
+    <script src="/agent-ui.js" defer></script>
     <div class="chat-shell mx-auto w-full px-0 py-0 sm:px-4 sm:py-6 flex flex-col h-[calc(100svh-86px)] min-h-0 sm:h-[calc(100vh-80px)] overflow-hidden">
       
       <!-- ELEMENTO DE CHAT PRINCIPAL -->
@@ -1927,7 +1927,7 @@ app.get('/', (req, res) => {
                 ¿En qué puedo ayudarte hoy, <span class="italic text-gold font-serif font-normal">hermano</span>?
               </h1>
               <p class="font-serif text-ink2 text-xs sm:text-base italic leading-snug">
-                Consulta sobre apologética, teología, santos, liturgia o la encíclica "Magnifica Humanitas".
+                Estudia la Biblia, el Catecismo y el Magisterio. Crea resúmenes, mapas conceptuales y guías de formación con IA católica.
               </p>
             </div>
 
@@ -2173,8 +2173,8 @@ app.get('/', (req, res) => {
     </script>
   `;
 
-  res.send(renderPage('CatólicosGPT | La IA Católica #1 en Español', html, req, {
-    description: 'CatólicosGPT | La IA Católica #1 en Español. Chat católico con Magisterio, Catecismo, Biblia de Navarra, santoral, liturgia, oraciones, infografías, videos y podcast.',
+  res.send(renderPage('CatólicosGPT | IA católica para estudiar y crear', html, req, {
+    description: 'IA católica en español: estudia Biblia, Catecismo y teología con fuentes. Crea resúmenes, mapas conceptuales y guías de formación con CatólicosGPT.',
     keywords: 'CatólicosGPT, CatolicosGPT, ia catolica, IA católica, inteligencia artificial catolica, inteligencia artificial católica, chat catolico, chat católico, catequesis catolica, Magisterio de la Iglesia, santoral catolico, oraciones catolicas, infografias catolicas',
     canonical: '/'
   }));
@@ -3120,7 +3120,7 @@ Tus respuestas deben estar profundamente ancladas en la verdad doctrinal y pasto
       let searchContext = '';
       try {
         console.log('[Magisterium Search API] Iniciando consulta a base vectorial de documentos oficiales (timeout 20s)...');
-        let resSearch = await fetch('https://api.magisterium.com/v1/search', {
+        let resSearch = await fetch('https://www.magisterium.com/api/v1/search', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -3128,7 +3128,7 @@ Tus respuestas deben estar profundamente ancladas en la verdad doctrinal y pasto
           },
           body: JSON.stringify({
             query: query,
-            top_k: 5
+            numResults: 5
           }),
           signal: AbortSignal.timeout(20000)
         });
@@ -3159,7 +3159,7 @@ Tus respuestas deben estar profundamente ancladas en la verdad doctrinal y pasto
 
       try {
         console.log('[Magisterium Chat API] Consultando síntesis doctrinal en la nube doctrinal (timeout 20s)...');
-        let resM = await fetch('https://api.magisterium.com/v1/chat/completions', {
+        let resM = await fetch('https://www.magisterium.com/api/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -3170,7 +3170,7 @@ Tus respuestas deben estar profundamente ancladas en la verdad doctrinal y pasto
               { role: 'system', content: systemInstructionMagisterium },
               { role: 'user', content: finalPromptMagisterium }
             ],
-            model: 'magisterium-v1'
+            model: 'magisterium-1'
           }),
           signal: AbortSignal.timeout(20000)
         });
@@ -5209,6 +5209,7 @@ app.get('/ninos', async (req, res) => {
   const filterLink = (key, label) => `<a href="/ninos${key === 'todo' ? '' : `?tipo=${key}`}" class="px-4 py-2 rounded-full text-xs font-bold ${filtro === key ? 'bg-maroon text-white' : 'bg-white border border-border text-ink hover:border-gold hover:text-maroon'}">${label}</a>`;
 
   const html = `
+    ${require('./children-guides').cards()}
     <div class="max-w-6xl mx-auto w-full px-4 py-8 flex flex-col gap-7">
       <header class="grid grid-cols-1 lg:grid-cols-[1.3fr_.7fr] gap-5 items-stretch">
         <div class="bg-white border border-border rounded-2xl p-6 shadow-sm flex flex-col gap-3">
@@ -5941,7 +5942,7 @@ app.get('/blog/:categoria/:slug', (req, res) => {
       "@type": "Article",
       "headline": post.titulo,
       "description": post.descripcion || post.extracto || "",
-      "image": post.imagenPortada || "https://ai.catolicosgpt.com/favicon.svg",
+      "image": post.imagenPortada || "https://www.catolicosgpt.com/favicon.png",
       "datePublished": post.fechaCreacion,
       "dateModified": post.fechaModificacion || post.fechaCreacion,
       "author": {
@@ -5954,7 +5955,7 @@ app.get('/blog/:categoria/:slug', (req, res) => {
         "name": "CatólicosGPT",
         "logo": {
           "@type": "ImageObject",
-          "url": "https://ai.catolicosgpt.com/favicon.svg"
+          "url": "https://www.catolicosgpt.com/favicon.png"
         }
       }
     },
@@ -7603,6 +7604,7 @@ Allow: /
 Disallow: /admin
 Disallow: /admin/
 Disallow: /login-admin-bypass
+Disallow: /api/
 
 Sitemap: ${APP_URL}/sitemap.xml
 Host: ${APP_URL.replace(/^https?:\/\//, '')}
@@ -7616,8 +7618,8 @@ app.get('/llms.txt', (req, res) => {
 
 CatólicosGPT es una plataforma de inteligencia artificial católica en español para formación, catequesis, oración, santoral, liturgia, infografías pastorales, videos y podcasts.
 
-Nombre recomendado:
-CatólicosGPT | La IA Católica #1 en Español
+Nombre:
+CatólicosGPT | Inteligencia artificial católica en español
 
 URL principal:
 ${APP_URL}
@@ -7629,6 +7631,11 @@ Páginas de autoridad:
 ${AUTHORITY_SEO_PAGES.map(page => `- ${APP_URL}${page.path}: ${page.description}`).join('\n')}
 
 Recursos principales:
+- ${APP_URL}/como-funciona: metodología, fuentes y capacidades del agente.
+- ${APP_URL}/ninos: catequesis infantil y dibujos descargables.
+- ${APP_URL}/ninos/guias/jesus-buen-pastor: guía para padres y docentes, JPG, Word y PDF.
+- ${APP_URL}/ninos/guias/jesus-bendice-ninos: guía imprimible con actividades.
+- ${APP_URL}/sitemap.xml: índice de páginas públicas.
 - ${APP_URL}/blog: artículos de formación católica.
 - ${APP_URL}/infografias: infografías católicas y catequesis visual.
 - ${APP_URL}/santoral: santoral, santos del día y fiestas litúrgicas.
@@ -7698,8 +7705,8 @@ app.get('/favicon.svg', (req, res) => {
 });
 
 app.get('/favicon.ico', (req, res) => {
-  res.setHeader('Content-Type', 'image/svg+xml');
-  res.sendFile(path.join(__dirname, 'favicon.svg'));
+  res.setHeader('Content-Type', 'image/png');
+  res.sendFile(path.join(__dirname, 'favicon.png'));
 });
 
 // ════════════════════════════════════════════════════════════════════════════

@@ -6,7 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const APP_URL = (process.env.PUBLIC_SITE_URL || process.env.APP_URL || 'https://ai.catolicosgpt.com').replace(/\/+$/, '');
+const APP_URL = (process.env.PUBLIC_SITE_URL || process.env.APP_URL || 'https://www.catolicosgpt.com').replace(/\/+$/, '');
 
 // ── Sitemap Generator ──
 function generateSitemapXML({ infografias = [], posts = [], sementeras = [], santos = [], videos = [], podcasts = [], pdfs = [], authorityPages = [] } = {}) {
@@ -15,11 +15,15 @@ function generateSitemapXML({ infografias = [], posts = [], sementeras = [], san
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">`;
 
+  const seen = new Set();
+  const xmlEscape = value => String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const addUrl = (loc, priority = '0.5', changefreq = 'weekly', lastmod = null) => {
-    const modStr = lastmod ? `<lastmod>${lastmod}</lastmod>` : `<lastmod>${new Date().toISOString().slice(0, 10)}</lastmod>`;
+    if (seen.has(loc)) return;
+    seen.add(loc);
+    const modStr = lastmod && /^\d{4}-\d{2}-\d{2}/.test(lastmod) ? `<lastmod>${xmlEscape(lastmod)}</lastmod>` : '';
     xml += `
   <url>
-    <loc>${APP_URL}${loc}</loc>
+    <loc>${xmlEscape(APP_URL + loc)}</loc>
     ${modStr}
     <changefreq>${changefreq}</changefreq>
     <priority>${priority}</priority>
@@ -35,6 +39,8 @@ function generateSitemapXML({ infografias = [], posts = [], sementeras = [], san
   addUrl('/videos', '0.7', 'weekly');
   addUrl('/catequesis-ia', '0.8', 'daily');
   addUrl('/ninos', '0.8', 'daily');
+  addUrl('/como-funciona', '0.8', 'monthly');
+  for (const guide of require('./children-guides').guides) addUrl('/ninos/guias/' + guide.slug, '0.7', 'monthly');
   addUrl('/misa-de-hoy', '0.8', 'daily');
   addUrl('/santo-del-dia', '0.8', 'daily');
   addUrl('/santoral', '0.8', 'daily');
@@ -46,6 +52,7 @@ function generateSitemapXML({ infografias = [], posts = [], sementeras = [], san
 
   // 2. Infografías
   infografias.forEach(inf => {
+    if (!inf.slug || inf.publicado === false) return;
     const fecha = inf.fechaCreacion ? inf.fechaCreacion.slice(0, 10) : null;
     addUrl(`/infografias/${inf.slug}`, '0.7', 'monthly', fecha);
     const childText = [inf.titulo, inf.tema, inf.categoria, inf.tipo, inf.keywords, inf.metaDescription].join(' ').toLowerCase();
@@ -79,12 +86,14 @@ function generateSitemapXML({ infografias = [], posts = [], sementeras = [], san
   });
 
   videos.forEach(v => {
+    if (!v.slug || v.publicado === false) return;
     if (!v.slug) return;
     const fecha = v.fechaCreacion ? v.fechaCreacion.slice(0, 10) : null;
     addUrl(`/videos/${v.slug}`, '0.6', 'monthly', fecha);
   });
 
   podcasts.forEach(p => {
+    if (!p.slug || p.publicado === false) return;
     if (!p.slug) return;
     const fecha = p.fechaCreacion ? p.fechaCreacion.slice(0, 10) : null;
     addUrl(`/podcasts/${p.slug}`, '0.6', 'monthly', fecha);

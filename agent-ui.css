@@ -1,0 +1,18 @@
+body.agent-home{background:#f7f8fa!important}
+.agent-home .chat-panel{border:1px solid #e5e9ef!important;border-radius:22px!important;box-shadow:none!important;background:white!important}
+.agent-home .chat-topbar{background:#fff!important;border-color:#e5e9ef!important}
+.agent-home #welcome-screen h1{font-family:inherit!important;font-weight:600!important;letter-spacing:-.035em!important;color:#0B2B67!important;max-width:640px!important;line-height:1.14!important}
+.agent-home #welcome-screen>p{color:#59697d!important;max-width:540px!important}
+.agent-home .chat-bubble{box-shadow:none!important;line-height:1.7!important}
+.agent-home .chat-bubble.user{background:#eef3fa!important;color:#17345c!important;border:0!important}
+.agent-home .agent-answer{width:100%;max-width:850px;overflow-wrap:anywhere}
+.agent-home .chat-input-wrap{box-shadow:none!important;background:#fff!important}
+.agent-home #chat-input{border-radius:16px!important;background:#f8fafc!important;border-color:#dce3ed!important}
+.agent-controls{max-width:768px;margin:0 auto 10px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:12px;color:#50627a}
+.agent-controls select{max-width:210px;padding:8px;border:1px solid #dce3ed;border-radius:9px;background:#fff;color:#193759;font:inherit;min-height:36px}
+.agent-controls .agent-status{margin-left:auto}.agent-controls button{border:1px solid #cbd5e1;border-radius:8px;padding:6px 12px}
+.agent-table{overflow-x:auto;margin:18px 0}.agent-table table{border-collapse:collapse;width:100%;font-size:14px}.agent-table th,.agent-table td{padding:12px;border:1px solid #dce3ed;text-align:left;min-width:115px}.agent-table th{background:#eef3fa;color:#17345c}
+.agent-sources{border:1px solid #dce3ed;border-radius:12px;padding:14px;margin:20px 0;font-size:13px}.agent-sources summary{cursor:pointer;font-weight:600}.agent-sources blockquote{margin:8px 0;color:#65758b}.agent-sources a{color:#174ca3;text-decoration:underline}
+.agent-downloads{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.agent-downloads button{padding:10px 15px;border-radius:10px;border:1px solid #cdd8e8;background:white;color:#0B2B67;cursor:pointer;min-height:44px}
+.agent-home button:focus-visible,.agent-home select:focus-visible{outline:3px solid #28C7C9;outline-offset:3px}
+@media(max-width:767px){.agent-home .chat-panel{border:0!important;border-radius:0!important}.agent-home .agent-controls{gap:5px;font-size:11px}.agent-home .agent-status{flex-basis:100%;margin-left:0}.agent-home .agent-controls button{width:auto!important;min-height:32px!important;height:auto!important;background:#0B2B67!important}.agent-home #welcome-screen h1{font-size:28px!important}.agent-home .chat-input-wrap{padding-bottom:calc(10px + env(safe-area-inset-bottom))!important}}
