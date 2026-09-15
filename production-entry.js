@@ -40,6 +40,14 @@ try {
   console.warn('[Production] Santa Bernardita publication skipped:', err.message);
 }
 
+// Publish Historia de la Iglesia — Siglos I al X additively. Existing records
+// are preserved, Drive URLs remain authoritative, and the item is idempotent.
+try {
+  require('./publish-historia-iglesia-siglos-i-x').publishHistoriaIglesia();
+} catch (err) {
+  console.warn('[Production] Historia de la Iglesia I-X publication skipped:', err.message);
+}
+
 // Show recovered Drive images immediately, even before the background cloud sync.
 // The cloud sync subsequently persists the same exact-URL replacements in Firestore.
 try {
