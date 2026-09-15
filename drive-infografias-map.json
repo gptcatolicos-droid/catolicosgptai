@@ -780,5 +780,57 @@
       "from": "https://res.cloudinary.com/dwbqrp7kk/image/upload/v1780672977/banner-medalla-milagrosa_nhalci.png",
       "to": "https://drive.google.com/thumbnail?id=120H2WYVfwqN4RiJC3wH24FWLgddK-TJp&sz=w2400"
     }
+  ],
+  "san-pedro-y-san-pablo": [
+    {
+      "slide": 1,
+      "from": "https://res.cloudinary.com/dwbqrp7kk/image/upload/v1782729746/E24A48DA-0F09-4314-BB4B-F57EA00A7677_abuqkc.png",
+      "to": "https://drive.google.com/thumbnail?id=1bgQudt55H1dbq_QWdhDKh6nrYlMRIFA6&sz=w2400"
+    },
+    {
+      "slide": 2,
+      "from": "https://res.cloudinary.com/dwbqrp7kk/image/upload/v1782729753/67FDB49A-6D02-4A07-A72E-8FCDDEC8B06E_anghyh.png",
+      "to": "https://drive.google.com/thumbnail?id=1YcR6yV_rdoXnPAGRVSylL_tUODNNVWHt&sz=w2400"
+    },
+    {
+      "slide": 3,
+      "from": "https://res.cloudinary.com/dwbqrp7kk/image/upload/v1782729749/C7751864-4D9B-4861-98E8-DE09D0E80F0B_r27yib.png",
+      "to": "https://drive.google.com/thumbnail?id=1jrujr2FZy6FjBbkuuM5f9opJt6v5XYBU&sz=w2400"
+    },
+    {
+      "slide": 4,
+      "from": "https://res.cloudinary.com/dwbqrp7kk/image/upload/v1782729751/758C734F-44FE-4F9A-8A99-B6B85F84E03F_xjt5hi.png",
+      "to": "https://drive.google.com/thumbnail?id=1WzW7VFdGosffyrDRV4Q1i8HZC4s_WXD1&sz=w2400"
+    },
+    {
+      "slide": 5,
+      "from": "https://res.cloudinary.com/dwbqrp7kk/image/upload/v1782729753/A0EBE7D3-39F8-4006-B536-09DAEED16C42_soqwin.png",
+      "to": "https://drive.google.com/thumbnail?id=1HgGjRVJB0iV2V6nlx87723GFnEwszmDZ&sz=w2400"
+    },
+    {
+      "slide": 6,
+      "from": "https://res.cloudinary.com/dwbqrp7kk/image/upload/v1782729754/0A13987E-D962-4D40-B044-E4E682998BC0_mv6ikm.png",
+      "to": "https://drive.google.com/thumbnail?id=1MeK7LUmFXRHSYt0g6VC_ivexI3cn1yag&sz=w2400"
+    },
+    {
+      "slide": 7,
+      "from": "https://res.cloudinary.com/dwbqrp7kk/image/upload/v1782729750/25F3BEDE-B316-4388-80EB-D5BA050FD4E0_nro3vr.png",
+      "to": "https://drive.google.com/thumbnail?id=1J2eopAUOuCds0CI9snT6XXxBETDRLNsp&sz=w2400"
+    },
+    {
+      "slide": 8,
+      "from": "https://res.cloudinary.com/dwbqrp7kk/image/upload/v1782729750/FA3E5B4F-40EB-4706-B654-FA6770A7126E_a9nzos.png",
+      "to": "https://drive.google.com/thumbnail?id=1rzAHUE3spDlJBKkXadT_N_n1XE0GIhZC&sz=w2400"
+    },
+    {
+      "slide": 9,
+      "from": "https://res.cloudinary.com/dwbqrp7kk/image/upload/v1782729749/66CBA893-4DF3-4347-B99E-3075A91DE5DE_zjg78p.png",
+      "to": "https://drive.google.com/thumbnail?id=1W-9DSrrz1eplfRXqI79ptI7ykCu5DFe7&sz=w2400"
+    },
+    {
+      "slide": 10,
+      "from": "https://res.cloudinary.com/dwbqrp7kk/image/upload/v1782729750/99D18C14-7442-4EBF-A551-E0FD84888033_gzbpnd.png",
+      "to": "https://drive.google.com/thumbnail?id=16LoT9N_V1yL5tM3VzwhYR99OmEwttv2V&sz=w2400"
+    }
   ]
 }
