@@ -32,6 +32,14 @@ try {
   console.warn('[Production] Safe infographic recovery skipped:', err.message);
 }
 
+// Publish the verified Santa Bernardita carousel additively into the persistent
+// infographic catalog. Existing records are preserved and the item is idempotent.
+try {
+  require('./publish-santa-bernardita').publishSantaBernardita();
+} catch (err) {
+  console.warn('[Production] Santa Bernardita publication skipped:', err.message);
+}
+
 // Show recovered Drive images immediately, even before the background cloud sync.
 // The cloud sync subsequently persists the same exact-URL replacements in Firestore.
 try {
