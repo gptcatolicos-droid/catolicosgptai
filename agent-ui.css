@@ -5,25 +5,35 @@
    Sin esto el móvil mostraba scroll doble: el de la página y el del chat. */
 html, body { height: 100%; overflow: hidden; }
 main { overflow: hidden; min-height: 0; }
-body.agent-home{background:#f7f8fa!important}
-.agent-home .chat-panel{border:1px solid #e5e9ef!important;border-radius:22px!important;box-shadow:none!important;background:white!important}
-.agent-home .chat-topbar{background:#fff!important;border-color:#e5e9ef!important}
-.agent-home #welcome-screen h1{font-family:inherit!important;font-weight:600!important;letter-spacing:-.035em!important;color:#0B2B67!important;max-width:640px!important;line-height:1.14!important}
-.agent-home #welcome-screen>p{color:#59697d!important;max-width:540px!important}
+/* Paleta de marca de CatólicosGPT (crema/oro/vinotinto), la misma que usa el
+   resto del sitio. Antes esta hoja imponía un azul/turquesa genérico
+   (#0B2B67/#28C7C9) que no aparece en ninguna otra página: rompía la
+   identidad visual justo en la pantalla más usada del producto, y además
+   pisaba con !important el estilo correcto de .chat-bubble.user (oro/vinotinto)
+   ya definido en la hoja compartida. */
+body.agent-home{background:var(--cream-2)!important}
+.agent-home .chat-panel{border:1px solid var(--border)!important;border-radius:22px!important;box-shadow:0 12px 34px rgba(37,27,21,.06)!important;background:#fff!important}
+.agent-home .chat-topbar{background:#fff!important;border-color:var(--border)!important}
+.agent-home #welcome-screen h1{font-weight:600!important;letter-spacing:-.02em!important;color:var(--espresso)!important;max-width:640px!important;line-height:1.14!important}
+.agent-home #welcome-screen>div:first-child{margin-top:6px!important}
+.agent-home #welcome-screen>p{color:var(--ink-2)!important;max-width:540px!important}
 .agent-home .chat-bubble{box-shadow:none!important;line-height:1.7!important}
-.agent-home .chat-bubble.user{background:#eef3fa!important;color:#17345c!important;border:0!important}
 .agent-home .agent-answer{width:100%;max-width:850px;overflow-wrap:anywhere}
 .agent-home .chat-input-wrap{box-shadow:none!important;background:#fff!important}
-.agent-home #chat-input{border-radius:16px!important;background:#f8fafc!important;border-color:#dce3ed!important}
-.agent-controls{max-width:768px;margin:0 auto 10px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:12px;color:#50627a}
-.agent-controls select{max-width:210px;padding:8px;border:1px solid #dce3ed;border-radius:9px;background:#fff;color:#193759;font:inherit;min-height:36px}
-.agent-controls .agent-status{margin-left:auto}.agent-controls button{border:1px solid #cbd5e1;border-radius:8px;padding:6px 12px}
-.agent-table{overflow-x:auto;margin:18px 0}.agent-table table{border-collapse:collapse;width:100%;font-size:14px}.agent-table th,.agent-table td{padding:12px;border:1px solid #dce3ed;text-align:left;min-width:115px}.agent-table th{background:#eef3fa;color:#17345c}
-.agent-sources{border:1px solid #dce3ed;border-radius:12px;padding:14px;margin:20px 0;font-size:13px}.agent-sources summary{cursor:pointer;font-weight:600}.agent-sources blockquote{margin:8px 0;color:#65758b}.agent-sources a{color:#174ca3;text-decoration:underline}
-.agent-downloads{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.agent-downloads button{padding:10px 15px;border-radius:10px;border:1px solid #cdd8e8;background:white;color:#0B2B67;cursor:pointer;min-height:44px}
-.agent-home button:focus-visible,.agent-home select:focus-visible{outline:3px solid #28C7C9;outline-offset:3px}
-.agent-thinking{display:inline-flex;align-items:center;gap:9px;color:#59697d;font-size:14px;font-style:italic}
-.agent-thinking-dot{width:8px;height:8px;border-radius:50%;background:#28C7C9;box-shadow:0 0 0 4px rgba(40,199,201,.14);animation:agent-thinking-pulse 1.1s ease infinite}
+.agent-home #chat-input{border-radius:16px!important;background:var(--cream)!important;border-color:var(--border)!important}
+.agent-controls{max-width:768px;margin:0 auto 10px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:12px;color:var(--ink-2)}
+.agent-controls label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2)}
+.agent-controls select{max-width:210px;padding:8px 10px;border:1px solid var(--border);border-radius:999px;background:#fff;color:var(--espresso);font:inherit;min-height:36px}
+.agent-controls .agent-status{margin-left:auto}
+.agent-controls button{border:1px solid var(--border);border-radius:999px;padding:6px 12px;background:#fff;color:var(--maroon)}
+.agent-controls button:hover{border-color:var(--gold);background:var(--gold-light)}
+.agent-table{overflow-x:auto;margin:18px 0}.agent-table table{border-collapse:collapse;width:100%;font-size:14px}.agent-table th,.agent-table td{padding:12px;border:1px solid var(--border);text-align:left;min-width:115px}.agent-table th{background:var(--gold-light);color:var(--maroon)}
+.agent-sources{border:1px solid var(--border);border-radius:12px;padding:14px;margin:20px 0;font-size:13px}.agent-sources summary{cursor:pointer;font-weight:600;color:var(--espresso)}.agent-sources blockquote{margin:8px 0;color:var(--ink-2)}.agent-sources a{color:var(--maroon);text-decoration:underline}
+.agent-downloads{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.agent-downloads button{padding:10px 15px;border-radius:10px;border:1px solid var(--border);background:#fff;color:var(--maroon);cursor:pointer;min-height:44px}
+.agent-downloads button:hover{border-color:var(--gold);background:var(--gold-light)}
+.agent-home button:focus-visible,.agent-home select:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.agent-thinking{display:inline-flex;align-items:center;gap:9px;color:var(--ink-2);font-size:14px;font-style:italic}
+.agent-thinking-dot{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 4px rgba(188,138,54,.14);animation:agent-thinking-pulse 1.1s ease infinite}
 @keyframes agent-thinking-pulse{50%{opacity:.4;transform:scale(.82)}}
 @media(prefers-reduced-motion:reduce){.agent-thinking-dot{animation:none}}
-@media(max-width:767px){.agent-home .chat-panel{border:0!important;border-radius:0!important}.agent-home .agent-controls{gap:5px;font-size:11px}.agent-home .agent-status{flex-basis:100%;margin-left:0}.agent-home .agent-controls button{width:auto!important;min-height:32px!important;height:auto!important;background:#0B2B67!important}.agent-home #welcome-screen h1{font-size:28px!important}.agent-home .chat-input-wrap{padding-bottom:calc(10px + env(safe-area-inset-bottom))!important}}
+@media(max-width:767px){.agent-home .chat-panel{border:0!important;border-radius:0!important;box-shadow:none!important}.agent-home .agent-controls{gap:5px;font-size:11px}.agent-home .agent-status{flex-basis:100%;margin-left:0}.agent-home .agent-controls button{width:auto!important;min-height:32px!important;height:auto!important;background:var(--maroon)!important;color:#fff!important;border-color:var(--maroon)!important}.agent-home #welcome-screen h1{font-size:28px!important}.agent-home .chat-input-wrap{padding-bottom:calc(10px + env(safe-area-inset-bottom))!important}}
