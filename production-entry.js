@@ -56,6 +56,14 @@ try {
   console.warn('[Production] Historia de la Iglesia XI-XX publication skipped:', err.message);
 }
 
+// Seed the 20 verified children's Bible coloring resources into the local
+// infographic catalog. The seed is additive/idempotent and keeps existing items.
+try {
+  require('./ninos-seed-20260916');
+} catch (err) {
+  console.warn('[Production] Niños coloring resources seed skipped:', err.message);
+}
+
 // Show recovered Drive images immediately, even before the background cloud sync.
 // The cloud sync subsequently persists the same exact-URL replacements in Firestore.
 try {
