@@ -19,8 +19,13 @@ function register(app,options={}){
   if(item.count>=8 || requests.size>10000){res.set('Retry-After','60');return res.status(429).json({error:'Espera un minuto antes de volver a consultar.'});}
   item.count++;requests.set(key,item);next();
  }
- app.get('/agent-ui.js',(req,res)=>res.sendFile(path.join(__dirname,'agent-ui.js')));
- app.get('/agent-ui.css',(req,res)=>res.sendFile(path.join(__dirname,'agent-ui.css')));
+ // Sin cabecera de caché, el navegador podía quedarse con una versión vieja de
+ // la interfaz indefinidamente: una pestaña abierta antes de un cambio seguía
+ // ejecutando el código anterior (y mostrando un estado del agente ya
+ // obsoleto). 'no-cache' no impide almacenar, obliga a revalidar.
+ const freshAsset=file=>(req,res)=>res.set('Cache-Control','no-cache').sendFile(path.join(__dirname,file));
+ app.get('/agent-ui.js',freshAsset('agent-ui.js'));
+ app.get('/agent-ui.css',freshAsset('agent-ui.css'));
  app.get('/api/agent/status',(req,res)=>res.json({available:agent.configured()}));
  function sseWrite(res,payload){res.write(`data: ${JSON.stringify(payload)}\n\n`);}
  const handleResearch=async(req,res)=>{
