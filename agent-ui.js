@@ -48,6 +48,14 @@
  const sendBtn=form.querySelector('button[type="submit"]');
  form.prepend(plusBtn);input.before(chip);form.append(stopBtn);
 
+ // Anclaje de scroll: seguimos el texto mientras se genera, pero si el usuario
+ // sube a releer, dejamos de arrastrarlo hacia abajo en cada fragmento. Vuelve
+ // a engancharse solo cuando regresa al final.
+ let stick=true;
+ function atBottom(){return box.scrollHeight-box.scrollTop-box.clientHeight<120;}
+ box.addEventListener('scroll',()=>{stick=atBottom();},{passive:true});
+ function follow(){if(stick)box.scrollTop=box.scrollHeight;}
+
  // ── Entrada multirenglón ──────────────────────────────────────────────────
  // El campo crece con el texto. En escritorio Enter envía y Shift+Enter hace
  // salto de línea; en pantallas táctiles Enter siempre hace salto de línea y
@@ -183,7 +191,7 @@
   document.getElementById('welcome-screen')?.classList.add('hidden');
   box.append(withClass(textEl('div',query),'chat-bubble user'));
   const bubble=withClass(document.createElement('div'),'chat-bubble bot bot-content agent-answer');
-  box.append(bubble);bubble.scrollIntoView({block:'nearest'});
+  box.append(bubble);stick=true;follow();
   const steps=createStepsPanel(bubble);
   // Primera fila inmediata: el usuario ve que está pensando desde el instante
   // cero, sin esperar al primer evento del servidor.
@@ -208,7 +216,7 @@
     else if(event.type==='step-delta'){steps.addPreview(event.delta);}
     else if(event.type==='delta'){
      if(!sawDelta){sawDelta=true;steps.finish();setStatus('Redactando la respuesta…');answerEl=withClass(document.createElement('div'),'agent-answer-text');bubble.append(answerEl);}
-     streamedText+=event.delta;answerEl.textContent=streamedText;bubble.scrollIntoView({block:'nearest'});
+     streamedText+=event.delta;answerEl.textContent=streamedText;follow();
     }else if(event.type==='meta'){final=event;}
     else if(event.type==='error'){errorMsg=event.error;}
    };
