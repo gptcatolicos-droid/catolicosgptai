@@ -3,7 +3,10 @@ const path=require('path');
 const agent=require('./catholic-agent');
 const docs=require('./agent-documents');
 // Per-process ceilings bound anonymous research cost and concurrent exports.
-function register(app){
+function register(app,options={}){
+ // La cuota deja de medirse solo por IP: con sesión iniciada se mide por
+ // cuenta, que es lo que permite vender un plan y no un rango de IPs.
+ const getUser=typeof options.getUser==='function'?options.getUser:()=>null;
  app.get('/favicon.png',(req,res)=>res.set('Cache-Control','public, max-age=86400').type('png').sendFile(path.join(__dirname,'favicon.png')));
  const budget=require('./agent-budget').createBudget();
  const requests=new Map();let active=0;let exportsActive=0;
@@ -23,7 +26,10 @@ function register(app){
   if(typeof query!=='string'||!query.trim()||query.length>6000|| (history!==undefined&&(!Array.isArray(history)||history.length>10)))return res.status(400).json({error:'Escribe una consulta de hasta 6000 caracteres.'});
   if(!agent.configured())return res.status(503).json({error:'La investigación con fuentes no está disponible en este momento. Puedes utilizar la consulta habitual.'});
   if(active>=6)return res.status(429).json({error:'Hay varias investigaciones en curso. Inténtalo en un momento.'});
-  try{budget.admit(req.ip);}catch(e){return res.status(429).json({error:e.message==='daily_quota'?'Has alcanzado la cuota diaria de investigación. Los contenidos y las guías publicadas siguen disponibles.':'La investigación ha alcanzado su límite temporal de uso. Puedes seguir consultando los recursos publicados.'});}
+  const account=getUser(req);
+  const unlimited=Boolean(account && ['premium','admin'].includes(account.plan));
+  const quotaKey=account?`user:${account.id}`:`ip:${req.ip}`;
+  try{budget.admit(quotaKey,{unlimited});}catch(e){return res.status(429).json({error:e.message==='daily_quota'?(account?'Alcanzaste tu límite diario de consultas del plan gratuito. Con Premium el chat no tiene límite diario.':'Alcanzaste el límite diario de consultas gratuitas. Crea una cuenta y suscríbete a Premium para usar el chat sin límite diario.'):'La investigación ha alcanzado su límite temporal de uso. Puedes seguir consultando los recursos publicados.'});}
   active++;const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),100000);const disconnect=()=>{if(!res.writableEnded)controller.abort();};res.on('close',disconnect);
   // El streaming SSE retransmite el texto del modelo apenas se genera (no espera
   // a que termine el turno completo) para que la primera palabra llegue en

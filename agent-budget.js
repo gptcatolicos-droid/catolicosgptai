@@ -17,10 +17,14 @@ function createBudget(directory=process.env.AGENT_BUDGET_DIR||process.env.DATA_D
   }finally{fs.closeSync(fd);fs.unlinkSync(file+'.lock');}
  }
  function buckets(s,day,month){s.months[month]||={usd:0,input:0,output:0,calls:0};s.days[day]||={usd:0,research:0,requests:0};return[s.months[month],s.days[day]];}
- function admit(client){const day=new Date().toISOString().slice(0,10),month=day.slice(0,7);return transaction(s=>{
+ // `unlimited` es la cuenta Premium: se salta el tope diario por cliente, pero
+ // NUNCA los topes de gasto. Ilimitado para el usuario no puede significar
+ // ilimitado para la factura.
+ function admit(client,{unlimited=false}={}){const day=new Date().toISOString().slice(0,10),month=day.slice(0,7);return transaction(s=>{
   const [m,d]=buckets(s,day,month);const key=crypto.createHmac('sha256',process.env.AGENT_QUOTA_SECRET||process.env.MAGISTERIUM_API_KEY||'local-development').update(day+':'+client).digest('hex');
   if(m.usd>=number('OPENAI_AGENT_MONTHLY_BUDGET_USD',30)||d.usd>=number('OPENAI_AGENT_DAILY_BUDGET_USD',2))throw Error('budget_exhausted');
-  if((s.clients[key]?.count||0)>=number('AGENT_DAILY_CLIENT_REQUESTS',10))throw Error('daily_quota');
+  const freeLimit=number('AGENT_FREE_DAILY_REQUESTS',number('AGENT_DAILY_CLIENT_REQUESTS',10));
+  if(!unlimited && (s.clients[key]?.count||0)>=freeLimit)throw Error('daily_quota');
   if(d.research+3>number('MAGISTERIUM_AGENT_DAILY_CALLS',1500))throw Error('magisterium_budget_exhausted');
   s.clients[key]={day,count:(s.clients[key]?.count||0)+1};d.requests++;d.research+=3;
   for(const [k,v]of Object.entries(s.clients))if(v.day!==day)delete s.clients[k];

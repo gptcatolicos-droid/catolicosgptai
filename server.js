@@ -30,6 +30,7 @@ function optionalRequire(modulePath, fallback) {
 
 // Importar todos los subsistemas creados
 const auth          = require('./auth-module');
+const paypal        = require('./paypal-module');
 const infografias  = require('./infografias-module');
 const liturgia      = require('./liturgia-cache');
 const misas         = require('./misas-module');
@@ -82,7 +83,7 @@ function getDailyContentModule() {
 app.use(cors());
 app.use(express.json({ limit: '80mb' }));
 app.use(express.urlencoded({ extended: true, limit: '80mb' }));
-require('./agent-routes').register(app);
+require('./agent-routes').register(app, { getUser: getAuthedUser });
 require('./children-guides').register(app, renderPage);
 require('./agent-about').register(app, renderPage);
 
@@ -7424,27 +7425,13 @@ app.get('/planes', (req, res) => {
             </div>
           </div>
           
-          <form id="checkout-form" onsubmit="procesarUpgrade(event)" class="flex flex-col gap-3 mt-1">
-            <div class="flex flex-col gap-1">
-              <label class="text-[10px] font-semibold text-espresso">Número de Tarjeta (Prueba / Mock)</label>
-              <input type="text" placeholder="4111 2222 3333 4444" required max="19" class="border border-border rounded-xl px-4 py-2.5 text-xs outline-none focus:ring-2 focus:ring-gold bg-[#FAF9F5]/40 font-mono">
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-              <div class="flex flex-col gap-1">
-                <label class="text-[10px] font-semibold text-espresso">Vencimiento</label>
-                <input type="text" placeholder="MM/AA" required class="border border-border rounded-xl px-4 py-2.5 text-xs text-center outline-none focus:ring-2 focus:ring-gold bg-[#FAF9F5]/40 font-mono">
-              </div>
-              <div class="flex flex-col gap-1">
-                <label class="text-[10px] font-semibold text-espresso">CVC</label>
-                <input type="password" placeholder="***" required max="3" class="border border-border rounded-xl px-4 py-2.5 text-xs text-center outline-none focus:ring-2 focus:ring-gold bg-[#FAF9F5]/40 font-mono">
-              </div>
-            </div>
-            
-            <button type="submit" id="upgrade-submit-btn" class="w-full bg-maroon hover:bg-gold text-white font-bold py-3 rounded-xl transition uppercase tracking-wider shadow text-xs mt-3 flex items-center justify-center gap-1.5 duration-200">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shield-check"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              Completar Suscripción Premium ($4.99)
+          <div class="flex flex-col gap-3 mt-1">
+            <p class="text-[11px] text-ink2 leading-relaxed">El pago se realiza en PayPal. CatólicosGPT no recibe ni almacena los datos de tu tarjeta.</p>
+            <button type="button" id="upgrade-submit-btn" onclick="procesarUpgrade(event)" class="w-full bg-maroon hover:bg-gold text-white font-bold py-3 rounded-xl transition uppercase tracking-wider shadow text-xs mt-1 flex items-center justify-center gap-1.5 duration-200">
+              Continuar con PayPal · $4.99/mes
             </button>
-          </form>
+            <p class="text-[10px] text-ink2 text-center">Puedes cancelar cuando quieras desde tu cuenta de PayPal.</p>
+          </div>
           
           <div class="text-[9px] text-center text-ink2 italic font-serif leading-relaxed">
             ✝ Encriptación bancaria simulada SSL. El dinero de prueba no es real; tu base de datos se actualizará al instante.
@@ -7473,30 +7460,28 @@ app.get('/planes', (req, res) => {
       }
       
       async function procesarUpgrade(e) {
-        e.preventDefault();
+        if (e && e.preventDefault) e.preventDefault();
         const btn = document.getElementById('upgrade-submit-btn');
         btn.disabled = true;
-        btn.innerHTML = 'Procesando ofrenda...';
-        
+        btn.innerHTML = 'Conectando con PayPal...';
+
         try {
           const res = await fetch('/api/upgrade-plan', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
           });
           const data = await res.json();
-          if (data.success) {
-            alert('¡Ofrenda procesada con éxito! Bienvenido al Sello de Oro Premium.');
-            window.location.reload();
-          } else {
-            alert('Error al actualizar plan: ' + (data.error || 'Intenta de nuevo'));
-            btn.disabled = false;
-            btn.innerHTML = 'Completar Suscripción Premium ($4.99)';
+          // El plan no se activa aquí: se activa cuando PayPal confirma el pago.
+          if (data.approveUrl) {
+            window.location.href = data.approveUrl;
+            return;
           }
-        } catch(err) {
-          alert('Error de conexión.');
-          btn.disabled = false;
-          btn.innerHTML = 'Completar Suscripción Premium ($4.99)';
+          alert(data.error || 'No se pudo iniciar el pago. Intenta de nuevo.');
+        } catch (err) {
+          alert('Error de conexión con la pasarela de pago.');
         }
+        btn.disabled = false;
+        btn.innerHTML = 'Continuar con PayPal · $4.99/mes';
       }
     </script>
   `;
@@ -7504,16 +7489,140 @@ app.get('/planes', (req, res) => {
 });
 
 // Endpoint de upgrade instantáneo
-app.post('/api/upgrade-plan', (req, res) => {
+// Antes este endpoint concedía Premium directamente, sin cobrar: cualquiera con
+// sesión iniciada podía llamarlo y quedarse con el plan. Ahora abre una
+// suscripción en PayPal y el plan solo se activa cuando PayPal confirma el pago.
+app.post('/api/upgrade-plan', async (req, res) => {
   const user = getAuthedUser(req);
   if (!user) return res.status(401).json({ error: 'Debes iniciar sesión para suscribirte' });
-  
-  try {
-    auth.upgradePlan(user.id, 'premium');
-    res.json({ success: true, message: '¡Felicidades! Ahora tienes acceso Premium completo.' });
-  } catch(e) {
-    res.status(500).json({ error: e.message });
+  if (!paypal.isReady()) {
+    return res.status(503).json({ error: 'Los pagos no están disponibles en este momento. Inténtalo más tarde.' });
   }
+  const appUrl = getPublicSiteUrl();
+  try {
+    const sub = await paypal.createSubscription({
+      userId: user.id,
+      email: user.email,
+      returnUrl: `${appUrl}/suscripcion/exito`,
+      cancelUrl: `${appUrl}/suscripcion/cancelada`
+    });
+    // Se guarda como pendiente: sirve para reconciliar si el webhook llega
+    // antes que el usuario vuelva del checkout, o si no vuelve nunca.
+    auth.updateUser(user.id, { paypalSubscriptionId: sub.id, paypalStatus: sub.status || 'APPROVAL_PENDING' });
+    return res.json({ success: true, approveUrl: sub.approveUrl, subscriptionId: sub.id });
+  } catch (e) {
+    console.error('[PayPal] No se pudo crear la suscripción:', e.message);
+    return res.status(502).json({ error: 'No se pudo iniciar el pago con PayPal. Inténtalo de nuevo.' });
+  }
+});
+
+// Estado de la pasarela, para que el frontend sepa si puede ofrecer el pago.
+app.get('/api/paypal/status', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.json(paypal.status());
+});
+
+// Punto único donde se concede o retira Premium. Recibe el estado tal como lo
+// reporta PayPal, nunca lo que diga el navegador.
+function applySubscriptionState(userId, subscriptionId, payPalStatus) {
+  const user = auth.getUserById(userId);
+  if (!user) return null;
+  if (paypal.grantsAccess(payPalStatus)) {
+    if (user.plan !== 'premium') auth.upgradePlan(userId, 'premium');
+    return auth.updateUser(userId, { paypalSubscriptionId: subscriptionId, paypalStatus: payPalStatus, premiumDesde: user.premiumDesde || new Date().toISOString() });
+  }
+  // Cancelada, expirada o suspendida: vuelve al plan gratuito. Los administradores
+  // conservan su acceso, que no depende de una suscripción.
+  if (user.plan === 'premium') auth.upgradePlan(userId, 'free');
+  return auth.updateUser(userId, { paypalSubscriptionId: subscriptionId, paypalStatus: payPalStatus });
+}
+
+app.get('/suscripcion/exito', async (req, res) => {
+  const user = getAuthedUser(req);
+  const subscriptionId = String(req.query.subscription_id || '').trim();
+  const fail = mensaje => res.send(renderPage('Suscripción', `<div class="max-w-xl mx-auto px-4 py-16 text-center flex flex-col gap-4"><h1 class="font-display text-2xl text-maroon">No pudimos confirmar el pago</h1><p class="text-ink2">${mensaje}</p><a href="/planes" class="text-maroon underline">Volver a Planes</a></div>`, req));
+
+  if (!subscriptionId) return fail('No recibimos el identificador de la suscripción.');
+  try {
+    // La verificación es contra la API de PayPal: la URL de retorno por sí sola
+    // no prueba nada, cualquiera podría escribirla a mano.
+    const sub = await paypal.getSubscription(subscriptionId);
+    const userId = sub.userId || user?.id;
+    if (!userId) return fail('No pudimos identificar la cuenta asociada al pago.');
+    if (!paypal.grantsAccess(sub.status)) {
+      return fail(`PayPal reporta el estado "${sub.status}". Si acabas de pagar, espera un momento y recarga.`);
+    }
+    applySubscriptionState(userId, sub.id, sub.status);
+    return res.send(renderPage('Suscripción activa', `<div class="max-w-xl mx-auto px-4 py-16 text-center flex flex-col gap-4"><h1 class="font-display text-2xl text-maroon">¡Bienvenido a Premium!</h1><p class="text-ink2">Tu suscripción quedó activa. Ya tienes el chat de CatólicosGPT sin límite diario.</p><a href="/" class="inline-block mt-2 bg-maroon text-white px-5 py-2.5 rounded-full font-semibold">Ir al chat</a></div>`, req));
+  } catch (e) {
+    console.error('[PayPal] Error verificando la suscripción:', e.message);
+    return fail('Hubo un problema verificando el pago con PayPal.');
+  }
+});
+
+app.get('/suscripcion/cancelada', (req, res) => {
+  res.send(renderPage('Suscripción cancelada', `<div class="max-w-xl mx-auto px-4 py-16 text-center flex flex-col gap-4"><h1 class="font-display text-2xl text-maroon">Pago cancelado</h1><p class="text-ink2">No se realizó ningún cobro. Puedes suscribirte cuando quieras.</p><a href="/planes" class="text-maroon underline">Volver a Planes</a></div>`, req));
+});
+
+// Webhook de PayPal: la fuente de verdad a largo plazo. Aquí llegan las bajas y
+// los fallos de cobro, que el usuario nunca nos va a notificar por su cuenta.
+app.post('/api/paypal/webhook', async (req, res) => {
+  const event = req.body || {};
+  const verified = await paypal.verifyWebhook(req.headers, event);
+  if (!verified) {
+    // Sin firma válida no se toca ningún plan: aceptar esto a ciegas permitiría
+    // que cualquiera se regalase Premium con un POST.
+    console.warn('[PayPal Webhook] Firma no verificada, evento descartado:', String(event.event_type || '').slice(0, 60));
+    return res.status(400).json({ error: 'invalid_signature' });
+  }
+
+  const type = String(event.event_type || '');
+  const resource = event.resource || {};
+  try {
+    if (type.startsWith('BILLING.SUBSCRIPTION.')) {
+      const subscriptionId = resource.id;
+      const userId = resource.custom_id;
+      if (subscriptionId && userId) applySubscriptionState(userId, subscriptionId, resource.status || type.split('.').pop());
+    } else if (type === 'PAYMENT.SALE.COMPLETED' && resource.billing_agreement_id) {
+      // Cobro recurrente exitoso: confirmamos contra la API en vez de fiarnos
+      // del cuerpo del evento.
+      const sub = await paypal.getSubscription(resource.billing_agreement_id);
+      if (sub.userId) applySubscriptionState(sub.userId, sub.id, sub.status);
+    }
+  } catch (e) {
+    console.error('[PayPal Webhook] Error procesando', type, e.message);
+  }
+  // Siempre 200 tras verificar: si respondemos error, PayPal reintenta en bucle.
+  return res.json({ received: true });
+});
+
+// Configuración inicial desde la consola de administración: crea el plan de
+// $4.99/mes y el webhook, y devuelve los IDs para pegarlos en Render. Es una
+// acción con efecto real en la cuenta de PayPal, por eso vive detrás de admin.
+app.get('/admin/paypal/configurar', async (req, res) => {
+  const user = getAuthedUser(req);
+  if (!user || user.plan !== 'admin') return res.status(403).send('Solo administradores.');
+  if (!paypal.isConfigured()) return res.status(503).send('Faltan PAYPAL_CLIENT_ID y PAYPAL_CLIENT_SECRET en el entorno.');
+  const appUrl = getPublicSiteUrl();
+  const out = { env: paypal.settings().env };
+  try {
+    if (!paypal.settings().planId) {
+      const plan = await paypal.createMonthlyPlan();
+      out.PAYPAL_PLAN_ID = plan.planId;
+      out.productId = plan.productId;
+    } else {
+      out.PAYPAL_PLAN_ID = paypal.settings().planId + ' (ya configurado)';
+    }
+    const hook = await paypal.createWebhook(`${appUrl}/api/paypal/webhook`);
+    out.PAYPAL_WEBHOOK_ID = hook.id;
+    out.webhookUrl = hook.url;
+    out.webhookReutilizado = hook.reused;
+    out.eventos = hook.events;
+  } catch (e) {
+    return res.status(502).send(`<pre>Error hablando con PayPal (${paypal.settings().env}):\n${e.message}</pre>`);
+  }
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`<pre style="padding:24px;font-size:14px;line-height:1.6">Configuración de PayPal lista.\n\nCopia estos valores en las variables de entorno de Render:\n\n${JSON.stringify(out, null, 2)}\n\nDespués de guardarlas, el servicio se reinicia y los pagos quedan activos.</pre>`);
 });
 
 // ════════════════════════════════════════════════════════════════════════════

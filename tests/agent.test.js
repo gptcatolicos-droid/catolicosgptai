@@ -15,3 +15,25 @@ test('budget persists reservations, reconciles usage, and enforces a ceiling',()
 });
 test('sitemap excludes unpublished resources, deduplicates URLs and has no fabricated lastmod',()=>{const xml=require('../seo-module').generateSitemapXML({infografias:[{slug:'hidden',publicado:false},{slug:'test&one',publicado:true}],authorityPages:[{path:'/ninos'},{path:'/ninos'}]});assert(!xml.includes('/hidden'));assert(xml.includes('test&amp;one'));assert.equal(xml.match(/<loc>[^<]*\/ninos<\/loc>/g).length,1);assert(!xml.includes('<lastmod>'));});
 test('el modo breve resuelve en una sola pasada, sin rondas extra de investigacion',async()=>{const f=fixture({loop:true});const r=await agent.run({query:'Fe',mode:'consulta',signal:AbortSignal.timeout(5000),fetcher:f.fetcher});assert.equal(r.researchCalls,1);assert.equal(f.requests.filter(x=>x.url.includes('openai')).length,1);assert(f.requests.filter(x=>x.url.includes('openai')).every(x=>!x.body.tools));});
+test('la cuota diaria limita al plan gratuito pero no al Premium, y el tope de gasto aplica a ambos',()=>{
+ const fs=require('fs'),os=require('os'),path=require('path');
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'cgpt-quota-'));
+ const {createBudget}=require('../agent-budget');
+ const prevFree=process.env.AGENT_FREE_DAILY_REQUESTS, prevMonthly=process.env.OPENAI_AGENT_MONTHLY_BUDGET_USD;
+ try{
+  process.env.AGENT_FREE_DAILY_REQUESTS='2';
+  const budget=createBudget(dir);
+  // Gratuito: se corta en el tope.
+  budget.admit('user:free'); budget.admit('user:free');
+  assert.throws(()=>budget.admit('user:free'),/daily_quota/);
+  // Premium: sin tope diario por cuenta.
+  for(let i=0;i<10;i++) budget.admit('user:premium',{unlimited:true});
+  // Pero "ilimitado" nunca significa gasto ilimitado: el tope de dinero manda.
+  process.env.OPENAI_AGENT_MONTHLY_BUDGET_USD='0';
+  assert.throws(()=>createBudget(dir).admit('user:premium',{unlimited:true}),/budget_exhausted/);
+ } finally {
+  if(prevFree===undefined)delete process.env.AGENT_FREE_DAILY_REQUESTS;else process.env.AGENT_FREE_DAILY_REQUESTS=prevFree;
+  if(prevMonthly===undefined)delete process.env.OPENAI_AGENT_MONTHLY_BUDGET_USD;else process.env.OPENAI_AGENT_MONTHLY_BUDGET_USD=prevMonthly;
+  fs.rmSync(dir,{recursive:true,force:true});
+ }
+});
