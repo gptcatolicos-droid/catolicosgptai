@@ -38,7 +38,7 @@ function register(app){
      onStep:label=>sseWrite(res,{type:'step',label}),
      onStepDelta:delta=>sseWrite(res,{type:'step-delta',delta})
     });
-    if(!res.destroyed){sseWrite(res,{type:'meta',text:result.text,sources:result.sources,mode:result.mode});sseWrite(res,{type:'done'});}
+    if(!res.destroyed){sseWrite(res,{type:'meta',text:result.text,sources:result.sources,mode:result.mode,relatedQuestions:result.relatedQuestions||[]});sseWrite(res,{type:'done'});}
    }catch(e){
     console.warn('[CatholicAgent]',e.name,e.message.replace(/[^a-zA-Z0-9_ ]/g,'').slice(0,60));
     if(!res.destroyed)sseWrite(res,{type:'error',error:'No se pudo completar la investigación con fuentes. Inténtalo de nuevo; no se ha sustituido por una respuesta sin verificar.'});

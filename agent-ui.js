@@ -4,62 +4,128 @@
  const form=document.getElementById('chat-form'),input=document.getElementById('chat-input'),box=document.getElementById('chat-box');
  if(!form||!input||!box)return;
  document.body.classList.add('agent-home');
- let history=[],busy=false,available=false,abort=null;
- const FORMATS={consulta:'Automático',analisis:'Análisis detallado',resumen:'Resumen',mapa:'Mapa conceptual',cuadro:'Cuadro sinóptico',cronologia:'Cronología',comparativo:'Comparativo',guia:'Guía para enseñar'};
- // El selector clásico (etiqueta + <select>) sigue siendo la fuente de
- // verdad del modo elegido y se conserva visible en desktop. En mobile se
- // oculta por CSS y su lugar lo toma un botón "+" junto al campo de texto
- // (como el compositor de Claude en mobile) que abre una hoja de opciones:
- // así el formato deja de ocupar una fila fija todo el tiempo.
- const controls=document.createElement('div');controls.className='agent-controls';
- const label=document.createElement('label');label.textContent='Formato ';label.htmlFor='agent-mode';
- const select=document.createElement('select');select.id='agent-mode';select.setAttribute('aria-label','Tipo de material');
- // "Respuesta" salió del listado: era una etiqueta genérica que no distinguía
- // ningún comportamiento real. "Automático" es el mismo modo por defecto
- // (consulta) pero explica lo que realmente hace.
- for(const [value,text]of Object.entries(FORMATS))select.add(new Option(text,value));
- const status=document.createElement('span');status.className='agent-status';status.setAttribute('role','status');status.textContent='Comprobando disponibilidad…';
- const stop=document.createElement('button');stop.type='button';stop.textContent='Detener';stop.hidden=true;stop.addEventListener('click',()=>abort?.abort());
- controls.append(label,select,status,stop);form.before(controls);
- const plusBtn=document.createElement('button');plusBtn.type='button';plusBtn.className='agent-plus';plusBtn.setAttribute('aria-label','Elegir formato');plusBtn.textContent='+';
- const chip=document.createElement('span');chip.className='agent-format-chip';chip.hidden=true;
- const chipLabel=document.createElement('span');const chipClear=document.createElement('button');chipClear.type='button';chipClear.textContent='✕';chipClear.setAttribute('aria-label','Quitar formato');
+ let history=[],busy=false,available=false,abort=null,currentMode='consulta';
+ const FORMATS={consulta:'Automático',analisis:'Análisis detallado',resumen:'Resumen',mapa:'Mapa conceptual',cuadro:'Cuadro sinóptico',cronologia:'Cronología',comparativo:'Comparativo',guia:'Guía para enseñar',citas_biblicas:'Citas bíblicas',citas_santos:'Citas de santos'};
+ function textEl(tag,text){const e=document.createElement(tag);e.textContent=text;return e;}
+ function withClass(el,className){el.className=className;return el;}
+
+ // ── Compositor ────────────────────────────────────────────────────────────
+ // Ya no existe la fila fija "Formato: Automático". El formato vive dentro del
+ // botón "+" del compositor (igual en desktop y en mobile) y solo se hace
+ // visible como chip cuando el usuario elige algo distinto del automático.
+ const statusLine=withClass(document.createElement('div'),'agent-status-line');
+ statusLine.setAttribute('role','status');statusLine.hidden=true;form.before(statusLine);
+ function setStatus(text,persistent){statusLine.textContent=text||'';statusLine.hidden=!text;statusLine.dataset.persistent=persistent?'1':'';}
+
+ const plusBtn=withClass(document.createElement('button'),'agent-plus');
+ plusBtn.type='button';plusBtn.setAttribute('aria-label','Elegir formato de respuesta');plusBtn.textContent='+';
+ const chip=withClass(document.createElement('span'),'agent-format-chip');chip.hidden=true;
+ const chipLabel=document.createElement('span');
+ const chipClear=textEl('button','✕');chipClear.type='button';chipClear.setAttribute('aria-label','Quitar formato');
  chip.append(chipLabel,chipClear);
- chipClear.addEventListener('click',()=>{select.value='consulta';syncChip();});
- function syncChip(){const isDefault=select.value==='consulta';chip.hidden=isDefault;if(!isDefault)chipLabel.textContent=FORMATS[select.value]||select.value;}
- const sheet=document.createElement('div');sheet.className='agent-format-sheet';sheet.hidden=true;
- const backdrop=document.createElement('div');backdrop.className='agent-format-sheet-backdrop';
- const panel=document.createElement('div');panel.className='agent-format-sheet-panel';
- panel.append(textEl('div','Elige un formato'));panel.lastChild.className='agent-format-sheet-title';
+ chipClear.addEventListener('click',()=>{currentMode='consulta';syncChip();});
+ function syncChip(){const isDefault=currentMode==='consulta';chip.hidden=isDefault;if(!isDefault)chipLabel.textContent=FORMATS[currentMode]||currentMode;}
+
+ const sheet=withClass(document.createElement('div'),'agent-format-sheet');sheet.hidden=true;
+ const backdrop=withClass(document.createElement('div'),'agent-format-sheet-backdrop');
+ const panel=withClass(document.createElement('div'),'agent-format-sheet-panel');
+ panel.append(withClass(textEl('div','¿Qué quieres que prepare?'),'agent-format-sheet-title'));
  for(const [value,text]of Object.entries(FORMATS)){
-  const opt=textEl('button',text);opt.type='button';opt.dataset.mode=value;
-  opt.addEventListener('click',()=>{select.value=value;syncChip();closeSheet();});
+  const opt=withClass(textEl('button',text),'agent-format-option');opt.type='button';opt.dataset.mode=value;
+  opt.addEventListener('click',()=>{currentMode=value;syncChip();closeSheet();input.focus();});
   panel.append(opt);
  }
  sheet.append(backdrop,panel);document.body.append(sheet);
  function openSheet(){sheet.hidden=false;}
  function closeSheet(){sheet.hidden=true;}
  backdrop.addEventListener('click',closeSheet);
- plusBtn.addEventListener('click',openSheet);
- form.prepend(plusBtn);input.before(chip);
- fetch('/api/agent/status').then(r=>r.json()).then(s=>{available=s.available;status.textContent=available?'Investiga y crea con fuentes':'Consulta habitual disponible';select.disabled=!available;plusBtn.disabled=!available;}).catch(()=>{status.textContent='Consulta habitual disponible';select.disabled=true;plusBtn.disabled=true;});
+ plusBtn.addEventListener('click',()=>sheet.hidden?openSheet():closeSheet());
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!sheet.hidden)closeSheet();});
+
+ const stopBtn=withClass(textEl('button','■'),'agent-stop');
+ stopBtn.type='button';stopBtn.setAttribute('aria-label','Detener la investigación');stopBtn.hidden=true;
+ stopBtn.addEventListener('click',()=>abort?.abort());
+ const sendBtn=form.querySelector('button[type="submit"]');
+ form.prepend(plusBtn);input.before(chip);form.append(stopBtn);
+
+ // ── Entrada multirenglón ──────────────────────────────────────────────────
+ // El campo crece con el texto. En escritorio Enter envía y Shift+Enter hace
+ // salto de línea; en pantallas táctiles Enter siempre hace salto de línea y
+ // se envía con el botón, que es lo esperado al escribir desde el teléfono.
+ const MAX_INPUT_HEIGHT=160;
+ function autoGrow(){input.style.height='auto';input.style.height=Math.min(input.scrollHeight,MAX_INPUT_HEIGHT)+'px';}
+ const touchDevice=window.matchMedia&&window.matchMedia('(pointer: coarse)').matches;
+ input.addEventListener('input',autoGrow);
+ input.addEventListener('keydown',e=>{
+  if(e.key!=='Enter'||e.shiftKey||touchDevice)return;
+  e.preventDefault();
+  if(typeof form.requestSubmit==='function')form.requestSubmit();
+  else form.dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));
+ });
+ input.placeholder='Pregunta sobre la fe, la Biblia, el Catecismo o el Magisterio…';
+ input.maxLength=6000;input.setAttribute('aria-label','Tu pregunta o material de formación');
+ autoGrow();
+
+ fetch('/api/agent/status').then(r=>r.json()).then(s=>{
+  available=s.available;
+  plusBtn.disabled=!available;
+  if(!available)setStatus('Investigación con fuentes de Magisterium no disponible ahora. El chat responde en modo habitual.',true);
+ }).catch(()=>{plusBtn.disabled=true;});
+
  const welcome=document.getElementById('welcome-screen');
- if(welcome){const about=document.createElement('a');about.href='/como-funciona';about.textContent='Cómo investiga y crea CatólicosGPT';about.className='agent-about';welcome.append(about);const h=welcome.querySelector('h1');if(h)h.textContent='Comprende tu fe. Profundiza. Comparte.';const p=welcome.querySelector('p');if(p)p.textContent='Tu agente de IA católica para estudiar la Biblia, explorar el Magisterio y crear materiales de formación.';}
- input.placeholder='Pregunta o pide un resumen, mapa conceptual, cronología…';input.maxLength=6000;input.setAttribute('aria-label','Tu pregunta o material de formación');
+ if(welcome){const about=withClass(document.createElement('a'),'agent-about');about.href='/como-funciona';about.textContent='Cómo investiga y crea CatólicosGPT';welcome.append(about);const h=welcome.querySelector('h1');if(h)h.textContent='Comprende tu fe. Profundiza. Comparte.';const p=welcome.querySelector('p');if(p)p.textContent='Tu agente de IA católica para estudiar la Biblia, explorar el Magisterio y crear materiales de formación.';}
  const oldClear=window.clearChat;window.clearChat=function(){abort?.abort();history=[];if(oldClear)oldClear();};
- function textEl(tag,text){const e=document.createElement(tag);e.textContent=text;return e;}
+
  function render(text,target){
   const lines=text.split('\n');
   for(let i=0;i<lines.length;i++){
    let line=lines[i].trim();if(!line)continue;
-   if(line.startsWith('|')){const wrap=document.createElement('div');wrap.className='agent-table';const table=document.createElement('table');let rowIndex=0;
+   if(line.startsWith('|')){const wrap=withClass(document.createElement('div'),'agent-table');const table=document.createElement('table');let rowIndex=0;
     while(i<lines.length&&lines[i].trim().startsWith('|')){const cols=lines[i].trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim());if(!cols.every(c=>/^:?-+:?$/.test(c))){const row=document.createElement('tr');cols.forEach(c=>row.append(textEl(rowIndex?'td':'th',c.replace(/\*\*/g,''))));table.append(row);rowIndex++;}i++;}i--;wrap.append(table);target.append(wrap);
    }else target.append(textEl(/^#{1,3} /.test(line)?'h3':'p',line.replace(/^#{1,6} /,'').replace(/\*\*/g,'')));
   }
  }
- function sourcesPanel(sources){const details=document.createElement('details');details.className='agent-sources';details.append(textEl('summary',`Fuentes consultadas (${sources.length})`));for(const s of sources){const item=document.createElement('p');item.append(textEl('strong',`[${s.id}] ${s.title||'Documento'} `),document.createTextNode(`${s.author||''} · ${s.reference||''}`));if(s.url){try{const u=new URL(s.url);if(['http:','https:'].includes(u.protocol)){const a=textEl('a','Consultar fuente');a.href=u.href;a.target='_blank';a.rel='noopener noreferrer';item.append(' ',a);}}catch{}}if(s.quote)item.append(textEl('blockquote',s.quote));details.append(item);}return details;}
- function downloads(result,bubble){const bar=document.createElement('div');bar.className='agent-downloads';
-  for(const [format,label]of [['docx','Descargar Word'],['pdf','Descargar PDF']]){const btn=textEl('button',label);btn.type='button';btn.onclick=async()=>{btn.disabled=true;try{const r=await fetch(`/api/agent/export/${format}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(result)});if(!r.ok)throw Error();const url=URL.createObjectURL(await r.blob());const a=document.createElement('a');a.href=url;a.download=`catolicosgpt-material.${format}`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch{status.textContent='No se pudo descargar. Inténtalo de nuevo.';}finally{btn.disabled=false;}};bar.append(btn);}bubble.append(bar);
+ // Las fuentes dejan de estar escondidas tras un desplegable: son el valor
+ // diferencial del agente, así que se muestran como tarjetas con su
+ // referencia y el enlace real al documento que devuelve Magisterium.
+ function sourcesPanel(sources){
+  const wrap=withClass(document.createElement('section'),'agent-sources');
+  wrap.append(withClass(textEl('h4',`Fuentes consultadas (${sources.length})`),'agent-sources-title'));
+  const list=withClass(document.createElement('div'),'agent-source-list');
+  for(const s of sources){
+   const item=withClass(document.createElement('article'),'agent-source');
+   const head=withClass(document.createElement('div'),'agent-source-head');
+   head.append(withClass(textEl('span',s.id),'agent-source-id'),textEl('strong',s.title||'Documento'));
+   item.append(head);
+   const meta=[s.author,s.reference,s.year].filter(Boolean).join(' · ');
+   if(meta)item.append(withClass(textEl('p',meta),'agent-source-meta'));
+   if(s.quote)item.append(withClass(textEl('blockquote',s.quote),'agent-source-quote'));
+   if(s.url){
+    try{const u=new URL(s.url);
+     if(['http:','https:'].includes(u.protocol)){
+      const a=withClass(textEl('a','Abrir documento →'),'agent-source-link');
+      a.href=u.href;a.target='_blank';a.rel='noopener noreferrer';item.append(a);
+     }
+    }catch{}
+   }
+   list.append(item);
+  }
+  wrap.append(list);return wrap;
+ }
+ // Preguntas relacionadas que devuelve Magisterium (return_related_questions):
+ // siguientes pasos alineados con las fuentes, no sugerencias inventadas.
+ function relatedPanel(questions){
+  const bar=withClass(document.createElement('div'),'agent-related');
+  bar.append(withClass(textEl('span','Preguntas relacionadas'),'agent-related-label'));
+  for(const q of questions){
+   const b=withClass(textEl('button',q),'agent-related-q');b.type='button';
+   b.addEventListener('click',()=>{if(!busy)runQuery(q,'consulta');});
+   bar.append(b);
+  }
+  return bar;
+ }
+ function downloads(result,bubble){const bar=withClass(document.createElement('div'),'agent-downloads');
+  for(const [format,label]of [['docx','Descargar Word'],['pdf','Descargar PDF']]){const btn=textEl('button',label);btn.type='button';btn.onclick=async()=>{btn.disabled=true;try{const r=await fetch(`/api/agent/export/${format}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(result)});if(!r.ok)throw Error();const url=URL.createObjectURL(await r.blob());const a=document.createElement('a');a.href=url;a.download=`catolicosgpt-material.${format}`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch{setStatus('No se pudo descargar. Inténtalo de nuevo.');}finally{btn.disabled=false;}};bar.append(btn);}bubble.append(bar);
  }
  // Panel de "pasos de investigación" al estilo Magisterium: cada evento step
  // del servidor añade una fila; la anterior queda marcada como hecha y la
@@ -68,51 +134,61 @@
  // congelada, tenga o no tenga texto final que mostrar todavía.
  function createStepsPanel(bubble){
   bubble.innerHTML='';
-  const wrap=document.createElement('div');wrap.className='agent-steps';
-  const toggle=document.createElement('button');toggle.type='button';toggle.className='agent-steps-toggle';
+  const wrap=withClass(document.createElement('div'),'agent-steps');
+  const toggle=withClass(document.createElement('button'),'agent-steps-toggle');toggle.type='button';
   toggle.append(textEl('span','Pasos de investigación'),textEl('span','⌄'));
-  const list=document.createElement('div');list.className='agent-steps-list';
+  const list=withClass(document.createElement('div'),'agent-steps-list');
   toggle.addEventListener('click',()=>wrap.classList.toggle('is-collapsed'));
   wrap.append(toggle,list);bubble.append(wrap);
   let activeRow=null,preview=null;
+  const settle=()=>{if(!activeRow)return;activeRow.classList.remove('active');activeRow.classList.add('done');activeRow.querySelector('.agent-step-icon').textContent='✓';};
   return {
-   wrap,
    addStep(label){
-    if(activeRow){activeRow.classList.remove('active');activeRow.classList.add('done');activeRow.querySelector('.agent-step-icon').textContent='✓';}
-    const row=document.createElement('div');row.className='agent-step active';
-    row.append(textEl('span','⟳'),textEl('span',label));
-    row.firstChild.className='agent-step-icon';
+    settle();
+    wrap.classList.remove('is-collapsed');
+    const row=withClass(document.createElement('div'),'agent-step active');
+    row.append(withClass(textEl('span','⟳'),'agent-step-icon'),textEl('span',label));
     list.append(row);row.scrollIntoView({block:'nearest'});
     activeRow=row;preview=null;
    },
    addPreview(delta){
     if(!activeRow)return;
-    if(!preview){preview=document.createElement('p');preview.className='agent-step-preview';activeRow.append(preview);}
+    if(!preview){preview=withClass(document.createElement('p'),'agent-step-preview');activeRow.append(preview);}
     preview.textContent=(preview.textContent+delta).slice(-220);
    },
-   finish(){if(activeRow){activeRow.classList.remove('active');activeRow.classList.add('done');activeRow.querySelector('.agent-step-icon').textContent='✓';}wrap.classList.add('is-collapsed');}
+   finish(){settle();wrap.classList.add('is-collapsed');}
   };
  }
- // Botones de siguiente paso bajo cada respuesta: "Profundizar" siempre
- // disponible, y accesos directos a los formatos que pide el usuario según
- // el tema (cuadro sinóptico, cronología, resumen, citas bíblicas, de santos).
+ // Botones de siguiente paso bajo cada respuesta: profundizar, o el mismo tema
+ // en otro formato (cuadro sinóptico, cronología, resumen, citas).
  function quickActions(originalQuery,bubble){
-  const bar=document.createElement('div');bar.className='agent-quick-actions';
+  const bar=withClass(document.createElement('div'),'agent-quick-actions');
   const items=[['analisis','Profundizar más'],['cuadro','Cuadro sinóptico'],['cronologia','Cronología'],['resumen','Resumen'],['citas_biblicas','Citas bíblicas'],['citas_santos','Citas de santos']];
   for(const [mode,label]of items){
-   const btn=textEl('button',label);btn.type='button';btn.className='agent-quick-action';
+   const btn=withClass(textEl('button',label),'agent-quick-action');btn.type='button';
    btn.addEventListener('click',()=>{if(!busy)runQuery(originalQuery,mode);});
    bar.append(btn);
   }
   bubble.append(bar);
  }
+ function setBusy(state){
+  busy=state;
+  stopBtn.hidden=!state;
+  if(sendBtn){sendBtn.disabled=state;sendBtn.hidden=state;}
+  plusBtn.disabled=state||!available;
+ }
  async function runQuery(query,mode){
   if(!available||busy||!query)return;
-  busy=true;abort=new AbortController();stop.hidden=false;select.disabled=true;const submit=form.querySelector('button[type="submit"]');if(submit)submit.disabled=true;
+  setBusy(true);abort=new AbortController();
   document.getElementById('welcome-screen')?.classList.add('hidden');
-  const user=textEl('div',query);user.className='chat-bubble user';box.append(user);
-  const bubble=document.createElement('div');bubble.className='chat-bubble bot bot-content agent-answer';box.append(bubble);bubble.scrollIntoView({block:'nearest'});status.textContent='Investigación en curso';
+  box.append(withClass(textEl('div',query),'chat-bubble user'));
+  const bubble=withClass(document.createElement('div'),'chat-bubble bot bot-content agent-answer');
+  box.append(bubble);bubble.scrollIntoView({block:'nearest'});
   const steps=createStepsPanel(bubble);
+  // Primera fila inmediata: el usuario ve que está pensando desde el instante
+  // cero, sin esperar al primer evento del servidor.
+  steps.addStep('Conectando con las fuentes de Magisterium…');
+  setStatus('Investigando…');
   let streamedText='';let sawDelta=false;
   try{
    const r=await fetch('/api/agent',{method:'POST',headers:{'Content-Type':'application/json',Accept:'text/event-stream'},body:JSON.stringify({query,history,mode,stream:true}),signal:abort.signal});
@@ -121,10 +197,17 @@
    const handleBlock=block=>{
     const raw=block.split(/\r?\n/).filter(l=>l.startsWith('data:')).map(l=>l.slice(5).trim()).join('\n');
     if(!raw)return;let event;try{event=JSON.parse(raw);}catch{return;}
-    if(event.type==='step'){steps.addStep(event.label);status.textContent=event.label;}
+    if(event.type==='step'){
+     steps.addStep(event.label);setStatus(event.label);
+     // Un paso nuevo significa que el modelo volvió a investigar: el texto
+     // que había escrito antes queda superado. Si no se descarta, el borrador
+     // anterior y el definitivo se concatenan y salen pegados en pantalla.
+     if(answerEl){answerEl.remove();answerEl=null;}
+     streamedText='';sawDelta=false;
+    }
     else if(event.type==='step-delta'){steps.addPreview(event.delta);}
     else if(event.type==='delta'){
-     if(!sawDelta){sawDelta=true;steps.finish();status.textContent='Redactando…';answerEl=document.createElement('div');answerEl.className='agent-answer-text';bubble.append(answerEl);}
+     if(!sawDelta){sawDelta=true;steps.finish();setStatus('Redactando la respuesta…');answerEl=withClass(document.createElement('div'),'agent-answer-text');bubble.append(answerEl);}
      streamedText+=event.delta;answerEl.textContent=streamedText;bubble.scrollIntoView({block:'nearest'});
     }else if(event.type==='meta'){final=event;}
     else if(event.type==='error'){errorMsg=event.error;}
@@ -138,15 +221,22 @@
    if(buffer.trim())handleBlock(buffer);
    if(errorMsg)throw Error(errorMsg);
    if(!final)throw Error('No se pudo completar la consulta.');
+   steps.finish();
    if(answerEl)answerEl.remove();
-   render(final.text,bubble);if(final.sources?.length)bubble.append(sourcesPanel(final.sources));downloads({text:final.text,sources:final.sources||[],mode:final.mode},bubble);quickActions(query,bubble);
-   history.push({role:'user',content:query},{role:'assistant',content:final.text});history=history.slice(-6);status.textContent='Material listo';
+   render(final.text,bubble);
+   if(final.sources?.length)bubble.append(sourcesPanel(final.sources));
+   downloads({text:final.text,sources:final.sources||[],mode:final.mode},bubble);
+   quickActions(query,bubble);
+   if(final.relatedQuestions?.length)bubble.append(relatedPanel(final.relatedQuestions));
+   history.push({role:'user',content:query},{role:'assistant',content:final.text});history=history.slice(-6);
+   setStatus('');
   }
-  catch(err){steps.finish();bubble.textContent=err.name==='AbortError'?'Investigación detenida.':err.message;status.textContent='Puedes volver a consultar';}
-  finally{busy=false;stop.hidden=true;select.disabled=false;if(submit)submit.disabled=false;input.focus();}
+  catch(err){steps.finish();bubble.append(withClass(textEl('p',err.name==='AbortError'?'Investigación detenida.':err.message),'agent-error'));setStatus('');}
+  finally{setBusy(false);input.focus();}
  }
  form.addEventListener('submit',e=>{
   if(!available)return;e.preventDefault();e.stopImmediatePropagation();if(busy)return;
-  const query=input.value.trim();if(!query)return;input.value='';runQuery(query,select.value);
+  const query=input.value.trim();if(!query)return;
+  input.value='';autoGrow();runQuery(query,currentMode);
  },true);
 })();

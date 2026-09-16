@@ -5,12 +5,9 @@
    Sin esto el móvil mostraba scroll doble: el de la página y el del chat. */
 html, body { height: 100%; overflow: hidden; }
 main { overflow: hidden; min-height: 0; }
+
 /* Paleta de marca de CatólicosGPT (crema/oro/vinotinto), la misma que usa el
-   resto del sitio. Antes esta hoja imponía un azul/turquesa genérico
-   (#0B2B67/#28C7C9) que no aparece en ninguna otra página: rompía la
-   identidad visual justo en la pantalla más usada del producto, y además
-   pisaba con !important el estilo correcto de .chat-bubble.user (oro/vinotinto)
-   ya definido en la hoja compartida. */
+   resto del sitio, en lugar del azul/turquesa genérico que traía esta hoja. */
 body.agent-home{background:var(--cream-2)!important}
 .agent-home .chat-panel{border:1px solid var(--border)!important;border-radius:22px!important;box-shadow:0 12px 34px rgba(37,27,21,.06)!important;background:#fff!important}
 .agent-home .chat-topbar{background:#fff!important;border-color:var(--border)!important}
@@ -20,18 +17,59 @@ body.agent-home{background:var(--cream-2)!important}
 .agent-home .chat-bubble{box-shadow:none!important;line-height:1.7!important}
 .agent-home .agent-answer{width:100%;max-width:850px;overflow-wrap:anywhere}
 .agent-home .chat-input-wrap{box-shadow:none!important;background:#fff!important}
-.agent-home #chat-input{border-radius:16px!important;background:var(--cream)!important;border-color:var(--border)!important}
-.agent-controls{max-width:768px;margin:0 auto 10px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:12px;color:var(--ink-2)}
-.agent-controls label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2)}
-.agent-controls select{max-width:210px;padding:8px 10px;border:1px solid var(--border);border-radius:999px;background:#fff;color:var(--espresso);font:inherit;min-height:36px}
-.agent-controls .agent-status{margin-left:auto}
-.agent-controls button{border:1px solid var(--border);border-radius:999px;padding:6px 12px;background:#fff;color:var(--maroon)}
-.agent-controls button:hover{border-color:var(--gold);background:var(--gold-light)}
-.agent-table{overflow-x:auto;margin:18px 0}.agent-table table{border-collapse:collapse;width:100%;font-size:14px}.agent-table th,.agent-table td{padding:12px;border:1px solid var(--border);text-align:left;min-width:115px}.agent-table th{background:var(--gold-light);color:var(--maroon)}
-.agent-sources{border:1px solid var(--border);border-radius:12px;padding:14px;margin:20px 0;font-size:13px}.agent-sources summary{cursor:pointer;font-weight:600;color:var(--espresso)}.agent-sources blockquote{margin:8px 0;color:var(--ink-2)}.agent-sources a{color:var(--maroon);text-decoration:underline}
-.agent-downloads{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.agent-downloads button{padding:10px 15px;border-radius:10px;border:1px solid var(--border);background:#fff;color:var(--maroon);cursor:pointer;min-height:44px}
+
+/* ── Compositor multirenglón ──────────────────────────────────────────────
+   El campo es un <textarea> que crece con el texto (hasta 160px) en lugar de
+   un input de una sola línea: escribir una pregunta larga desde el teléfono
+   ya no obliga a leerla por una rendija. */
+.agent-home #chat-input{border-radius:18px!important;background:var(--cream)!important;border-color:var(--border)!important;min-height:44px;max-height:160px;overflow-y:auto;line-height:1.5!important}
+.agent-plus{flex:0 0 40px;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:999px;background:#fff;color:var(--maroon);font-size:21px;line-height:1;cursor:pointer}
+.agent-plus:hover:not(:disabled){border-color:var(--gold);background:var(--gold-light)}
+.agent-plus:disabled{opacity:.45;cursor:not-allowed}
+.agent-stop{flex:0 0 40px;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:999px;background:#76564a;color:#fff;font-size:13px;cursor:pointer}
+.agent-format-chip{display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;align-self:center;padding:6px 7px 6px 11px;border:1px solid var(--gold);border-radius:999px;background:var(--gold-light);color:var(--maroon);font-size:11px;font-weight:700;white-space:nowrap}
+.agent-format-chip button{border:0;background:none;color:inherit;font-size:11px;cursor:pointer;padding:2px}
+.agent-status-line{max-width:768px;margin:0 auto 8px;color:var(--ink-2);font-size:12px;text-align:center}
+
+/* Hoja de formatos que abre el botón "+" (sustituye al antiguo desplegable
+   fijo "Formato: Automático", que ocupaba una fila entera sin aportar nada
+   hasta que hacía falta). */
+.agent-format-sheet{position:fixed;inset:0;z-index:80}
+.agent-format-sheet-backdrop{position:absolute;inset:0;background:rgba(37,27,21,.35)}
+.agent-format-sheet-panel{position:absolute;left:0;right:0;bottom:0;max-height:70vh;overflow-y:auto;background:#fff;border-radius:20px 20px 0 0;padding:10px 14px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -12px 34px rgba(37,27,21,.16);display:flex;flex-direction:column;gap:4px}
+.agent-format-sheet-title{padding:10px 6px 6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2)}
+.agent-format-option{text-align:left;padding:13px 10px;border:0;border-radius:12px;background:none;color:var(--espresso);font:inherit;font-size:15px;cursor:pointer}
+.agent-format-option:hover,.agent-format-option:active{background:var(--cream)}
+@media(min-width:768px){
+  .agent-format-sheet-panel{left:50%;bottom:auto;top:50%;transform:translate(-50%,-50%);width:min(420px,92vw);border-radius:18px;box-shadow:0 20px 50px rgba(37,27,21,.2)}
+}
+
+/* ── Respuesta ────────────────────────────────────────────────────────────*/
+.agent-table{overflow-x:auto;margin:18px 0}
+.agent-table table{border-collapse:collapse;width:100%;font-size:14px}
+.agent-table th,.agent-table td{padding:12px;border:1px solid var(--border);text-align:left;min-width:115px}
+.agent-table th{background:var(--gold-light);color:var(--maroon)}
+.agent-answer-text{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink-2)}
+.agent-error{color:var(--maroon);font-size:14px}
+
+/* Fuentes: antes vivían escondidas tras un <details> cerrado. Son lo que
+   distingue a este agente, así que ahora se ven como tarjetas con su
+   referencia y el enlace real al documento que devuelve Magisterium. */
+.agent-sources{margin:22px 0 0;padding-top:16px;border-top:1px solid var(--border)}
+.agent-sources-title{margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2)}
+.agent-source-list{display:flex;flex-direction:column;gap:10px}
+.agent-source{border:1px solid var(--border);border-radius:14px;padding:12px 14px;background:var(--cream)}
+.agent-source-head{display:flex;align-items:baseline;gap:8px;font-size:14px;color:var(--espresso)}
+.agent-source-id{flex:0 0 auto;padding:2px 7px;border-radius:999px;background:var(--gold-light);color:var(--maroon);font-size:10px;font-weight:700}
+.agent-source-meta{margin:6px 0 0;color:var(--ink-2);font-size:12px}
+.agent-source-quote{margin:8px 0 0;padding-left:10px;border-left:2px solid var(--gold);color:var(--ink-2);font-size:13px;font-style:italic;line-height:1.55}
+.agent-source-link{display:inline-block;margin-top:9px;color:var(--maroon);font-size:12px;font-weight:700;text-decoration:underline}
+
+.agent-downloads{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.agent-downloads button{padding:10px 15px;border-radius:12px;border:1px solid var(--border);background:#fff;color:var(--maroon);font-size:13px;cursor:pointer;min-height:44px}
 .agent-downloads button:hover{border-color:var(--gold);background:var(--gold-light)}
-.agent-home button:focus-visible,.agent-home select:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.agent-home button:focus-visible,.agent-home a:focus-visible,.agent-home textarea:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+
 /* Panel "Pasos de investigación": una fila por evento step del servidor, con
    un ícono giratorio mientras está activa y un adelanto en vivo del texto que
    Magisterium va redactando (step-delta), al estilo del propio Magisterium. */
@@ -49,32 +87,21 @@ body.agent-home{background:var(--cream-2)!important}
 .agent-step-preview{margin:3px 0 0;color:var(--ink-2);font-size:12px;font-style:italic;line-height:1.5;overflow-wrap:anywhere}
 @keyframes agent-step-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.agent-step.active .agent-step-icon{animation:none}}
-.agent-answer-text{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink-2)}
-/* Acciones rápidas bajo cada respuesta: profundizar o pedir el mismo tema en
-   otro formato (cuadro sinóptico, cronología, resumen, citas). */
+
+/* Siguientes pasos bajo la respuesta: formatos y preguntas relacionadas. */
 .agent-quick-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
-.agent-quick-action{padding:7px 13px;border:1px solid var(--gold);border-radius:999px;background:var(--gold-light);color:var(--maroon);font-size:12px;font-weight:700;cursor:pointer}
+.agent-quick-action{padding:8px 14px;border:1px solid var(--gold);border-radius:999px;background:var(--gold-light);color:var(--maroon);font-size:12px;font-weight:700;cursor:pointer}
 .agent-quick-action:hover{background:var(--gold);color:#fff}
-/* Botón "+" del compositor (como en la app de Claude en mobile): oculto en
-   escritorio, donde el selector "Formato" clásico ya funciona bien y no
-   estorba. En mobile reemplaza esa fila fija por un botón compacto que abre
-   una hoja de opciones, y una "chip" muestra el formato activo si no es el
-   automático. */
-.agent-plus{display:none;flex:0 0 37px;width:37px;height:37px;border:1px solid var(--border);border-radius:999px;background:#fff;color:var(--maroon);font-size:20px;line-height:1;align-items:center;justify-content:center}
-.agent-plus:hover{border-color:var(--gold);background:var(--gold-light)}
-.agent-format-chip{display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;padding:5px 6px 5px 10px;border:1px solid var(--gold);border-radius:999px;background:var(--gold-light);color:var(--maroon);font-size:11px;font-weight:700;white-space:nowrap}
-.agent-format-chip button{border:0;background:none;color:inherit;font-size:11px;cursor:pointer;padding:2px}
-.agent-format-sheet{position:fixed;inset:0;z-index:80}
-.agent-format-sheet-backdrop{position:absolute;inset:0;background:rgba(37,27,21,.35)}
-.agent-format-sheet-panel{position:absolute;left:0;right:0;bottom:0;max-height:70vh;overflow-y:auto;background:#fff;border-radius:20px 20px 0 0;padding:10px 14px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -12px 34px rgba(37,27,21,.16);display:flex;flex-direction:column;gap:4px}
-.agent-format-sheet-title{padding:10px 6px 6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2)}
-.agent-format-sheet-panel button[data-mode]{text-align:left;padding:12px 10px;border:0;border-radius:12px;background:none;color:var(--espresso);font-size:15px}
-.agent-format-sheet-panel button[data-mode]:hover,.agent-format-sheet-panel button[data-mode]:active{background:var(--cream)}
+.agent-related{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.agent-related-label{flex-basis:100%;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2)}
+.agent-related-q{text-align:left;padding:9px 14px;border:1px solid var(--border);border-radius:999px;background:#fff;color:var(--espresso);font-size:13px;cursor:pointer}
+.agent-related-q:hover{border-color:var(--gold);background:var(--cream)}
+
 @media(max-width:767px){
   .agent-home .chat-panel{border:0!important;border-radius:0!important;box-shadow:none!important}
-  .agent-home .agent-controls{display:none!important}
-  .agent-plus{display:inline-flex}
   .agent-home #welcome-screen h1{font-size:28px!important}
   .agent-home .chat-input-wrap{padding-bottom:calc(10px + env(safe-area-inset-bottom))!important}
+  .agent-source{padding:11px 12px}
+  .agent-quick-actions,.agent-related{gap:7px}
+  .agent-quick-action,.agent-related-q{font-size:12px}
 }
-@media(min-width:768px){.agent-format-sheet{display:none!important}}

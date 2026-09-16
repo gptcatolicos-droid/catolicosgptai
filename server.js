@@ -1944,8 +1944,8 @@ app.get('/', (req, res) => {
         
         <!-- CHAT INPUT WRAP -->
         <div class="chat-input-wrap p-2.5 sm:p-4 border-t border-border bg-white shadow-inner">
-          <form id="chat-form" onsubmit="enviarMensaje(event)" class="max-w-3xl mx-auto flex gap-2 items-center">
-            <input type="text" id="chat-input" placeholder="Pregunta sobre fe, liturgia, moral cristiana..." required class="flex-1 border border-border rounded-full px-4 sm:px-5 py-2.5 sm:py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent bg-[#FAF9F5]/40" autocomplete="off">
+          <form id="chat-form" onsubmit="enviarMensaje(event)" class="max-w-3xl mx-auto flex gap-2 items-end">
+            <textarea id="chat-input" rows="1" placeholder="Pregunta sobre fe, liturgia, moral cristiana..." required class="flex-1 border border-border rounded-2xl px-4 sm:px-5 py-2.5 sm:py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent bg-[#FAF9F5]/40" autocomplete="off"></textarea>
             <button type="submit" class="bg-maroon hover:bg-gold text-white p-3 sm:p-3.5 rounded-full transition duration-300 shadow-md transform hover:scale-105 active:scale-95 flex-shrink-0">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send-horizontal"><path d="m3 3 3 9-3 9 19-9Z"/><path d="M6 12h16"/></svg>
             </button>
