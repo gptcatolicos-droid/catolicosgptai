@@ -1928,16 +1928,10 @@ app.get('/', (req, res) => {
         <div id="chat-box" class="flex-1 overflow-y-auto p-2 sm:p-5 flex flex-col gap-3 bg-transparent">
           <!-- PANTALLA DE BIENVENIDA -->
           <div id="welcome-screen" class="flex-1 flex flex-col items-center justify-start sm:justify-center text-center pt-4 pb-2 sm:py-6 max-w-2xl mx-auto gap-3 sm:gap-6 my-0 sm:my-auto">
-            <div class="h-11 w-11 sm:h-16 sm:w-16 border-2 border-gold/35 rounded-2xl sm:rounded-3xl p-2 sm:p-4 bg-white text-gold text-xl sm:text-2xl shadow-sm flex items-center justify-center font-bold">
-              ✝
-            </div>
             <div class="flex flex-col gap-1 px-3">
-              <h1 class="font-display font-medium text-xl sm:text-3xl text-espresso tracking-wide leading-tight">
-                ¿En qué puedo ayudarte hoy, <span class="italic text-gold font-serif font-normal">hermano</span>?
+              <h1 class="font-display font-medium text-2xl sm:text-3xl text-espresso tracking-wide leading-tight">
+                ¿En qué puedo ayudarte, <span class="italic text-gold font-serif font-normal">hermano</span>?
               </h1>
-              <p class="font-serif text-ink2 text-xs sm:text-base italic leading-snug">
-                Estudia la Biblia, el Catecismo y el Magisterio. Crea resúmenes, mapas conceptuales y guías de formación con IA católica.
-              </p>
             </div>
 
           </div>
@@ -1952,7 +1946,7 @@ app.get('/', (req, res) => {
             </button>
           </form>
           <div class="text-center text-[10px] text-ink2 mt-2 select-none italic font-serif">
-            CatólicosGPT • Conforme al Magisterio constante de la Iglesia • Puede contener imprecisiones
+            Puede contener imprecisiones
           </div>
         </div>
         

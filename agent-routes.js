@@ -7,6 +7,9 @@ function register(app,options={}){
  // La cuota deja de medirse solo por IP: con sesión iniciada se mide por
  // cuenta, que es lo que permite vender un plan y no un rango de IPs.
  const getUser=typeof options.getUser==='function'?options.getUser:()=>null;
+ // Solo presencia, nunca valores: permite ver en los logs por qué el agente
+ // aparece desactivado sin tener que adivinar cuál variable falta.
+ console.log(`[Agente] configurado=${agent.configured()} | CATHOLIC_AGENT_ENABLED=${process.env.CATHOLIC_AGENT_ENABLED||'(sin definir)'} | MAGISTERIUM_API_KEY=${process.env.MAGISTERIUM_API_KEY?'presente':'FALTA'} | OPENAI_API_KEY=${process.env.OPENAI_API_KEY?'presente':'FALTA'}`);
  app.get('/favicon.png',(req,res)=>res.set('Cache-Control','public, max-age=86400').type('png').sendFile(path.join(__dirname,'favicon.png')));
  const budget=require('./agent-budget').createBudget();
  const requests=new Map();let active=0;let exportsActive=0;
@@ -29,7 +32,11 @@ function register(app,options={}){
   const account=getUser(req);
   const unlimited=Boolean(account && ['premium','admin'].includes(account.plan));
   const quotaKey=account?`user:${account.id}`:`ip:${req.ip}`;
-  try{budget.admit(quotaKey,{unlimited});}catch(e){return res.status(429).json({error:e.message==='daily_quota'?(account?'Alcanzaste tu límite diario de consultas del plan gratuito. Con Premium el chat no tiene límite diario.':'Alcanzaste el límite diario de consultas gratuitas. Crea una cuenta y suscríbete a Premium para usar el chat sin límite diario.'):'La investigación ha alcanzado su límite temporal de uso. Puedes seguir consultando los recursos publicados.'});}
+  // Escalera de acceso: quien no se registra prueba el chat, quien se registra
+  // tiene más margen y quien paga no tiene tope diario.
+  const envInt=(name,fallback)=>{const n=Number(process.env[name]);return Number.isFinite(n)&&n>0?n:fallback;};
+  const limit=account?envInt('AGENT_FREE_DAILY_REQUESTS',10):envInt('AGENT_ANON_DAILY_REQUESTS',3);
+  try{budget.admit(quotaKey,{unlimited,limit});}catch(e){return res.status(429).json({error:e.message==='daily_quota'?(account?'Alcanzaste tu límite diario del plan gratuito. Con Premium el chat no tiene límite diario.':'Alcanzaste el límite de consultas para visitantes. Crea una cuenta gratis para tener más, o suscríbete a Premium para no tener límite diario.'):'La investigación ha alcanzado su límite temporal de uso. Puedes seguir consultando los recursos publicados.'});}
   active++;const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),100000);const disconnect=()=>{if(!res.writableEnded)controller.abort();};res.on('close',disconnect);
   // El streaming SSE retransmite el texto del modelo apenas se genera (no espera
   // a que termine el turno completo) para que la primera palabra llegue en
@@ -38,6 +45,10 @@ function register(app,options={}){
   if(wantsStream){
    res.status(200).set({'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache, no-transform',Connection:'keep-alive','X-Accel-Buffering':'no'});
    if(typeof res.flushHeaders==='function')res.flushHeaders();
+   // Comentario SSE cada 15s: mantiene viva la conexión mientras se investiga,
+   // que es cuando puede pasar más tiempo sin enviar nada. El cliente ignora
+   // las líneas que empiezan por ':' según la propia especificación SSE.
+   const heartbeat=setInterval(()=>{ if(!res.writableEnded) res.write(': keep-alive\n\n'); },15000);
    try{
     const result=await agent.run({query:query.trim(),history,mode,signal:controller.signal,budget,
      onDelta:delta=>sseWrite(res,{type:'delta',delta}),
@@ -48,7 +59,7 @@ function register(app,options={}){
    }catch(e){
     console.warn('[CatholicAgent]',e.name,e.message.replace(/[^a-zA-Z0-9_ ]/g,'').slice(0,60));
     if(!res.destroyed)sseWrite(res,{type:'error',error:'No se pudo completar la investigación con fuentes. Inténtalo de nuevo; no se ha sustituido por una respuesta sin verificar.'});
-   }finally{clearTimeout(timer);res.off('close',disconnect);active--;if(!res.writableEnded)res.end();}
+   }finally{clearInterval(heartbeat);clearTimeout(timer);res.off('close',disconnect);active--;if(!res.writableEnded)res.end();}
    return;
   }
   try{const result=await agent.run({query:query.trim(),history,mode,signal:controller.signal,budget});if(!res.destroyed){res.set('Cache-Control','no-store');if(req.path==='/api/chat')res.type('text/plain').send(result.text+'\n\nFuentes: \n'+result.sources.map(s=>'['+s.id+'] '+s.title+' '+s.reference+' '+s.url).join('\n'));else res.json(result);}}

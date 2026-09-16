@@ -5,48 +5,23 @@
  if(!form||!input||!box)return;
  document.body.classList.add('agent-home');
  let history=[],busy=false,available=false,abort=null,currentMode='consulta';
- const FORMATS={consulta:'Automático',analisis:'Análisis detallado',resumen:'Resumen',mapa:'Mapa conceptual',cuadro:'Cuadro sinóptico',cronologia:'Cronología',comparativo:'Comparativo',guia:'Guía para enseñar',citas_biblicas:'Citas bíblicas',citas_santos:'Citas de santos'};
  function textEl(tag,text){const e=document.createElement(tag);e.textContent=text;return e;}
  function withClass(el,className){el.className=className;return el;}
 
  // ── Compositor ────────────────────────────────────────────────────────────
- // Ya no existe la fila fija "Formato: Automático". El formato vive dentro del
- // botón "+" del compositor (igual en desktop y en mobile) y solo se hace
- // visible como chip cuando el usuario elige algo distinto del automático.
- const statusLine=withClass(document.createElement('div'),'agent-status-line');
- statusLine.setAttribute('role','status');statusLine.hidden=true;form.before(statusLine);
- function setStatus(text,persistent){statusLine.textContent=text||'';statusLine.hidden=!text;statusLine.dataset.persistent=persistent?'1':'';}
+ // El estado del agente ya se ve en el panel de pasos de cada respuesta: una
+ // línea fija encima del campo solo robaba pantalla en el móvil.
+ function setStatus(){}
 
- const plusBtn=withClass(document.createElement('button'),'agent-plus');
- plusBtn.type='button';plusBtn.setAttribute('aria-label','Elegir formato de respuesta');plusBtn.textContent='+';
- const chip=withClass(document.createElement('span'),'agent-format-chip');chip.hidden=true;
- const chipLabel=document.createElement('span');
- const chipClear=textEl('button','✕');chipClear.type='button';chipClear.setAttribute('aria-label','Quitar formato');
- chip.append(chipLabel,chipClear);
- chipClear.addEventListener('click',()=>{currentMode='consulta';syncChip();});
- function syncChip(){const isDefault=currentMode==='consulta';chip.hidden=isDefault;if(!isDefault)chipLabel.textContent=FORMATS[currentMode]||currentMode;}
-
- const sheet=withClass(document.createElement('div'),'agent-format-sheet');sheet.hidden=true;
- const backdrop=withClass(document.createElement('div'),'agent-format-sheet-backdrop');
- const panel=withClass(document.createElement('div'),'agent-format-sheet-panel');
- panel.append(withClass(textEl('div','¿Qué quieres que prepare?'),'agent-format-sheet-title'));
- for(const [value,text]of Object.entries(FORMATS)){
-  const opt=withClass(textEl('button',text),'agent-format-option');opt.type='button';opt.dataset.mode=value;
-  opt.addEventListener('click',()=>{currentMode=value;syncChip();closeSheet();input.focus();});
-  panel.append(opt);
- }
- sheet.append(backdrop,panel);document.body.append(sheet);
- function openSheet(){sheet.hidden=false;}
- function closeSheet(){sheet.hidden=true;}
- backdrop.addEventListener('click',closeSheet);
- plusBtn.addEventListener('click',()=>sheet.hidden?openSheet():closeSheet());
- document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!sheet.hidden)closeSheet();});
-
+ // El compositor queda limpio: solo el campo y el botón de enviar. Los
+ // formatos (cuadro sinóptico, cronología, citas…) siguen a un toque, en los
+ // botones que aparecen bajo cada respuesta, donde además ya hay contexto
+ // para elegirlos.
  const stopBtn=withClass(textEl('button','■'),'agent-stop');
  stopBtn.type='button';stopBtn.setAttribute('aria-label','Detener la investigación');stopBtn.hidden=true;
  stopBtn.addEventListener('click',()=>abort?.abort());
  const sendBtn=form.querySelector('button[type="submit"]');
- form.prepend(plusBtn);input.before(chip);form.append(stopBtn);
+ form.append(stopBtn);
 
  // Anclaje de scroll: seguimos el texto mientras se genera, pero si el usuario
  // sube a releer, dejamos de arrastrarlo hacia abajo en cada fragmento. Vuelve
@@ -76,12 +51,16 @@
 
  fetch('/api/agent/status').then(r=>r.json()).then(s=>{
   available=s.available;
-  plusBtn.disabled=!available;
-  if(!available)setStatus('Investigación con fuentes de Magisterium no disponible ahora. El chat responde en modo habitual.',true);
- }).catch(()=>{plusBtn.disabled=true;});
+ }).catch(()=>{available=false;});
 
+ // Pantalla de inicio: una sola frase. El resto (subtítulo, enlace a "cómo
+ // investiga") se quita, no se oculta, para que no ocupe alto en el móvil.
  const welcome=document.getElementById('welcome-screen');
- if(welcome){const about=withClass(document.createElement('a'),'agent-about');about.href='/como-funciona';about.textContent='Cómo investiga y crea CatólicosGPT';welcome.append(about);const h=welcome.querySelector('h1');if(h)h.textContent='Comprende tu fe. Profundiza. Comparte.';const p=welcome.querySelector('p');if(p)p.textContent='Tu agente de IA católica para estudiar la Biblia, explorar el Magisterio y crear materiales de formación.';}
+ if(welcome){
+  const h=welcome.querySelector('h1');
+  if(h)h.textContent='¿En qué puedo ayudarte, hermano?';
+  welcome.querySelectorAll('p').forEach(el=>el.remove());
+ }
  const oldClear=window.clearChat;window.clearChat=function(){abort?.abort();history=[];if(oldClear)oldClear();};
 
  function render(text,target){
@@ -197,7 +176,6 @@
   busy=state;
   stopBtn.hidden=!state;
   if(sendBtn){sendBtn.disabled=state;sendBtn.hidden=state;}
-  plusBtn.disabled=state||!available;
  }
  async function runQuery(query,mode){
   if(!available||busy||!query)return;

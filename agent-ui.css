@@ -23,27 +23,6 @@ body.agent-home{background:var(--cream-2)!important}
    un input de una sola línea: escribir una pregunta larga desde el teléfono
    ya no obliga a leerla por una rendija. */
 .agent-home #chat-input{border-radius:18px!important;background:var(--cream)!important;border-color:var(--border)!important;min-height:44px;max-height:160px;overflow-y:auto;line-height:1.5!important}
-.agent-plus{flex:0 0 40px;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:999px;background:#fff;color:var(--maroon);font-size:21px;line-height:1;cursor:pointer}
-.agent-plus:hover:not(:disabled){border-color:var(--gold);background:var(--gold-light)}
-.agent-plus:disabled{opacity:.45;cursor:not-allowed}
-.agent-stop{flex:0 0 40px;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:999px;background:#76564a;color:#fff;font-size:13px;cursor:pointer}
-.agent-format-chip{display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;align-self:center;padding:6px 7px 6px 11px;border:1px solid var(--gold);border-radius:999px;background:var(--gold-light);color:var(--maroon);font-size:11px;font-weight:700;white-space:nowrap}
-.agent-format-chip button{border:0;background:none;color:inherit;font-size:11px;cursor:pointer;padding:2px}
-.agent-status-line{max-width:768px;margin:0 auto 8px;color:var(--ink-2);font-size:12px;text-align:center}
-
-/* Hoja de formatos que abre el botón "+" (sustituye al antiguo desplegable
-   fijo "Formato: Automático", que ocupaba una fila entera sin aportar nada
-   hasta que hacía falta). */
-.agent-format-sheet{position:fixed;inset:0;z-index:80}
-.agent-format-sheet-backdrop{position:absolute;inset:0;background:rgba(37,27,21,.35)}
-.agent-format-sheet-panel{position:absolute;left:0;right:0;bottom:0;max-height:70vh;overflow-y:auto;background:#fff;border-radius:20px 20px 0 0;padding:10px 14px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -12px 34px rgba(37,27,21,.16);display:flex;flex-direction:column;gap:4px}
-.agent-format-sheet-title{padding:10px 6px 6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2)}
-.agent-format-option{text-align:left;padding:13px 10px;border:0;border-radius:12px;background:none;color:var(--espresso);font:inherit;font-size:15px;cursor:pointer}
-.agent-format-option:hover,.agent-format-option:active{background:var(--cream)}
-@media(min-width:768px){
-  .agent-format-sheet-panel{left:50%;bottom:auto;top:50%;transform:translate(-50%,-50%);width:min(420px,92vw);border-radius:18px;box-shadow:0 20px 50px rgba(37,27,21,.2)}
-}
-
 /* ── Respuesta ────────────────────────────────────────────────────────────*/
 .agent-table{overflow-x:auto;margin:18px 0}
 .agent-table table{border-collapse:collapse;width:100%;font-size:14px}
@@ -102,9 +81,17 @@ body.agent-home{background:var(--cream-2)!important}
 .agent-related-q:hover{border-color:var(--gold);background:var(--cream)}
 
 @media(max-width:767px){
-  .agent-home .chat-panel{border:0!important;border-radius:0!important;box-shadow:none!important}
-  .agent-home #welcome-screen h1{font-size:28px!important}
-  .agent-home .chat-input-wrap{padding-bottom:calc(10px + env(safe-area-inset-bottom))!important}
+  /* Pantalla completa, sin tarjeta ni márgenes: el chat ocupa todo el ancho
+     como en Claude o ChatGPT. La altura se reparte por flex en vez de con un
+     calc() fijo de 70px, que en iOS dejaba la respuesta recortada dentro de un
+     marco cuando la barra del navegador cambiaba de tamaño. */
+  html,body{height:100dvh!important}
+  .agent-home .chat-shell{height:auto!important;flex:1 1 auto!important;min-height:0!important;max-width:100%!important;width:100%!important;padding:0!important;margin:0!important}
+  .agent-home .chat-panel{border:0!important;border-radius:0!important;box-shadow:none!important;background:#fff!important}
+  .agent-home #chat-box{padding:16px 14px 8px!important}
+  .agent-home .agent-answer,.agent-home .chat-bubble{max-width:100%!important}
+  .agent-home #welcome-screen h1{font-size:26px!important}
+  .agent-home .chat-input-wrap{padding:8px 12px calc(8px + env(safe-area-inset-bottom))!important}
   .agent-source{padding:11px 12px}
   .agent-quick-actions,.agent-related{gap:7px}
   .agent-quick-action,.agent-related-q{font-size:12px}

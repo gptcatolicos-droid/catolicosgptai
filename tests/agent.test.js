@@ -14,8 +14,36 @@ test('budget persists reservations, reconciles usage, and enforces a ceiling',()
  try{process.env.OPENAI_AGENT_MONTHLY_BUDGET_USD='.01';const budget=createBudget(dir);const reservation=budget.reserve({model:'gpt-4.1-mini',input:'Hola',max_output_tokens:100});reservation.settle({input_tokens:100,output_tokens:50});let state=JSON.parse(fs.readFileSync(path.join(dir,'agent-budget.json')));assert.equal(Object.values(state.months)[0].input,100);assert.throws(()=>createBudget(dir).reserve({model:'gpt-4.1-mini',input:'x'.repeat(100000),max_output_tokens:2800}),/budget_exhausted/);assert.throws(()=>budget.reserve({model:'unknown-expensive-model',input:'Hola',max_output_tokens:100}),/unpriced_model/);fs.writeFileSync(path.join(dir,'agent-budget.json'),'bad');assert.throws(()=>budget.admit('test'),/budget_store_invalid/);}finally{if(old===undefined)delete process.env.OPENAI_AGENT_MONTHLY_BUDGET_USD;else process.env.OPENAI_AGENT_MONTHLY_BUDGET_USD=old;fs.rmSync(dir,{recursive:true,force:true});}
 });
 test('sitemap excludes unpublished resources, deduplicates URLs and has no fabricated lastmod',()=>{const xml=require('../seo-module').generateSitemapXML({infografias:[{slug:'hidden',publicado:false},{slug:'test&one',publicado:true}],authorityPages:[{path:'/ninos'},{path:'/ninos'}]});assert(!xml.includes('/hidden'));assert(xml.includes('test&amp;one'));assert.equal(xml.match(/<loc>[^<]*\/ninos<\/loc>/g).length,1);assert(!xml.includes('<lastmod>'));});
-test('el modo breve resuelve en una sola pasada, sin rondas extra de investigacion',async()=>{const f=fixture({loop:true});const r=await agent.run({query:'Fe',mode:'consulta',signal:AbortSignal.timeout(5000),fetcher:f.fetcher});assert.equal(r.researchCalls,1);assert.equal(f.requests.filter(x=>x.url.includes('openai')).length,1);assert(f.requests.filter(x=>x.url.includes('openai')).every(x=>!x.body.tools));});
-test('la cuota diaria limita al plan gratuito pero no al Premium, y el tope de gasto aplica a ambos',()=>{
+test('el modo breve responde desde /search, sin la sintesis intermedia de Magisterium',async()=>{
+ const requests=[];
+ const enc=new TextEncoder();
+ const sse=events=>{const chunks=events.map(e=>`data: ${JSON.stringify(e)}\n\n`).join('');let sent=false;
+  return {getReader(){return{async read(){if(sent)return{done:true};sent=true;return{done:false,value:enc.encode(chunks)};}};}};};
+ const fetcher=async(url,options)=>{
+  requests.push({url,body:JSON.parse(options.body)});
+  if(url.endsWith('/search')) return {ok:true,json:async()=>({data:{results:[
+   {document_title:'Catecismo',document_reference:'n. 1324',cited_text:'La Eucaristia es fuente y culmen.',source_url:'https://www.vatican.va/ccc'}
+  ]}})};
+  if(url.includes('magisterium')) throw new Error('no se debe llamar a la sintesis de Magisterium en el modo breve');
+  return {ok:true,body:sse([
+   {type:'response.output_text.delta',delta:'La Eucaristia es fuente y culmen [F1].'},
+   {type:'response.completed',response:{status:'completed',usage:{input_tokens:10,output_tokens:5},
+     output:[{type:'message',content:[{type:'output_text',text:'La Eucaristia es fuente y culmen [F1].'}]}]}}
+  ])};
+ };
+ let streamed='';
+ const r=await agent.run({query:'Que es la Eucaristia',mode:'consulta',signal:AbortSignal.timeout(5000),fetcher,onDelta:d=>{streamed+=d;}});
+ // Una sola llamada a Magisterium (la busqueda) y una sola a OpenAI.
+ assert.equal(requests.filter(x=>x.url.endsWith('/search')).length,1);
+ assert.equal(requests.filter(x=>x.url.includes('openai')).length,1);
+ assert(requests.filter(x=>x.url.includes('openai')).every(x=>!x.body.tools));
+ assert.equal(r.researchCalls,1);
+ // La fuente recuperada por /search llega al usuario con su enlace.
+ assert.equal(r.sources.length,1);
+ assert.equal(r.sources[0].url,'https://www.vatican.va/ccc');
+ assert.equal(streamed,'La Eucaristia es fuente y culmen [F1].');
+});
+test('la cuota escalona visitante, registrado y Premium, y el tope de gasto aplica a todos',()=>{
  const fs=require('fs'),os=require('os'),path=require('path');
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'cgpt-quota-'));
  const {createBudget}=require('../agent-budget');
@@ -23,7 +51,10 @@ test('la cuota diaria limita al plan gratuito pero no al Premium, y el tope de g
  try{
   process.env.AGENT_FREE_DAILY_REQUESTS='2';
   const budget=createBudget(dir);
-  // Gratuito: se corta en el tope.
+  // Visitante sin cuenta: el tope lo decide quien llama.
+  budget.admit('ip:1.2.3.4',{limit:1});
+  assert.throws(()=>budget.admit('ip:1.2.3.4',{limit:1}),/daily_quota/);
+  // Registrado gratuito: más margen, pero sigue teniendo tope.
   budget.admit('user:free'); budget.admit('user:free');
   assert.throws(()=>budget.admit('user:free'),/daily_quota/);
   // Premium: sin tope diario por cuenta.
