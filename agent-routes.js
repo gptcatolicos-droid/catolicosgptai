@@ -16,13 +16,31 @@ function register(app){
  app.get('/agent-ui.js',(req,res)=>res.sendFile(path.join(__dirname,'agent-ui.js')));
  app.get('/agent-ui.css',(req,res)=>res.sendFile(path.join(__dirname,'agent-ui.css')));
  app.get('/api/agent/status',(req,res)=>res.json({available:agent.configured()}));
+ function sseWrite(res,payload){res.write(`data: ${JSON.stringify(payload)}\n\n`);}
  const handleResearch=async(req,res)=>{
   const {query,history,mode}=req.body||{};
+  const wantsStream=req.body?.stream===true;
   if(typeof query!=='string'||!query.trim()||query.length>6000|| (history!==undefined&&(!Array.isArray(history)||history.length>10)))return res.status(400).json({error:'Escribe una consulta de hasta 6000 caracteres.'});
   if(!agent.configured())return res.status(503).json({error:'La investigación con fuentes no está disponible en este momento. Puedes utilizar la consulta habitual.'});
   if(active>=6)return res.status(429).json({error:'Hay varias investigaciones en curso. Inténtalo en un momento.'});
   try{budget.admit(req.ip);}catch(e){return res.status(429).json({error:e.message==='daily_quota'?'Has alcanzado la cuota diaria de investigación. Los contenidos y las guías publicadas siguen disponibles.':'La investigación ha alcanzado su límite temporal de uso. Puedes seguir consultando los recursos publicados.'});}
   active++;const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),100000);const disconnect=()=>{if(!res.writableEnded)controller.abort();};res.on('close',disconnect);
+  // El streaming SSE retransmite el texto del modelo apenas se genera (no espera
+  // a que termine el turno completo) para que la primera palabra llegue en
+  // segundos y no tras toda la investigación. El contrato JSON histórico se
+  // mantiene intacto para /api/chat y para quien no pida stream:true.
+  if(wantsStream){
+   res.status(200).set({'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache, no-transform',Connection:'keep-alive','X-Accel-Buffering':'no'});
+   if(typeof res.flushHeaders==='function')res.flushHeaders();
+   try{
+    const result=await agent.run({query:query.trim(),history,mode,signal:controller.signal,budget,onDelta:delta=>sseWrite(res,{type:'delta',delta})});
+    if(!res.destroyed){sseWrite(res,{type:'meta',text:result.text,sources:result.sources,mode:result.mode});sseWrite(res,{type:'done'});}
+   }catch(e){
+    console.warn('[CatholicAgent]',e.name,e.message.replace(/[^a-zA-Z0-9_ ]/g,'').slice(0,60));
+    if(!res.destroyed)sseWrite(res,{type:'error',error:'No se pudo completar la investigación con fuentes. Inténtalo de nuevo; no se ha sustituido por una respuesta sin verificar.'});
+   }finally{clearTimeout(timer);res.off('close',disconnect);active--;if(!res.writableEnded)res.end();}
+   return;
+  }
   try{const result=await agent.run({query:query.trim(),history,mode,signal:controller.signal,budget});if(!res.destroyed){res.set('Cache-Control','no-store');if(req.path==='/api/chat')res.type('text/plain').send(result.text+'\n\nFuentes: \n'+result.sources.map(s=>'['+s.id+'] '+s.title+' '+s.reference+' '+s.url).join('\n'));else res.json(result);}}
   catch(e){console.warn('[CatholicAgent]',e.name,e.message.replace(/[^a-zA-Z0-9_ ]/g,'').slice(0,60));if(!res.destroyed)res.status(502).json({error:'No se pudo completar la investigación con fuentes. Inténtalo de nuevo; no se ha sustituido por una respuesta sin verificar.'});}
   finally{clearTimeout(timer);res.off('close',disconnect);active--;}

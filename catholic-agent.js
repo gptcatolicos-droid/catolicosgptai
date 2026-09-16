@@ -27,6 +27,33 @@ async function post(url,key,body,signal,fetcher=fetch) {
  if(!r.ok) throw new Error(`provider_http_${r.status}`);
  return r.json();
 }
+// Streams the OpenAI Responses SSE so the client sees text as it is generated
+// instead of waiting for the whole turn. `response.completed` carries the same
+// shape as the non-streaming JSON body, so the rest of the tool-calling loop
+// stays unchanged. A step that only calls a tool never emits text deltas, so
+// callers can safely stream every step: silent ones just produce no output.
+async function postStream(url,key,body,signal,onDelta,fetcher=fetch) {
+ const r=await fetcher(url,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${key}`,Accept:'text/event-stream'},body:JSON.stringify({...body,stream:true}),signal});
+ if(!r.ok) throw new Error(`provider_http_${r.status}`);
+ const reader=r.body.getReader();const decoder=new TextDecoder();let buffer='';let final=null;
+ const handle=block=>{
+  const raw=block.split(/\r?\n/).filter(l=>l.startsWith('data:')).map(l=>l.slice(5).trim()).join('\n');
+  if(!raw||raw==='[DONE]') return;
+  let event;try{event=JSON.parse(raw);}catch{return;}
+  if(event.type==='response.output_text.delta' && typeof event.delta==='string'){if(typeof onDelta==='function')onDelta(event.delta);}
+  else if(event.type==='response.completed' && event.response){final=event.response;}
+  else if(event.type==='error'){throw new Error(event.error?.message||'openai_stream_error');}
+ };
+ while(true){
+  const {done,value}=await reader.read();if(done)break;
+  buffer+=decoder.decode(value,{stream:true});
+  const blocks=buffer.split(/\r?\n\r?\n/);buffer=blocks.pop()||'';
+  for(const block of blocks) handle(block);
+ }
+ if(buffer.trim()) handle(buffer);
+ if(!final) throw new Error('openai_stream_incomplete');
+ return final;
+}
 async function research(query,category,signal,fetcher=fetch) {
  const key=process.env.MAGISTERIUM_API_KEY;
  let passages=[];
@@ -41,7 +68,7 @@ async function research(query,category,signal,fetcher=fetch) {
  return {answer,citations:(Array.isArray(data.citations)?data.citations:[]).slice(0,20).map(citation)};
 }
 function configured(){return process.env.CATHOLIC_AGENT_ENABLED === '1' && Boolean(process.env.OPENAI_API_KEY?.trim() && process.env.MAGISTERIUM_API_KEY?.trim());}
-async function run({query,history=[],mode='consulta',signal,fetcher=fetch,budget}) {
+async function run({query,history=[],mode='consulta',signal,fetcher=fetch,budget,onDelta}) {
  const sources=[]; const evidence=[]; let calls=0;
  const usage={input_tokens:0,output_tokens:0};
  async function lookup(q,category='auto') {
@@ -57,7 +84,12 @@ async function run({query,history=[],mode='consulta',signal,fetcher=fetch,budget
   const canResearch=calls<3 && step<2;
   const body={model:process.env.OPENAI_AGENT_MODEL || process.env.OPENAI_CHAT_MODEL || 'gpt-4.1-mini',store:false,instructions:INSTRUCTIONS+'\nFORMATO PREFERIDO: '+(MODES[mode]||MODES.consulta),input,max_output_tokens:mode==='consulta'||mode==='resumen'?1200:2800,...(canResearch?{tools:[tool],parallel_tool_calls:false}: {})};
   const reservation=budget?.reserve(body);
-  const data=await post('https://api.openai.com/v1/responses',process.env.OPENAI_API_KEY,body,signal,fetcher);
+  // Streaming is safe on every step: a step that only calls a tool never emits
+  // text deltas, so onDelta simply stays silent until the final text-producing
+  // step, which is exactly when the client should start seeing real content.
+  const data=onDelta
+   ? await postStream('https://api.openai.com/v1/responses',process.env.OPENAI_API_KEY,body,signal,onDelta,fetcher)
+   : await post('https://api.openai.com/v1/responses',process.env.OPENAI_API_KEY,body,signal,fetcher);
   reservation?.settle(data.usage);
   usage.input_tokens+=data.usage?.input_tokens||0;usage.output_tokens+=data.usage?.output_tokens||0;
   if(data.status==='incomplete') throw new Error('incomplete_response');

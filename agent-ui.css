@@ -1,3 +1,10 @@
+/* Esta hoja sólo se carga en "/", así que estas reglas de html/body/main son
+   seguras: evitan que <main> (overflow-y-auto del layout compartido) abra un
+   segundo scroll por encima de #chat-box cuando el alto real del móvil (barra
+   de direcciones, notch) no calza con el calc(100svh-86px) fijo del chat-shell.
+   Sin esto el móvil mostraba scroll doble: el de la página y el del chat. */
+html, body { height: 100%; overflow: hidden; }
+main { overflow: hidden; min-height: 0; }
 body.agent-home{background:#f7f8fa!important}
 .agent-home .chat-panel{border:1px solid #e5e9ef!important;border-radius:22px!important;box-shadow:none!important;background:white!important}
 .agent-home .chat-topbar{background:#fff!important;border-color:#e5e9ef!important}
@@ -15,4 +22,8 @@ body.agent-home{background:#f7f8fa!important}
 .agent-sources{border:1px solid #dce3ed;border-radius:12px;padding:14px;margin:20px 0;font-size:13px}.agent-sources summary{cursor:pointer;font-weight:600}.agent-sources blockquote{margin:8px 0;color:#65758b}.agent-sources a{color:#174ca3;text-decoration:underline}
 .agent-downloads{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.agent-downloads button{padding:10px 15px;border-radius:10px;border:1px solid #cdd8e8;background:white;color:#0B2B67;cursor:pointer;min-height:44px}
 .agent-home button:focus-visible,.agent-home select:focus-visible{outline:3px solid #28C7C9;outline-offset:3px}
+.agent-thinking{display:inline-flex;align-items:center;gap:9px;color:#59697d;font-size:14px;font-style:italic}
+.agent-thinking-dot{width:8px;height:8px;border-radius:50%;background:#28C7C9;box-shadow:0 0 0 4px rgba(40,199,201,.14);animation:agent-thinking-pulse 1.1s ease infinite}
+@keyframes agent-thinking-pulse{50%{opacity:.4;transform:scale(.82)}}
+@media(prefers-reduced-motion:reduce){.agent-thinking-dot{animation:none}}
 @media(max-width:767px){.agent-home .chat-panel{border:0!important;border-radius:0!important}.agent-home .agent-controls{gap:5px;font-size:11px}.agent-home .agent-status{flex-basis:100%;margin-left:0}.agent-home .agent-controls button{width:auto!important;min-height:32px!important;height:auto!important;background:#0B2B67!important}.agent-home #welcome-screen h1{font-size:28px!important}.agent-home .chat-input-wrap{padding-bottom:calc(10px + env(safe-area-inset-bottom))!important}}

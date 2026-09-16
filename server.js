@@ -1931,33 +1931,6 @@ app.get('/', (req, res) => {
               </p>
             </div>
 
-            <!-- TARJETAS DESTACADAS DEL DÍA -->
-            <div class="welcome-cards grid grid-cols-2 gap-2 sm:gap-5 w-full max-w-xl px-2 sm:px-4 mt-1 sm:mt-4">
-              <!-- Card Santo del Día -->
-              <a href="${todaySaintTarget.path}" data-full-page="1" class="welcome-card group flex flex-col items-center sm:items-start text-center sm:text-left p-3 sm:p-6 bg-white border border-[#E6DFD4] hover:border-gold/50 rounded-xl sm:rounded-2xl shadow-xs hover:shadow-md transition duration-300 gap-2 sm:gap-3.5 min-h-[118px] sm:min-h-0">
-                <div class="welcome-card-icon w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-amber-50 text-gold flex items-center justify-center border border-amber-200 group-hover:scale-105 transition shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-cross"><path d="M11 2h2v7h6v2h-6v11h-2v-11H5V9h6V2z"/></svg>
-                </div>
-                <div class="flex flex-col gap-1 w-full">
-                  <h3 class="welcome-card-title font-display font-semibold text-[9px] sm:text-[10px] text-gold uppercase tracking-wider font-mono">Santo del Día</h3>
-                  <p class="welcome-card-text font-serif font-bold text-xs sm:text-sm text-espresso line-clamp-2 sm:line-clamp-1 group-hover:text-maroon transition leading-tight">${todaySaintTarget.nombre || (dSanto ? dSanto.nombre : 'Vida de los Santos')}</p>
-                  <p class="hidden sm:block text-[11px] text-ink2 leading-relaxed mt-1">Conoce hoy la biografía completa del santo, sus virtudes heroicas y su legado para la Iglesia.</p>
-                </div>
-              </a>
-
-              <!-- Card Infografía del Día -->
-              <a href="/infografia-del-dia" class="welcome-card group flex flex-col items-center sm:items-start text-center sm:text-left p-3 sm:p-6 bg-white border border-[#E6DFD4] hover:border-gold/50 rounded-xl sm:rounded-2xl shadow-xs hover:shadow-md transition duration-300 gap-2 sm:gap-3.5 min-h-[118px] sm:min-h-0">
-                <div class="welcome-card-icon w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-rose-50 text-maroon flex items-center justify-center border border-rose-150 group-hover:scale-105 transition shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-                </div>
-                <div class="flex flex-col gap-1 w-full">
-                  <h3 class="welcome-card-title font-display font-semibold text-[9px] sm:text-[10px] text-maroon uppercase tracking-wider font-mono">Infografía del Día</h3>
-                  <p class="welcome-card-text font-serif font-bold text-xs sm:text-sm text-espresso line-clamp-2 sm:line-clamp-1 group-hover:text-gold transition leading-tight">${infografiaDelDia ? (infografiaDelDia.titulo || infografiaDelDia.tema) : 'Formación en Imágenes'}</p>
-                  <p class="hidden sm:block text-[11px] text-ink2 leading-relaxed mt-1">Catequesis visual de alta resolución sobre apologética, teología y doctrina en imágenes claras.</p>
-                </div>
-              </a>
-            </div>
-
           </div>
         </div>
         
