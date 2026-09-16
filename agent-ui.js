@@ -75,8 +75,24 @@
   const lines=text.split('\n');
   for(let i=0;i<lines.length;i++){
    let line=lines[i].trim();if(!line)continue;
-   if(line.startsWith('|')){const wrap=withClass(document.createElement('div'),'agent-table');const table=document.createElement('table');let rowIndex=0;
-    while(i<lines.length&&lines[i].trim().startsWith('|')){const cols=lines[i].trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim());if(!cols.every(c=>/^:?-+:?$/.test(c))){const row=document.createElement('tr');cols.forEach(c=>row.append(textEl(rowIndex?'td':'th',c.replace(/\*\*/g,''))));table.append(row);rowIndex++;}i++;}i--;wrap.append(table);target.append(wrap);
+   if(line.startsWith('|')){
+    // La tabla se arma con thead y tbody, y cada celda guarda el nombre de su
+    // columna en data-label. En el teléfono eso permite apilar cada fila como
+    // "Columna: valor" en vez de obligar a arrastrar la tabla de lado.
+    const wrap=withClass(document.createElement('div'),'agent-table');const table=document.createElement('table');
+    const thead=document.createElement('thead'),tbody=document.createElement('tbody');let headers=[];
+    while(i<lines.length&&lines[i].trim().startsWith('|')){
+     const cols=lines[i].trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim());
+     if(!cols.every(c=>/^:?-+:?$/.test(c))){
+      const row=document.createElement('tr');
+      if(!headers.length){headers=cols.map(c=>c.replace(/\*\*/g,''));headers.forEach(c=>row.append(textEl('th',c)));thead.append(row);}
+      else{cols.forEach((c,ci)=>{const cell=textEl('td',c.replace(/\*\*/g,''));if(headers[ci])cell.setAttribute('data-label',headers[ci]);row.append(cell);});tbody.append(row);}
+     }
+     i++;
+    }
+    i--;
+    if(thead.children.length)table.append(thead);
+    table.append(tbody);wrap.append(table);target.append(wrap);
    }else target.append(textEl(/^#{1,3} /.test(line)?'h3':'p',line.replace(/^#{1,6} /,'').replace(/\*\*/g,'')));
   }
  }
@@ -132,6 +148,43 @@
    bar.append(b);
   }
   return bar;
+ }
+ // El chat dejaba al lector sin a dónde ir. Al final de cada respuesta se
+ // enlaza el material que el propio sitio ya publicó sobre el tema: dos
+ // infografías y hasta cinco artículos. Lo calcula el servidor con un índice
+ // local; cuando no hay nada realmente relacionado no llega nada y la sección
+ // no se dibuja, que es mejor que enlazar cualquier cosa.
+ function libraryPanel(library){
+  const infografias=(library&&library.infografias)||[],articulos=(library&&library.articulos)||[];
+  if(!infografias.length&&!articulos.length)return null;
+  const wrap=withClass(document.createElement('section'),'agent-library');
+  if(infografias.length){
+   wrap.append(withClass(textEl('h4','Infografías sobre este tema'),'agent-library-title'));
+   const grid=withClass(document.createElement('div'),'agent-infografias');
+   for(const item of infografias){
+    const card=withClass(document.createElement('a'),'agent-infografia');
+    card.href=item.url;card.rel='noopener';
+    // Si la miniatura no carga (Drive caído, imagen retirada), se retira la
+    // imagen en vez de dejar el texto alternativo desbordando la tarjeta.
+    if(item.image){const img=document.createElement('img');img.src=item.image;img.alt=item.title;img.loading='lazy';img.addEventListener('error',()=>img.remove());card.append(img);}
+    const body=withClass(document.createElement('div'),'agent-infografia-body');
+    body.append(withClass(textEl('span',item.title),'agent-infografia-title'),withClass(textEl('span','Ver infografía →'),'agent-infografia-cta'));
+    card.append(body);grid.append(card);
+   }
+   wrap.append(grid);
+  }
+  if(articulos.length){
+   wrap.append(withClass(textEl('h4','Para seguir leyendo'),'agent-library-title'));
+   const list=withClass(document.createElement('ul'),'agent-articles');
+   for(const item of articulos){
+    const row=document.createElement('li');
+    const link=withClass(textEl('a',item.title),'agent-article-link');
+    link.href=item.url;link.rel='noopener';
+    row.append(link);list.append(row);
+   }
+   wrap.append(list);
+  }
+  return wrap;
  }
  function downloads(result,bubble){const bar=withClass(document.createElement('div'),'agent-downloads');
   for(const [format,label]of [['docx','Descargar Word'],['pdf','Descargar PDF']]){const btn=textEl('button',label);btn.type='button';btn.onclick=async()=>{btn.disabled=true;try{const r=await fetch(`/api/agent/export/${format}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(result)});if(!r.ok)throw Error();const url=URL.createObjectURL(await r.blob());const a=document.createElement('a');a.href=url;a.download=`catolicosgpt-material.${format}`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch{setStatus('No se pudo descargar. Inténtalo de nuevo.');}finally{btn.disabled=false;}};bar.append(btn);}bubble.append(bar);
@@ -236,6 +289,8 @@
    downloads({text:final.text,sources:final.sources||[],mode:final.mode},bubble);
    quickActions(query,bubble);
    if(final.relatedQuestions?.length)bubble.append(relatedPanel(final.relatedQuestions));
+   const shelf=libraryPanel(final.library);
+   if(shelf)bubble.append(shelf);
    history.push({role:'user',content:query},{role:'assistant',content:final.text});history=history.slice(-6);
    setStatus('');
   }

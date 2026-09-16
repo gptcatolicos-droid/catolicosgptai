@@ -2,6 +2,7 @@
 const path=require('path');
 const agent=require('./catholic-agent');
 const docs=require('./agent-documents');
+const library=require('./agent-related-content');
 // Per-process ceilings bound anonymous research cost and concurrent exports.
 function register(app,options={}){
  // La cuota deja de medirse solo por IP: con sesión iniciada se mide por
@@ -28,6 +29,14 @@ function register(app,options={}){
  app.get('/agent-ui.css',freshAsset('agent-ui.css'));
  app.get('/api/agent/status',(req,res)=>res.json({available:agent.configured()}));
  function sseWrite(res,payload){res.write(`data: ${JSON.stringify(payload)}\n\n`);}
+ // El chat no puede ser un callejón sin salida: al final de cada consulta se
+ // enlaza el material ya publicado en el sitio sobre ese mismo tema. Se resuelve
+ // con un índice local (sin llamar a ningún modelo), así que no añade espera ni
+ // coste; si algo falla, la respuesta sale igual y solo se pierden los enlaces.
+ function relatedLibrary(query){
+  try{return library.related(query);}
+  catch(e){console.warn('[Agente] contenido relacionado no disponible:',e.message);return {infografias:[],articulos:[]};}
+ }
  const handleResearch=async(req,res)=>{
   const {query,history,mode}=req.body||{};
   const wantsStream=req.body?.stream===true;
@@ -60,14 +69,14 @@ function register(app,options={}){
      onStep:label=>sseWrite(res,{type:'step',label}),
      onStepDelta:delta=>sseWrite(res,{type:'step-delta',delta})
     });
-    if(!res.destroyed){sseWrite(res,{type:'meta',text:result.text,sources:result.sources,mode:result.mode,relatedQuestions:result.relatedQuestions||[]});sseWrite(res,{type:'done'});}
+    if(!res.destroyed){sseWrite(res,{type:'meta',text:result.text,sources:result.sources,mode:result.mode,relatedQuestions:result.relatedQuestions||[],library:relatedLibrary(query)});sseWrite(res,{type:'done'});}
    }catch(e){
     console.warn('[CatholicAgent]',e.name,e.message.replace(/[^a-zA-Z0-9_ ]/g,'').slice(0,60));
     if(!res.destroyed)sseWrite(res,{type:'error',error:'No se pudo completar la investigación con fuentes. Inténtalo de nuevo; no se ha sustituido por una respuesta sin verificar.'});
    }finally{clearInterval(heartbeat);clearTimeout(timer);res.off('close',disconnect);active--;if(!res.writableEnded)res.end();}
    return;
   }
-  try{const result=await agent.run({query:query.trim(),history,mode,signal:controller.signal,budget});if(!res.destroyed){res.set('Cache-Control','no-store');if(req.path==='/api/chat')res.type('text/plain').send(result.text+'\n\nFuentes: \n'+result.sources.map(s=>'['+s.id+'] '+s.title+' '+s.reference+' '+s.url).join('\n'));else res.json(result);}}
+  try{const result=await agent.run({query:query.trim(),history,mode,signal:controller.signal,budget});if(!res.destroyed){res.set('Cache-Control','no-store');if(req.path==='/api/chat')res.type('text/plain').send(result.text+'\n\nFuentes: \n'+result.sources.map(s=>'['+s.id+'] '+s.title+' '+s.reference+' '+s.url).join('\n'));else res.json({...result,library:relatedLibrary(query)});}}
   catch(e){console.warn('[CatholicAgent]',e.name,e.message.replace(/[^a-zA-Z0-9_ ]/g,'').slice(0,60));if(!res.destroyed)res.status(502).json({error:'No se pudo completar la investigación con fuentes. Inténtalo de nuevo; no se ha sustituido por una respuesta sin verificar.'});}
   finally{clearTimeout(timer);res.off('close',disconnect);active--;}
  };

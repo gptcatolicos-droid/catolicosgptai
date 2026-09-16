@@ -11,6 +11,11 @@ main { overflow: hidden; min-height: 0; }
 body.agent-home{background:var(--cream-2)!important}
 .agent-home .chat-panel{border:1px solid var(--border)!important;border-radius:22px!important;box-shadow:0 12px 34px rgba(37,27,21,.06)!important;background:#fff!important}
 .agent-home .chat-topbar{background:#fff!important;border-color:var(--border)!important}
+/* La pantalla de bienvenida se oculta con la clase .hidden, pero el propio
+   contenedor trae .flex: ambas utilidades de Tailwind pesan igual y ganaba la
+   que estuviera después en la hoja, así que el saludo seguía ocupando pantalla
+   encima de la primera respuesta. */
+.agent-home #welcome-screen.hidden{display:none!important}
 .agent-home #welcome-screen h1{font-weight:600!important;letter-spacing:-.02em!important;color:var(--espresso)!important;max-width:640px!important;line-height:1.14!important}
 .agent-home #welcome-screen>div:first-child{margin-top:6px!important}
 .agent-home #welcome-screen>p{color:var(--ink-2)!important;max-width:540px!important}
@@ -86,6 +91,32 @@ body.agent-home{background:var(--cream-2)!important}
 .agent-related-q{text-align:left;padding:9px 14px;border:1px solid var(--border);border-radius:999px;background:#fff;color:var(--espresso);font-size:13px;cursor:pointer}
 .agent-related-q:hover{border-color:var(--gold);background:var(--cream)}
 
+/* Estantería final: el material del propio sitio sobre el tema consultado.
+   Cierra el recorrido —respuesta, fuentes, y a dónde seguir— en vez de dejar
+   al lector en un callejón sin salida. */
+.agent-library{margin:24px 0 0;padding-top:18px;border-top:1px solid var(--border)}
+.agent-library-title{margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2)}
+.agent-library-title+.agent-articles,.agent-library-title+.agent-infografias{margin-bottom:18px}
+.agent-infografias{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.agent-infografia{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:#fff;text-decoration:none;color:inherit}
+.agent-infografia:hover{border-color:var(--gold)}
+.agent-infografia img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;background:var(--cream)}
+.agent-infografia-body{display:flex;flex-direction:column;gap:5px;padding:10px 12px 12px}
+.agent-infografia-title{font-size:13px;font-weight:700;color:var(--espresso);line-height:1.3}
+.agent-infografia-cta{font-size:11px;font-weight:700;color:var(--maroon)}
+/* server.js aplica .chat-bubble.bot ul{list-style-type:disc;margin-left:20px},
+   que pesa más que .agent-articles a secas: la lista salía con viñetas y
+   sangrada. Esta es una lista de enlaces, no una enumeración del texto. */
+.agent-home .chat-bubble.bot ul.agent-articles,
+.agent-articles{list-style:none!important;margin:0!important;padding:0!important;display:flex;flex-direction:column}
+.agent-home .chat-bubble.bot ul.agent-articles li,
+.agent-articles li{list-style:none!important;margin:0!important;border-top:1px solid var(--border)}
+.agent-home .chat-bubble.bot ul.agent-articles li::marker{content:''}
+.agent-articles li:first-child{border-top:0}
+.agent-article-link{display:block;padding:11px 0;color:var(--espresso);font-size:14px;line-height:1.4;text-decoration:none}
+.agent-article-link:hover{color:var(--maroon);text-decoration:underline}
+.agent-article-link::after{content:' →';color:var(--gold-deep);font-weight:700}
+
 @media(max-width:767px){
   /* La altura vuelve a ser explícita. Intenté repartirla por flex a través de
      main/h-full y esa cadena no daba una altura definida: el chat se encogía
@@ -94,15 +125,58 @@ body.agent-home{background:var(--cream-2)!important}
      que era el "marco" que recortaba la respuesta. */
   .agent-home .chat-shell{height:calc(100dvh - 70px)!important;min-height:0!important;width:100%!important;max-width:100%!important;padding:0!important;padding-inline:0!important;margin:0!important}
   .agent-home .chat-panel{border:0!important;border-radius:0!important;box-shadow:none!important;background:#fff!important}
-  .agent-home #chat-box{padding:16px 14px 8px!important}
-  .agent-home .agent-answer,.agent-home .chat-bubble{max-width:100%!important}
+
+  /* ── Una sola superficie ─────────────────────────────────────────────────
+     En el teléfono la respuesta venía dentro de una tarjeta blanca con borde,
+     que a su vez vivía dentro del panel, que a su vez dejaba ver el fondo
+     crema por los lados; y dentro de ella los pasos y las fuentes eran otras
+     cajas con su propio borde. Cuatro marcos anidados para leer un párrafo.
+     A partir de aquí el contenido del asistente se escribe directamente sobre
+     la página: el ancho completo es suyo y no hay más recuadros que los que
+     de verdad separan cosas distintas. */
+  .agent-home #chat-box{padding:0!important}
+  .agent-home .chat-bubble{max-width:100%!important;margin-bottom:0!important}
+  .agent-home .chat-bubble.bot{width:100%!important;border:0!important;border-radius:0!important;background:transparent!important;padding:14px 16px 20px!important;box-shadow:none!important}
+  /* La pregunta sí conserva su burbuja: es lo que permite distinguir de un
+     vistazo lo que escribió el usuario de lo que respondió el asistente. */
+  .agent-home .chat-bubble.user{max-width:86%!important;margin:12px 16px 2px!important;align-self:flex-end!important;padding:10px 14px!important}
+
+  /* Los pasos de investigación pierden su caja: son una línea de estado, no
+     un documento aparte. */
+  .agent-home .agent-steps{border:0!important;border-radius:0!important;background:transparent!important;padding:0!important;margin:0 0 12px!important}
+  .agent-home .agent-steps-list{margin-top:6px}
+
+  /* Las fuentes pasan de tarjetas apiladas a una lista con filas separadas por
+     una línea fina: la misma información, tres marcos menos. */
+  .agent-home .agent-source{border:0!important;border-radius:0!important;background:transparent!important;padding:12px 0!important;border-top:1px solid var(--border)!important}
+  .agent-home .agent-source-list{gap:0!important}
+  .agent-home .agent-sources-more{width:100%;text-align:center}
+
+  /* ── Tablas apiladas ─────────────────────────────────────────────────────
+     Un cuadro sinóptico de cuatro columnas no cabe en 390px: se salía de la
+     pantalla y había que arrastrarlo de lado para leer la segunda columna, con
+     la primera ya fuera de vista. Cada fila pasa a leerse en vertical, con el
+     nombre de la columna delante de su valor (data-label, que pone agent-ui.js).
+     Nada se sale del ancho y no hay scroll horizontal. */
+  .agent-home .chat-bubble.bot .agent-table{overflow-x:visible!important;margin:14px 0}
+  .agent-home .chat-bubble.bot .agent-table table,
+  .agent-home .chat-bubble.bot .agent-table tbody,
+  .agent-home .chat-bubble.bot .agent-table tr,
+  .agent-home .chat-bubble.bot .agent-table td{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important}
+  .agent-home .chat-bubble.bot .agent-table thead{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;white-space:nowrap!important}
+  .agent-home .chat-bubble.bot .agent-table tr{border:1px solid var(--border)!important;border-radius:12px;padding:4px 0;margin-bottom:10px;background:var(--cream)}
+  .agent-home .chat-bubble.bot .agent-table td{border:0!important;padding:7px 13px!important;font-size:14px!important;line-height:1.45!important}
+  .agent-home .chat-bubble.bot .agent-table td[data-label]::before{content:attr(data-label);display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--maroon);margin-bottom:2px}
+  .agent-home .chat-bubble.bot .agent-table td:empty{display:none!important}
+
   /* Sin ancho explícito, el contenedor de bienvenida se estrechaba dentro del
      flex y el título se partía letra por letra. */
-  .agent-home #welcome-screen{width:100%!important;max-width:100%!important;padding:8px 4px!important;align-items:stretch!important}
+  .agent-home #welcome-screen{width:100%!important;max-width:100%!important;padding:8px 18px!important;align-items:stretch!important}
   .agent-home #welcome-screen>div{width:100%!important;max-width:100%!important}
   .agent-home #welcome-screen h1{font-size:26px!important;width:100%!important;max-width:100%!important;text-align:center!important;overflow-wrap:normal!important;word-break:normal!important}
   .agent-home .chat-input-wrap{padding:8px 12px calc(8px + env(safe-area-inset-bottom))!important}
-  .agent-source{padding:11px 12px}
-  .agent-quick-actions,.agent-related{gap:7px}
-  .agent-quick-action,.agent-related-q{font-size:12px}
+  .agent-home .agent-quick-actions,.agent-home .agent-related{gap:7px}
+  .agent-home .agent-quick-action,.agent-home .agent-related-q{font-size:12px}
+  .agent-home .agent-infografias{gap:10px}
+  .agent-home .agent-infografia-title{font-size:12px}
 }

@@ -139,10 +139,12 @@
     line-height: 1.55 !important;
   }
 
-  /* Keep page shells away from viewport edges. */
+  /* Keep page shells away from viewport edges. El chat queda fuera: es la única
+     pantalla que debe llegar de borde a borde (cada burbuja pone su propio
+     margen interno), y este margen de 16px le recortaba el ancho útil. */
   main > section,
   main > article,
-  main > div:not(#welcome-screen) {
+  main > div:not(#welcome-screen):not(.chat-shell) {
     padding-left: max(1rem, env(safe-area-inset-left)) !important;
     padding-right: max(1rem, env(safe-area-inset-right)) !important;
   }

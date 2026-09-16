@@ -68,3 +68,38 @@ test('la cuota escalona visitante, registrado y Premium, y el tope de gasto apli
   fs.rmSync(dir,{recursive:true,force:true});
  }
 });
+
+test('el material relacionado enlaza el tema consultado y calla cuando no hay nada que enlazar',()=>{
+ const {related}=require('../agent-related-content');
+
+ // Un tema con material publicado devuelve artículos reales del catálogo.
+ const rosario=related('cómo se reza el santo rosario');
+ assert.ok(rosario.articulos.length>0,'el rosario tiene artículos publicados');
+ assert.ok(rosario.articulos.every(a=>a.url.startsWith('/blog/')&&a.title));
+ assert.ok(rosario.articulos.some(a=>/rosario/i.test(a.title)),'los artículos tratan del tema preguntado');
+ assert.ok(rosario.infografias.every(i=>i.url.startsWith('/infografias/')));
+
+ // Los topes son los que pide la interfaz: 2 infografías y 5 artículos.
+ assert.ok(rosario.infografias.length<=2);
+ assert.ok(rosario.articulos.length<=5);
+
+ // El blog publica cada tema en cinco variantes; no puede devolverse la misma
+ // cinco veces, porque entonces no es una ruta de lectura sino un eco.
+ const familias=new Set(rosario.articulos.map(a=>a.title.split(':')[0].trim().toLowerCase()));
+ if(rosario.articulos.length>2) assert.ok(familias.size>1,'no se repite un único tema en los cinco enlaces');
+
+ // Fuera del ámbito del servicio no se enlaza nada: recomendar cualquier cosa
+ // es peor que no recomendar.
+ const ajeno=related('cómo cambiar el aceite del motor de un carro');
+ assert.deepEqual(ajeno,{infografias:[],articulos:[]});
+
+ // Y un tema católico sin material publicado tampoco se rellena con parecidos:
+ // "santa" no basta para ofrecer a otra santa distinta.
+ for(const item of related('quién fue santa teresa de ávila').articulos){
+  assert.ok(/teresa|avila|ávila/i.test(item.title),`no debería ofrecerse "${item.title}"`);
+ }
+
+ // Una consulta vacía no puede reventar ni inventar relaciones.
+ assert.deepEqual(related(''),{infografias:[],articulos:[]});
+ assert.deepEqual(related(undefined),{infografias:[],articulos:[]});
+});
