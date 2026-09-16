@@ -7605,6 +7605,17 @@ app.get('/admin/paypal/configurar', async (req, res) => {
   if (!paypal.isConfigured()) return res.status(503).send('Faltan PAYPAL_CLIENT_ID y PAYPAL_CLIENT_SECRET en el entorno.');
   const appUrl = getPublicSiteUrl();
   const out = { env: paypal.settings().env };
+  // Si las credenciales son de otro entorno, no creamos nada: crear el plan en
+  // sandbox cuando se va a cobrar en producción (o al revés) deja una
+  // configuración que parece correcta y no cobra.
+  const detected = await paypal.detectEnv();
+  out.entornoDetectado = detected || 'ninguno (las credenciales no autenticaron)';
+  if (!detected) {
+    return res.status(502).send('<pre style="padding:24px">Las credenciales de PayPal no autenticaron ni en producción ni en sandbox. Revisa PAYPAL_CLIENT_ID y PAYPAL_CLIENT_SECRET.</pre>');
+  }
+  if (detected !== paypal.settings().env) {
+    return res.status(409).send(`<pre style="padding:24px;line-height:1.6">Tus credenciales son de <b>${detected}</b> pero PAYPAL_ENV está en <b>${paypal.settings().env}</b>.\n\nPon PAYPAL_ENV=${detected} en Render, espera al reinicio y vuelve a abrir esta página.</pre>`);
+  }
   try {
     if (!paypal.settings().planId) {
       const plan = await paypal.createMonthlyPlan();

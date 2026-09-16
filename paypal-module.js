@@ -76,6 +76,28 @@ async function accessToken() {
   return cachedToken.value;
 }
 
+// Detecta a qué entorno pertenecen las credenciales pidiendo un token a cada
+// uno. Es una operación de solo lectura y evita el error más común al montar
+// PayPal: claves de un entorno con PAYPAL_ENV apuntando al otro, que produce un
+// 401 confuso aunque las claves sean correctas.
+async function detectEnv() {
+  const s = settings();
+  if (!s.clientId || !s.secret) return null;
+  const basic = 'Basic ' + Buffer.from(`${s.clientId}:${s.secret}`).toString('base64');
+  for (const [name, base] of [['live', LIVE], ['sandbox', SANDBOX]]) {
+    try {
+      const res = await fetch(`${base}/v1/oauth2/token`, {
+        method: 'POST',
+        headers: { Authorization: basic, 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'grant_type=client_credentials',
+        signal: AbortSignal.timeout(15000)
+      });
+      if (res.ok) return name;
+    } catch (_) { /* probamos el siguiente */ }
+  }
+  return null;
+}
+
 async function api(method, path, body) {
   const s = settings();
   const token = await accessToken();
@@ -231,7 +253,7 @@ function grantsAccess(subscriptionStatus) {
 }
 
 module.exports = {
-  settings, isConfigured, isReady, status,
+  settings, isConfigured, isReady, status, detectEnv,
   createMonthlyPlan, createSubscription, getSubscription, cancelSubscription,
   createWebhook, listWebhooks, WEBHOOK_EVENTS,
   verifyWebhook, grantsAccess
