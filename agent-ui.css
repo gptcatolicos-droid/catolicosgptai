@@ -64,6 +64,10 @@ body.agent-home{background:var(--cream-2)!important}
 .agent-source-meta{margin:6px 0 0;color:var(--ink-2);font-size:12px}
 .agent-source-quote{margin:8px 0 0;padding-left:10px;border-left:2px solid var(--gold);color:var(--ink-2);font-size:13px;font-style:italic;line-height:1.55}
 .agent-source-link{display:inline-block;margin-top:9px;color:var(--maroon);font-size:12px;font-weight:700;text-decoration:underline}
+.agent-source.is-extra{display:none}
+.agent-sources.is-open .agent-source.is-extra{display:block}
+.agent-sources-more{margin-top:10px;padding:8px 14px;border:1px solid var(--border);border-radius:999px;background:#fff;color:var(--maroon);font-size:12px;font-weight:700;cursor:pointer}
+.agent-sources-more:hover{border-color:var(--gold);background:var(--gold-light)}
 
 .agent-downloads{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
 .agent-downloads button{padding:10px 15px;border-radius:12px;border:1px solid var(--border);background:#fff;color:var(--maroon);font-size:13px;cursor:pointer;min-height:44px}

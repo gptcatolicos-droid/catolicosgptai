@@ -96,11 +96,12 @@
  // Las fuentes dejan de estar escondidas tras un desplegable: son el valor
  // diferencial del agente, así que se muestran como tarjetas con su
  // referencia y el enlace real al documento que devuelve Magisterium.
+ const VISIBLE_SOURCES=3;
  function sourcesPanel(sources){
   const wrap=withClass(document.createElement('section'),'agent-sources');
   wrap.append(withClass(textEl('h4',`Fuentes consultadas (${sources.length})`),'agent-sources-title'));
   const list=withClass(document.createElement('div'),'agent-source-list');
-  for(const s of sources){
+  sources.forEach((s,i)=>{
    const item=withClass(document.createElement('article'),'agent-source');
    const head=withClass(document.createElement('div'),'agent-source-head');
    head.append(withClass(textEl('span',s.id),'agent-source-id'),textEl('strong',s.title||'Documento'));
@@ -116,9 +117,22 @@
      }
     }catch{}
    }
+   // Con respuestas breves, una pila de fuentes entierra lo importante:
+   // mostramos las tres primeras y el resto queda tras un botón.
+   if(i>=VISIBLE_SOURCES)item.classList.add('is-extra');
    list.append(item);
+  });
+  wrap.append(list);
+  if(sources.length>VISIBLE_SOURCES){
+   const more=withClass(textEl('button',`Ver las ${sources.length} fuentes`),'agent-sources-more');
+   more.type='button';
+   more.addEventListener('click',()=>{
+    const open=wrap.classList.toggle('is-open');
+    more.textContent=open?'Ver menos fuentes':`Ver las ${sources.length} fuentes`;
+   });
+   wrap.append(more);
   }
-  wrap.append(list);return wrap;
+  return wrap;
  }
  // Preguntas relacionadas que devuelve Magisterium (return_related_questions):
  // siguientes pasos alineados con las fuentes, no sugerencias inventadas.
