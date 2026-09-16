@@ -9,26 +9,10 @@ const previousLoader = Module._extensions['.js'];
 
 const MOBILE_MINIMAL_UX = `
 <style id="catolicosgpt-mobile-minimal-ux-20260915">
-body.cgpt-home-one-card .welcome-cards{grid-template-columns:minmax(0,420px)!important;justify-content:center!important}
 @media (max-width:767px){
   /* Shared mobile shell: keep the existing branded header, reduce visual noise. */
   body{background:#F9F6F0!important}
   body>header{box-shadow:none!important;border-bottom:1px solid #EAE5DD!important;background:rgba(255,255,255,.98)!important}
-
-  /* Home: one useful daily card, no visible nested scrollbar. */
-  body.cgpt-home-mobile-minimal .chat-shell{height:calc(100svh - 70px)!important;min-height:0!important;overflow:hidden!important}
-  body.cgpt-home-mobile-minimal #chat-box{padding:18px 16px 8px!important;scrollbar-width:none!important;-ms-overflow-style:none!important}
-  body.cgpt-home-mobile-minimal #chat-box::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
-  body.cgpt-home-mobile-minimal #welcome-screen{padding:4px 0 12px!important;gap:12px!important;justify-content:flex-start!important;min-height:100%!important}
-  body.cgpt-home-mobile-minimal #welcome-screen>div:first-child{width:38px!important;height:38px!important;border-radius:12px!important}
-  body.cgpt-home-mobile-minimal #welcome-screen h1{font-size:24px!important;line-height:1.08!important;max-width:320px!important;margin:0 auto!important}
-  body.cgpt-home-mobile-minimal #welcome-screen>p{font-size:14px!important;line-height:1.42!important;max-width:330px!important;margin:0 auto!important;color:#5F554D!important}
-  body.cgpt-home-mobile-minimal .welcome-cards{display:block!important;width:100%!important;max-width:390px!important;margin:4px auto 0!important;padding:0!important}
-  body.cgpt-home-mobile-minimal .welcome-card{display:none!important}
-  body.cgpt-home-mobile-minimal .welcome-card.cgpt-home-daily-infografia{display:flex!important;width:100%!important;min-height:0!important;margin:0!important;padding:16px!important;border:1px solid #E6DFD4!important;border-radius:18px!important;background:#fff!important;box-shadow:none!important;gap:10px!important;text-decoration:none!important}
-  body.cgpt-home-mobile-minimal .welcome-card.cgpt-home-daily-infografia .welcome-card-icon{width:38px!important;height:38px!important;border-radius:12px!important;flex:0 0 38px!important}
-  body.cgpt-home-mobile-minimal .welcome-card.cgpt-home-daily-infografia .welcome-card-title{font-size:11px!important;line-height:1.2!important;letter-spacing:.08em!important}
-  body.cgpt-home-mobile-minimal .welcome-card.cgpt-home-daily-infografia .welcome-card-text{font-size:15px!important;line-height:1.32!important;display:block!important;-webkit-line-clamp:unset!important;overflow:visible!important}
 
   /* Minimal filter chips shared by Infografias and Catequesis IA. */
   .cgpt-minimal-filter-shell{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:0!important;margin:0!important;gap:8px!important}
@@ -73,28 +57,10 @@ body.cgpt-home-one-card .welcome-cards{grid-template-columns:minmax(0,420px)!imp
     });
   }
 
-  function setupHome(){
-    const p=location.pathname.replace(/\\/+$/,'')||'/';
-    if(p!=='/') return;
-    document.body.classList.add('cgpt-home-one-card');
-    if(isMobile()) document.body.classList.add('cgpt-home-mobile-minimal');
-    const welcome=document.getElementById('welcome-screen');
-    if(!welcome) return;
-
-    const cards=[...welcome.querySelectorAll('.welcome-card')];
-    let daily=cards.find(card=>{
-      const t=norm(card.textContent);
-      const href=String(card.getAttribute('href')||'');
-      return t.includes('infografía del día')||t.includes('infografia del dia')||href.includes('/infografia-del-dia');
-    });
-    if(!daily){
-      daily=cards.find(card=>String(card.getAttribute('href')||'').includes('/infografia'))||null;
-    }
-    cards.forEach(card=>{
-      if(card===daily) card.classList.add('cgpt-home-daily-infografia');
-      else card.remove();
-    });
-  }
+  // La página de inicio (chat) ya no usa este parche: tiene su propia hoja
+  // dedicada (agent-ui.css) y ya no existen las tarjetas de bienvenida que
+  // este bloque recortaba, así que dejarlo activo solo producía clases y
+  // reglas CSS en conflicto con el rediseño del chat.
 
   function setupInfografias(){
     const p=location.pathname.replace(/\\/+$/,'');
@@ -111,7 +77,6 @@ body.cgpt-home-one-card .welcome-cards{grid-template-columns:minmax(0,420px)!imp
   }
 
   function run(){
-    setupHome();
     setupInfografias();
     setupCatequesis();
   }

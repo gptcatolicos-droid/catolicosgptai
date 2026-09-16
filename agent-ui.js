@@ -5,17 +5,44 @@
  if(!form||!input||!box)return;
  document.body.classList.add('agent-home');
  let history=[],busy=false,available=false,abort=null;
+ const FORMATS={consulta:'Automático',analisis:'Análisis detallado',resumen:'Resumen',mapa:'Mapa conceptual',cuadro:'Cuadro sinóptico',cronologia:'Cronología',comparativo:'Comparativo',guia:'Guía para enseñar'};
+ // El selector clásico (etiqueta + <select>) sigue siendo la fuente de
+ // verdad del modo elegido y se conserva visible en desktop. En mobile se
+ // oculta por CSS y su lugar lo toma un botón "+" junto al campo de texto
+ // (como el compositor de Claude en mobile) que abre una hoja de opciones:
+ // así el formato deja de ocupar una fila fija todo el tiempo.
  const controls=document.createElement('div');controls.className='agent-controls';
  const label=document.createElement('label');label.textContent='Formato ';label.htmlFor='agent-mode';
  const select=document.createElement('select');select.id='agent-mode';select.setAttribute('aria-label','Tipo de material');
  // "Respuesta" salió del listado: era una etiqueta genérica que no distinguía
  // ningún comportamiento real. "Automático" es el mismo modo por defecto
  // (consulta) pero explica lo que realmente hace.
- for(const [value,text]of Object.entries({consulta:'Automático',analisis:'Análisis detallado',resumen:'Resumen',mapa:'Mapa conceptual',cuadro:'Cuadro sinóptico',cronologia:'Cronología',comparativo:'Comparativo',guia:'Guía para enseñar'}))select.add(new Option(text,value));
+ for(const [value,text]of Object.entries(FORMATS))select.add(new Option(text,value));
  const status=document.createElement('span');status.className='agent-status';status.setAttribute('role','status');status.textContent='Comprobando disponibilidad…';
  const stop=document.createElement('button');stop.type='button';stop.textContent='Detener';stop.hidden=true;stop.addEventListener('click',()=>abort?.abort());
  controls.append(label,select,status,stop);form.before(controls);
- fetch('/api/agent/status').then(r=>r.json()).then(s=>{available=s.available;status.textContent=available?'Investiga y crea con fuentes':'Consulta habitual disponible';select.disabled=!available;}).catch(()=>{status.textContent='Consulta habitual disponible';select.disabled=true;});
+ const plusBtn=document.createElement('button');plusBtn.type='button';plusBtn.className='agent-plus';plusBtn.setAttribute('aria-label','Elegir formato');plusBtn.textContent='+';
+ const chip=document.createElement('span');chip.className='agent-format-chip';chip.hidden=true;
+ const chipLabel=document.createElement('span');const chipClear=document.createElement('button');chipClear.type='button';chipClear.textContent='✕';chipClear.setAttribute('aria-label','Quitar formato');
+ chip.append(chipLabel,chipClear);
+ chipClear.addEventListener('click',()=>{select.value='consulta';syncChip();});
+ function syncChip(){const isDefault=select.value==='consulta';chip.hidden=isDefault;if(!isDefault)chipLabel.textContent=FORMATS[select.value]||select.value;}
+ const sheet=document.createElement('div');sheet.className='agent-format-sheet';sheet.hidden=true;
+ const backdrop=document.createElement('div');backdrop.className='agent-format-sheet-backdrop';
+ const panel=document.createElement('div');panel.className='agent-format-sheet-panel';
+ panel.append(textEl('div','Elige un formato'));panel.lastChild.className='agent-format-sheet-title';
+ for(const [value,text]of Object.entries(FORMATS)){
+  const opt=textEl('button',text);opt.type='button';opt.dataset.mode=value;
+  opt.addEventListener('click',()=>{select.value=value;syncChip();closeSheet();});
+  panel.append(opt);
+ }
+ sheet.append(backdrop,panel);document.body.append(sheet);
+ function openSheet(){sheet.hidden=false;}
+ function closeSheet(){sheet.hidden=true;}
+ backdrop.addEventListener('click',closeSheet);
+ plusBtn.addEventListener('click',openSheet);
+ form.prepend(plusBtn);input.before(chip);
+ fetch('/api/agent/status').then(r=>r.json()).then(s=>{available=s.available;status.textContent=available?'Investiga y crea con fuentes':'Consulta habitual disponible';select.disabled=!available;plusBtn.disabled=!available;}).catch(()=>{status.textContent='Consulta habitual disponible';select.disabled=true;plusBtn.disabled=true;});
  const welcome=document.getElementById('welcome-screen');
  if(welcome){const about=document.createElement('a');about.href='/como-funciona';about.textContent='Cómo investiga y crea CatólicosGPT';about.className='agent-about';welcome.append(about);const h=welcome.querySelector('h1');if(h)h.textContent='Comprende tu fe. Profundiza. Comparte.';const p=welcome.querySelector('p');if(p)p.textContent='Tu agente de IA católica para estudiar la Biblia, explorar el Magisterio y crear materiales de formación.';}
  input.placeholder='Pregunta o pide un resumen, mapa conceptual, cronología…';input.maxLength=6000;input.setAttribute('aria-label','Tu pregunta o material de formación');

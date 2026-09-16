@@ -55,4 +55,26 @@ body.agent-home{background:var(--cream-2)!important}
 .agent-quick-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
 .agent-quick-action{padding:7px 13px;border:1px solid var(--gold);border-radius:999px;background:var(--gold-light);color:var(--maroon);font-size:12px;font-weight:700;cursor:pointer}
 .agent-quick-action:hover{background:var(--gold);color:#fff}
-@media(max-width:767px){.agent-home .chat-panel{border:0!important;border-radius:0!important;box-shadow:none!important}.agent-home .agent-controls{gap:5px;font-size:11px}.agent-home .agent-status{flex-basis:100%;margin-left:0}.agent-home .agent-controls button{width:auto!important;min-height:32px!important;height:auto!important;background:var(--maroon)!important;color:#fff!important;border-color:var(--maroon)!important}.agent-home #welcome-screen h1{font-size:28px!important}.agent-home .chat-input-wrap{padding-bottom:calc(10px + env(safe-area-inset-bottom))!important}}
+/* Botón "+" del compositor (como en la app de Claude en mobile): oculto en
+   escritorio, donde el selector "Formato" clásico ya funciona bien y no
+   estorba. En mobile reemplaza esa fila fija por un botón compacto que abre
+   una hoja de opciones, y una "chip" muestra el formato activo si no es el
+   automático. */
+.agent-plus{display:none;flex:0 0 37px;width:37px;height:37px;border:1px solid var(--border);border-radius:999px;background:#fff;color:var(--maroon);font-size:20px;line-height:1;align-items:center;justify-content:center}
+.agent-plus:hover{border-color:var(--gold);background:var(--gold-light)}
+.agent-format-chip{display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;padding:5px 6px 5px 10px;border:1px solid var(--gold);border-radius:999px;background:var(--gold-light);color:var(--maroon);font-size:11px;font-weight:700;white-space:nowrap}
+.agent-format-chip button{border:0;background:none;color:inherit;font-size:11px;cursor:pointer;padding:2px}
+.agent-format-sheet{position:fixed;inset:0;z-index:80}
+.agent-format-sheet-backdrop{position:absolute;inset:0;background:rgba(37,27,21,.35)}
+.agent-format-sheet-panel{position:absolute;left:0;right:0;bottom:0;max-height:70vh;overflow-y:auto;background:#fff;border-radius:20px 20px 0 0;padding:10px 14px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -12px 34px rgba(37,27,21,.16);display:flex;flex-direction:column;gap:4px}
+.agent-format-sheet-title{padding:10px 6px 6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2)}
+.agent-format-sheet-panel button[data-mode]{text-align:left;padding:12px 10px;border:0;border-radius:12px;background:none;color:var(--espresso);font-size:15px}
+.agent-format-sheet-panel button[data-mode]:hover,.agent-format-sheet-panel button[data-mode]:active{background:var(--cream)}
+@media(max-width:767px){
+  .agent-home .chat-panel{border:0!important;border-radius:0!important;box-shadow:none!important}
+  .agent-home .agent-controls{display:none!important}
+  .agent-plus{display:inline-flex}
+  .agent-home #welcome-screen h1{font-size:28px!important}
+  .agent-home .chat-input-wrap{padding-bottom:calc(10px + env(safe-area-inset-bottom))!important}
+}
+@media(min-width:768px){.agent-format-sheet{display:none!important}}
