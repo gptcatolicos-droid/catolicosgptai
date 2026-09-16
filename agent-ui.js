@@ -36,7 +36,15 @@
  // salto de línea; en pantallas táctiles Enter siempre hace salto de línea y
  // se envía con el botón, que es lo esperado al escribir desde el teléfono.
  const MAX_INPUT_HEIGHT=160;
- function autoGrow(){input.style.height='auto';input.style.height=Math.min(input.scrollHeight,MAX_INPUT_HEIGHT)+'px';}
+ // Con el campo vacío se fija una sola línea en vez de medir scrollHeight: esa
+ // medida dependía del ancho y de las reglas heredadas, y arrancaba el chat con
+ // un campo de tres renglones de alto.
+ const BASE_INPUT_HEIGHT=48;
+ function autoGrow(){
+  input.style.height='auto';
+  const h=input.value?Math.min(input.scrollHeight,MAX_INPUT_HEIGHT):BASE_INPUT_HEIGHT;
+  input.style.height=h+'px';
+ }
  const touchDevice=window.matchMedia&&window.matchMedia('(pointer: coarse)').matches;
  input.addEventListener('input',autoGrow);
  input.addEventListener('keydown',e=>{
@@ -45,7 +53,7 @@
   if(typeof form.requestSubmit==='function')form.requestSubmit();
   else form.dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));
  });
- input.placeholder='Pregunta sobre la fe, la Biblia, el Catecismo o el Magisterio…';
+ input.placeholder='Pregunta sobre la fe…';
  input.maxLength=6000;input.setAttribute('aria-label','Tu pregunta o material de formación');
  autoGrow();
 
