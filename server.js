@@ -440,7 +440,7 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
 
   const defaultMetaTags = {
     description: "CatólicosGPT | La IA Católica #1 en Español. Chat católico con Magisterio, Catecismo, Biblia de Navarra, santoral, liturgia, oraciones, infografías, videos y podcast.",
-    keywords: "CatólicosGPT, CatolicosGPT, catolicos gpt, ia catolica, IA católica, inteligencia artificial catolica, inteligencia artificial católica, chat catolico, chat católico, la ia catolica #1 en espanol, la ia católica #1 en español, magisterio de la iglesia, biblia de navarra, catecismo, santoral catolico, oraciones catolicas, infografias catolicas, videos catolicos, podcast catolico",
+    keywords: "CatólicosGPT, CatolicosGPT, catolicos gpt, ia catolica, IA católica, inteligencia artificial catolica, inteligencia artificial católica, chat catolico, chat católico, chatgpt catolico, ChatGPT católico, chat gpt catolico, la ia catolica #1 en espanol, la ia católica #1 en español, magisterio de la iglesia, biblia de navarra, catecismo, santoral catolico, oraciones catolicas, infografias catolicas, videos catolicos, podcast catolico",
     canonical: (req.originalUrl || '/').split('?')[0]
   };
 
@@ -475,7 +475,9 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
       "@context": "https://schema.org",
       "@type": "Organization",
       "name": "CatólicosGPT",
+      "alternateName": ["Católicos GPT", "CatolicosGPT", "ChatGPT católico"],
       "url": APP_URL,
+      "logo": `${APP_URL}/favicon.png`,
       "sameAs": ["https://www.catolicosgpt.com", "https://ai.catolicosgpt.com"]
     }
   ];
@@ -520,16 +522,22 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
   <meta property="og:description" content="${M.description}">
   <meta property="og:type" content="website">
   <meta property="og:url" content="${APP_URL}${M.canonical}">
-  <meta property="og:image" content="${M.image || 'https://yt3.googleusercontent.com/gTL33dWPVULnTlxRu-_2vuEuCKpPsdK_cY6m43-vjfekOV5ho5ucfPFe1wjfbEXl9tjLvNMOlQ=w1060-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj'}">
+  <meta property="og:image" content="${M.image || `${APP_URL}/favicon.png`}">
   <meta property="og:site_name" content="CatólicosGPT">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${fullTitle}">
   <meta name="twitter:description" content="${M.description}">
-  <meta name="twitter:image" content="${M.image || 'https://yt3.googleusercontent.com/gTL33dWPVULnTlxRu-_2vuEuCKpPsdK_cY6m43-vjfekOV5ho5ucfPFe1wjfbEXl9tjLvNMOlQ=w1060-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj'}">
-  
-  <!-- Favicon Oficial CatólicosGPT -->
-  <link rel="icon" type="image/png" sizes="96x96" href="/favicon.png">
-  <link rel="shortcut icon" type="image/png" href="/favicon.png">
+  <meta name="twitter:image" content="${M.image || `${APP_URL}/favicon.png`}">
+  <meta name="theme-color" content="#5E1B22">
+
+  <!-- Favicon Oficial CatólicosGPT: SVG primero (moderno), PNG cuadrado como
+       respaldo. El query ?v= fuerza a Google/navegadores a re-descargar el
+       ícono cacheado en vez de seguir mostrando una versión vieja o vacía en
+       resultados de búsqueda. -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2">
+  <link rel="icon" type="image/png" sizes="96x96" href="/favicon.png?v=2">
+  <link rel="shortcut icon" type="image/png" href="/favicon.png?v=2">
+  <link rel="apple-touch-icon" href="/favicon.png?v=2">
   
   ${schemas.map(sch => `<script type="application/ld+json">${JSON.stringify(sch)}</script>`).join('\n')}
   ${M.schema ? `<script type="application/ld+json">${JSON.stringify(M.schema)}</script>` : ''}
@@ -2148,7 +2156,7 @@ app.get('/', (req, res) => {
 
   res.send(renderPage('CatólicosGPT | IA católica para estudiar y crear', html, req, {
     description: 'IA católica en español: estudia Biblia, Catecismo y teología con fuentes. Crea resúmenes, mapas conceptuales y guías de formación con CatólicosGPT.',
-    keywords: 'CatólicosGPT, CatolicosGPT, ia catolica, IA católica, inteligencia artificial catolica, inteligencia artificial católica, chat catolico, chat católico, catequesis catolica, Magisterio de la Iglesia, santoral catolico, oraciones catolicas, infografias catolicas',
+    keywords: 'CatólicosGPT, CatolicosGPT, ia catolica, IA católica, inteligencia artificial catolica, inteligencia artificial católica, chatgpt catolico, ChatGPT católico, chat catolico, chat católico, catequesis catolica, Magisterio de la Iglesia, santoral catolico, oraciones catolicas, infografias catolicas',
     canonical: '/'
   }));
 });
