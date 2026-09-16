@@ -33,7 +33,11 @@ function register(app){
    res.status(200).set({'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache, no-transform',Connection:'keep-alive','X-Accel-Buffering':'no'});
    if(typeof res.flushHeaders==='function')res.flushHeaders();
    try{
-    const result=await agent.run({query:query.trim(),history,mode,signal:controller.signal,budget,onDelta:delta=>sseWrite(res,{type:'delta',delta})});
+    const result=await agent.run({query:query.trim(),history,mode,signal:controller.signal,budget,
+     onDelta:delta=>sseWrite(res,{type:'delta',delta}),
+     onStep:label=>sseWrite(res,{type:'step',label}),
+     onStepDelta:delta=>sseWrite(res,{type:'step-delta',delta})
+    });
     if(!res.destroyed){sseWrite(res,{type:'meta',text:result.text,sources:result.sources,mode:result.mode});sseWrite(res,{type:'done'});}
    }catch(e){
     console.warn('[CatholicAgent]',e.name,e.message.replace(/[^a-zA-Z0-9_ ]/g,'').slice(0,60));

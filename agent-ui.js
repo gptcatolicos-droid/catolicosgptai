@@ -34,36 +34,71 @@
  function downloads(result,bubble){const bar=document.createElement('div');bar.className='agent-downloads';
   for(const [format,label]of [['docx','Descargar Word'],['pdf','Descargar PDF']]){const btn=textEl('button',label);btn.type='button';btn.onclick=async()=>{btn.disabled=true;try{const r=await fetch(`/api/agent/export/${format}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(result)});if(!r.ok)throw Error();const url=URL.createObjectURL(await r.blob());const a=document.createElement('a');a.href=url;a.download=`catolicosgpt-material.${format}`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch{status.textContent='No se pudo descargar. Inténtalo de nuevo.';}finally{btn.disabled=false;}};bar.append(btn);}bubble.append(bar);
  }
- // Indicador vivo de "buscando" para la fase silenciosa de investigación en
- // Magisterium (antes de que OpenAI empiece a redactar). Rota frases breves
- // para que el usuario perciba avance real, no una pantalla congelada.
- const THINKING_PHRASES=['Consultando fuentes de Magisterium…','Verificando citas y referencias…','Redactando con las fuentes recuperadas…'];
- function startThinking(bubble){
+ // Panel de "pasos de investigación" al estilo Magisterium: cada evento step
+ // del servidor añade una fila; la anterior queda marcada como hecha y la
+ // nueva como activa. step-delta muestra un adelanto en vivo de lo que
+ // Magisterium está redactando mientras investiga, así la espera nunca se ve
+ // congelada, tenga o no tenga texto final que mostrar todavía.
+ function createStepsPanel(bubble){
   bubble.innerHTML='';
-  const wrap=document.createElement('span');wrap.className='agent-thinking';
-  const dot=document.createElement('span');dot.className='agent-thinking-dot';wrap.append(dot);
-  const text=textEl('span',THINKING_PHRASES[0]);wrap.append(text);
-  bubble.append(wrap);
-  let i=0;const timer=setInterval(()=>{i=(i+1)%THINKING_PHRASES.length;text.textContent=THINKING_PHRASES[i];},2600);
-  return ()=>clearInterval(timer);
+  const wrap=document.createElement('div');wrap.className='agent-steps';
+  const toggle=document.createElement('button');toggle.type='button';toggle.className='agent-steps-toggle';
+  toggle.append(textEl('span','Pasos de investigación'),textEl('span','⌄'));
+  const list=document.createElement('div');list.className='agent-steps-list';
+  toggle.addEventListener('click',()=>wrap.classList.toggle('is-collapsed'));
+  wrap.append(toggle,list);bubble.append(wrap);
+  let activeRow=null,preview=null;
+  return {
+   wrap,
+   addStep(label){
+    if(activeRow){activeRow.classList.remove('active');activeRow.classList.add('done');activeRow.querySelector('.agent-step-icon').textContent='✓';}
+    const row=document.createElement('div');row.className='agent-step active';
+    row.append(textEl('span','⟳'),textEl('span',label));
+    row.firstChild.className='agent-step-icon';
+    list.append(row);row.scrollIntoView({block:'nearest'});
+    activeRow=row;preview=null;
+   },
+   addPreview(delta){
+    if(!activeRow)return;
+    if(!preview){preview=document.createElement('p');preview.className='agent-step-preview';activeRow.append(preview);}
+    preview.textContent=(preview.textContent+delta).slice(-220);
+   },
+   finish(){if(activeRow){activeRow.classList.remove('active');activeRow.classList.add('done');activeRow.querySelector('.agent-step-icon').textContent='✓';}wrap.classList.add('is-collapsed');}
+  };
  }
- form.addEventListener('submit',async e=>{
-  if(!available)return;e.preventDefault();e.stopImmediatePropagation();if(busy)return;
-  const query=input.value.trim();if(!query)return;busy=true;abort=new AbortController();stop.hidden=false;select.disabled=true;const submit=form.querySelector('button[type="submit"]');if(submit)submit.disabled=true;
-  document.getElementById('welcome-screen')?.classList.add('hidden');const user=textEl('div',query);user.className='chat-bubble user';box.append(user);input.value='';
+ // Botones de siguiente paso bajo cada respuesta: "Profundizar" siempre
+ // disponible, y accesos directos a los formatos que pide el usuario según
+ // el tema (cuadro sinóptico, cronología, resumen, citas bíblicas, de santos).
+ function quickActions(originalQuery,bubble){
+  const bar=document.createElement('div');bar.className='agent-quick-actions';
+  const items=[['analisis','Profundizar más'],['cuadro','Cuadro sinóptico'],['cronologia','Cronología'],['resumen','Resumen'],['citas_biblicas','Citas bíblicas'],['citas_santos','Citas de santos']];
+  for(const [mode,label]of items){
+   const btn=textEl('button',label);btn.type='button';btn.className='agent-quick-action';
+   btn.addEventListener('click',()=>{if(!busy)runQuery(originalQuery,mode);});
+   bar.append(btn);
+  }
+  bubble.append(bar);
+ }
+ async function runQuery(query,mode){
+  if(!available||busy||!query)return;
+  busy=true;abort=new AbortController();stop.hidden=false;select.disabled=true;const submit=form.querySelector('button[type="submit"]');if(submit)submit.disabled=true;
+  document.getElementById('welcome-screen')?.classList.add('hidden');
+  const user=textEl('div',query);user.className='chat-bubble user';box.append(user);
   const bubble=document.createElement('div');bubble.className='chat-bubble bot bot-content agent-answer';box.append(bubble);bubble.scrollIntoView({block:'nearest'});status.textContent='Investigación en curso';
-  const stopThinking=startThinking(bubble);
+  const steps=createStepsPanel(bubble);
   let streamedText='';let sawDelta=false;
   try{
-   const r=await fetch('/api/agent',{method:'POST',headers:{'Content-Type':'application/json',Accept:'text/event-stream'},body:JSON.stringify({query,history,mode:select.value,stream:true}),signal:abort.signal});
+   const r=await fetch('/api/agent',{method:'POST',headers:{'Content-Type':'application/json',Accept:'text/event-stream'},body:JSON.stringify({query,history,mode,stream:true}),signal:abort.signal});
    if(!r.ok||!r.body){let msg='No se pudo completar la consulta.';try{msg=(await r.json()).error||msg;}catch{}throw Error(msg);}
-   const reader=r.body.getReader();const decoder=new TextDecoder();let buffer='';let final=null;let errorMsg=null;
+   const reader=r.body.getReader();const decoder=new TextDecoder();let buffer='';let final=null;let errorMsg=null;let answerEl=null;
    const handleBlock=block=>{
     const raw=block.split(/\r?\n/).filter(l=>l.startsWith('data:')).map(l=>l.slice(5).trim()).join('\n');
     if(!raw)return;let event;try{event=JSON.parse(raw);}catch{return;}
-    if(event.type==='delta'){
-     if(!sawDelta){sawDelta=true;stopThinking();bubble.textContent='';}
-     streamedText+=event.delta;bubble.textContent=streamedText;bubble.scrollIntoView({block:'nearest'});
+    if(event.type==='step'){steps.addStep(event.label);status.textContent=event.label;}
+    else if(event.type==='step-delta'){steps.addPreview(event.delta);}
+    else if(event.type==='delta'){
+     if(!sawDelta){sawDelta=true;steps.finish();status.textContent='Redactando…';answerEl=document.createElement('div');answerEl.className='agent-answer-text';bubble.append(answerEl);}
+     streamedText+=event.delta;answerEl.textContent=streamedText;bubble.scrollIntoView({block:'nearest'});
     }else if(event.type==='meta'){final=event;}
     else if(event.type==='error'){errorMsg=event.error;}
    };
@@ -76,10 +111,15 @@
    if(buffer.trim())handleBlock(buffer);
    if(errorMsg)throw Error(errorMsg);
    if(!final)throw Error('No se pudo completar la consulta.');
-   bubble.textContent='';render(final.text,bubble);if(final.sources?.length)bubble.append(sourcesPanel(final.sources));downloads({text:final.text,sources:final.sources||[],mode:final.mode},bubble);
+   if(answerEl)answerEl.remove();
+   render(final.text,bubble);if(final.sources?.length)bubble.append(sourcesPanel(final.sources));downloads({text:final.text,sources:final.sources||[],mode:final.mode},bubble);quickActions(query,bubble);
    history.push({role:'user',content:query},{role:'assistant',content:final.text});history=history.slice(-6);status.textContent='Material listo';
   }
-  catch(err){stopThinking();bubble.textContent=err.name==='AbortError'?'Investigación detenida.':err.message;status.textContent='Puedes volver a consultar';}
+  catch(err){steps.finish();bubble.textContent=err.name==='AbortError'?'Investigación detenida.':err.message;status.textContent='Puedes volver a consultar';}
   finally{busy=false;stop.hidden=true;select.disabled=false;if(submit)submit.disabled=false;input.focus();}
+ }
+ form.addEventListener('submit',e=>{
+  if(!available)return;e.preventDefault();e.stopImmediatePropagation();if(busy)return;
+  const query=input.value.trim();if(!query)return;input.value='';runQuery(query,select.value);
  },true);
 })();

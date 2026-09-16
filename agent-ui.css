@@ -32,8 +32,27 @@ body.agent-home{background:var(--cream-2)!important}
 .agent-downloads{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.agent-downloads button{padding:10px 15px;border-radius:10px;border:1px solid var(--border);background:#fff;color:var(--maroon);cursor:pointer;min-height:44px}
 .agent-downloads button:hover{border-color:var(--gold);background:var(--gold-light)}
 .agent-home button:focus-visible,.agent-home select:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
-.agent-thinking{display:inline-flex;align-items:center;gap:9px;color:var(--ink-2);font-size:14px;font-style:italic}
-.agent-thinking-dot{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 4px rgba(188,138,54,.14);animation:agent-thinking-pulse 1.1s ease infinite}
-@keyframes agent-thinking-pulse{50%{opacity:.4;transform:scale(.82)}}
-@media(prefers-reduced-motion:reduce){.agent-thinking-dot{animation:none}}
+/* Panel "Pasos de investigación": una fila por evento step del servidor, con
+   un ícono giratorio mientras está activa y un adelanto en vivo del texto que
+   Magisterium va redactando (step-delta), al estilo del propio Magisterium. */
+.agent-steps{border:1px solid var(--border);border-radius:14px;padding:10px 12px;margin-bottom:14px;background:var(--cream)}
+.agent-steps-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;background:none;padding:2px 0;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);cursor:pointer}
+.agent-steps-toggle span:last-child{transition:transform .15s ease}
+.agent-steps.is-collapsed .agent-steps-toggle span:last-child{transform:rotate(-90deg)}
+.agent-steps.is-collapsed .agent-steps-list{display:none}
+.agent-steps-list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.agent-step{display:flex;align-items:flex-start;gap:9px;font-size:13px;color:var(--ink-2)}
+.agent-step.active{color:var(--espresso)}
+.agent-step-icon{flex:0 0 auto;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;font-size:10px;line-height:1;color:var(--gold-deep)}
+.agent-step.active .agent-step-icon{animation:agent-step-spin 1s linear infinite}
+.agent-step.done .agent-step-icon{color:#3a7a4e}
+.agent-step-preview{margin:3px 0 0;color:var(--ink-2);font-size:12px;font-style:italic;line-height:1.5;overflow-wrap:anywhere}
+@keyframes agent-step-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.agent-step.active .agent-step-icon{animation:none}}
+.agent-answer-text{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink-2)}
+/* Acciones rápidas bajo cada respuesta: profundizar o pedir el mismo tema en
+   otro formato (cuadro sinóptico, cronología, resumen, citas). */
+.agent-quick-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.agent-quick-action{padding:7px 13px;border:1px solid var(--gold);border-radius:999px;background:var(--gold-light);color:var(--maroon);font-size:12px;font-weight:700;cursor:pointer}
+.agent-quick-action:hover{background:var(--gold);color:#fff}
 @media(max-width:767px){.agent-home .chat-panel{border:0!important;border-radius:0!important;box-shadow:none!important}.agent-home .agent-controls{gap:5px;font-size:11px}.agent-home .agent-status{flex-basis:100%;margin-left:0}.agent-home .agent-controls button{width:auto!important;min-height:32px!important;height:auto!important;background:var(--maroon)!important;color:#fff!important;border-color:var(--maroon)!important}.agent-home #welcome-screen h1{font-size:28px!important}.agent-home .chat-input-wrap{padding-bottom:calc(10px + env(safe-area-inset-bottom))!important}}
