@@ -227,7 +227,15 @@ async function initFirebaseSync() {
     const blogModule = require('./blog-module');
     let localBlogData = blogModule.loadBlog();
     const localPosts = localBlogData.posts || [];
-    const mergedPosts = (await debeDescargar('posts', localPosts.length))
+    // Tras retirar el blog de plantilla, la colección de la nube guarda sobre
+    // todo esos mismos artículos: bajarla entera costaría miles de lecturas
+    // -toda la cuota diaria del proyecto- para descartar casi todo lo que
+    // llega. A partir de ahí manda el disco: lo nuevo se sube, no se baja.
+    // FIREBASE_FORZAR_DESCARGA=1 sigue trayéndolo todo si hace falta.
+    const purgaBlog = require('./blog-purga-bulk');
+    const bajarPosts = process.env.FIREBASE_FORZAR_DESCARGA === '1' || !purgaBlog.purgaHecha();
+    if (!bajarPosts) console.log('[Firebase Sync] posts: el disco manda desde la retirada del blog de plantilla; no se baja nada.');
+    const mergedPosts = (bajarPosts && await debeDescargar('posts', localPosts.length))
       ? await firebaseSync.syncDownloadPosts(localPosts)
       : localPosts;
     localBlogData.posts = mergedPosts;

@@ -11,6 +11,15 @@ try {
   console.warn('[Production] No se pudo sembrar el disco de datos:', err.message);
 }
 
+// Justo después de sembrar, y antes de que nada lea el catálogo: retirar los mil
+// artículos de plantilla. Va aquí porque necesita el disco ya poblado y porque
+// deja marca, así que solo actúa una vez.
+try {
+  require('./blog-purga-bulk').purgarBlogBulk();
+} catch (err) {
+  console.warn('[Production] No se pudo retirar el blog de plantilla:', err.message);
+}
+
 try {
   require('./local-tailwind-runtime');
 } catch (err) {

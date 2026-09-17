@@ -589,9 +589,14 @@ async function syncDownloadPosts(localList) {
   const path = 'posts';
   try {
     const querySnapshot = await getDocs(collection(db, path));
+    // La nube conserva los mil artículos de plantilla que se retiraron del
+    // sitio. Sin este filtro, la primera sincronización los devolvería todos y
+    // la limpieza habría durado hasta el siguiente arranque.
+    const { esContenidoBulk } = require('./blog-purga-bulk');
     const cloudItems = [];
     querySnapshot.forEach((doc) => {
-      cloudItems.push(doc.data());
+      const item = doc.data();
+      if (!esContenidoBulk(item)) cloudItems.push(item);
     });
     
     if (cloudItems.length === 0) {

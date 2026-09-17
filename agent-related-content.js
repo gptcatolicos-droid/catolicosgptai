@@ -7,6 +7,7 @@
 // La relación se calcula con un índice local, sin llamar a ningún modelo: no
 // añade ni un milisegundo de espera al usuario ni un centavo de gasto, y
 // funciona aunque las APIs externas fallen.
+const fs = require('fs');
 const path = require('path');
 
 // Palabras que aparecen en casi cualquier pregunta en español y no dicen nada
@@ -34,11 +35,41 @@ function weigh(entry, value, weight) {
   for (const token of tokens(value)) entry.fields.set(token, Math.max(entry.fields.get(token) || 0, weight));
 }
 
+// Esto leía SIEMPRE la carpeta data del repositorio, y con require, que además
+// cachea. Dos consecuencias: en producción el material relacionado se construía
+// con la copia semilla en vez de con el catálogo vivo del disco, y los
+// artículos nuevos no aparecían jamás aunque se publicaran diez cada día.
+// Ahora manda el disco, y la semilla del repositorio queda como respaldo.
+function rutas(file) {
+  const dataDir = process.env.DATA_DIR || path.join(__dirname, 'data');
+  const enDisco = path.join(dataDir, file);
+  const enRepo = path.join(__dirname, 'data', file);
+  return enDisco === enRepo ? [enDisco] : [enDisco, enRepo];
+}
+
 function load(file) {
-  try { return require(path.join(__dirname, 'data', file)); } catch { return null; }
+  for (const ruta of rutas(file)) {
+    try { return JSON.parse(fs.readFileSync(ruta, 'utf-8')); } catch (_) {}
+  }
+  return null;
+}
+
+// Marca de cambio de los catálogos. El índice se construye una vez y se
+// reutiliza, pero si el catálogo cambia -y con diez artículos diarios cambia a
+// diario- hay que rehacerlo, o el servidor seguiría recomendando el catálogo
+// que leyó al arrancar hasta el siguiente despliegue.
+function huella() {
+  const partes = [];
+  for (const file of ['blog-catalog.json', 'infografias-catalog.json']) {
+    for (const ruta of rutas(file)) {
+      try { const info = fs.statSync(ruta); partes.push(`${ruta}:${info.mtimeMs}:${info.size}`); break; } catch (_) {}
+    }
+  }
+  return partes.join('|');
 }
 
 let index = null;
+let huellaDelIndice = null;
 
 function build() {
   const entries = [];
@@ -76,7 +107,11 @@ function build() {
 }
 
 function ensure() {
-  if (!index) index = build();
+  const actual = huella();
+  if (!index || actual !== huellaDelIndice) {
+    index = build();
+    huellaDelIndice = actual;
+  }
   return index;
 }
 

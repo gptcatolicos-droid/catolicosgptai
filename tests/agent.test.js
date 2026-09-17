@@ -70,38 +70,97 @@ test('la cuota escalona visitante, registrado y Premium, y el tope de gasto apli
 });
 
 test('el material relacionado enlaza el tema consultado y calla cuando no hay nada que enlazar',()=>{
- const {related}=require('../agent-related-content');
+ const fs=require('fs'),os=require('os'),pathMod=require('path');
+ // La prueba trae su propio catálogo. Antes leía el del repositorio, así que
+ // cambiar el contenido publicado rompía una prueba que no iba de contenido.
+ const dir=fs.mkdtempSync(pathMod.join(os.tmpdir(),'cgpt-related-'));
+ const previo=process.env.DATA_DIR;
+ process.env.DATA_DIR=dir;
+ const articulo=(slug,titulo,descripcion,categoria)=>({slug,titulo,descripcion,categoria,publicado:true});
+ // El ranking pesa las palabras por lo raras que sean en el catálogo (IDF) y
+ // exige que la consulta traiga alguna de verdad distintiva. Con seis fichas
+ // ninguna palabra puede serlo, así que el catálogo de prueba tiene el tamaño
+ // que el algoritmo necesita para funcionar como en producción.
+ const relleno=[];
+ for(let i=0;i<200;i++) relleno.push(articulo('relleno-'+i,'Tema catolico numero '+i,'Ficha de relleno numero '+i+' sobre formacion general.','formacion'));
+ fs.writeFileSync(pathMod.join(dir,'blog-catalog.json'),JSON.stringify({posts:[
+   articulo('rosario-guia','El Santo Rosario: guía completa para rezarlo','Cómo se reza el rosario paso a paso, con sus misterios.','oraciones'),
+   articulo('rosario-misterios','El Santo Rosario: los misterios explicados','Misterios gozosos, luminosos, dolorosos y gloriosos del rosario.','oraciones'),
+   articulo('rosario-familia','Rezar el rosario en familia','Cómo rezar el santo rosario en casa con los hijos.','oraciones'),
+   articulo('teresa-avila','Santa Teresa de Ávila: vida y obra','Biografía de santa Teresa de Ávila, doctora de la Iglesia.','santos'),
+   articulo('catalina-siena','Santa Catalina de Siena','Biografía de santa Catalina de Siena.','santos'),
+   articulo('confesion','La confesión sacramental','Qué es el sacramento de la penitencia.','sacramentos'),
+   ...relleno
+ ],total:206}));
+ fs.writeFileSync(pathMod.join(dir,'infografias-catalog.json'),JSON.stringify({infografias:[
+   {slug:'rosario-infografia',titulo:'Cómo rezar el Santo Rosario',tema:'rosario',metaDescription:'Los misterios del rosario en una imagen.',categoria:'oraciones',publicado:true,imagenes:[{url:'/x.png'}]},
+   {slug:'rosario-para-colorear',titulo:'El Rosario para colorear',tema:'rosario',metaDescription:'Dibujo del rosario para niños.',categoria:'dibujo-para-colorear',esDibujoNinos:true,publicado:true,imagenes:[{url:'/y.png'}]},
+   {slug:'sacramentos-infografia',titulo:'Los siete sacramentos',tema:'sacramentos',metaDescription:'Los sacramentos de la Iglesia.',categoria:'doctrina',publicado:true,imagenes:[{url:'/z.png'}]}
+ ],total:3}));
+ delete require.cache[require.resolve('../agent-related-content')];
+ try{
+  const {related}=require('../agent-related-content');
 
- // Un tema con material publicado devuelve artículos reales del catálogo.
- const rosario=related('cómo se reza el santo rosario');
- assert.ok(rosario.articulos.length>0,'el rosario tiene artículos publicados');
- assert.ok(rosario.articulos.every(a=>a.url.startsWith('/blog/')&&a.title));
- assert.ok(rosario.articulos.some(a=>/rosario/i.test(a.title)),'los artículos tratan del tema preguntado');
- assert.ok(rosario.infografias.every(i=>i.url.startsWith('/infografias/')));
+  // Un tema con material publicado devuelve artículos reales del catálogo.
+  const rosario=related('cómo se reza el santo rosario');
+  assert.ok(rosario.articulos.length>0,'el rosario tiene artículos publicados');
+  assert.ok(rosario.articulos.every(a=>a.url.startsWith('/blog/')&&a.title));
+  assert.ok(rosario.articulos.some(a=>/rosario/i.test(a.title)),'los artículos tratan del tema preguntado');
+  assert.ok(rosario.infografias.every(i=>i.url.startsWith('/infografias/')));
 
- // Los topes son los que pide la interfaz: 2 infografías y 5 artículos.
- assert.ok(rosario.infografias.length<=2);
- assert.ok(rosario.articulos.length<=5);
+  // Los topes son los que pide la interfaz: 2 infografías y 5 artículos.
+  assert.ok(rosario.infografias.length<=2);
+  assert.ok(rosario.articulos.length<=5);
 
- // El blog publica cada tema en cinco variantes; no puede devolverse la misma
- // cinco veces, porque entonces no es una ruta de lectura sino un eco.
- const familias=new Set(rosario.articulos.map(a=>a.title.split(':')[0].trim().toLowerCase()));
- if(rosario.articulos.length>2) assert.ok(familias.size>1,'no se repite un único tema en los cinco enlaces');
+  // Fuera del ámbito del servicio no se enlaza nada: recomendar cualquier cosa
+  // es peor que no recomendar.
+  const ajeno=related('cómo cambiar el aceite del motor de un carro');
+  assert.deepEqual(ajeno,{infografias:[],articulos:[]});
 
- // Fuera del ámbito del servicio no se enlaza nada: recomendar cualquier cosa
- // es peor que no recomendar.
- const ajeno=related('cómo cambiar el aceite del motor de un carro');
- assert.deepEqual(ajeno,{infografias:[],articulos:[]});
+  // Y un tema católico no se rellena con parecidos: "santa" no basta para
+  // ofrecer a otra santa distinta.
+  for(const item of related('quién fue santa teresa de ávila').articulos){
+   assert.ok(/teresa|avila|ávila/i.test(item.title),`no debería ofrecerse "${item.title}"`);
+  }
 
- // Y un tema católico sin material publicado tampoco se rellena con parecidos:
- // "santa" no basta para ofrecer a otra santa distinta.
- for(const item of related('quién fue santa teresa de ávila').articulos){
-  assert.ok(/teresa|avila|ávila/i.test(item.title),`no debería ofrecerse "${item.title}"`);
+  // Una consulta vacía no puede reventar ni inventar relaciones.
+  assert.deepEqual(related(''),{infografias:[],articulos:[]});
+  assert.deepEqual(related(undefined),{infografias:[],articulos:[]});
+ } finally {
+  previo===undefined?delete process.env.DATA_DIR:process.env.DATA_DIR=previo;
+  delete require.cache[require.resolve('../agent-related-content')];
+  fs.rmSync(dir,{recursive:true,force:true});
  }
+});
 
- // Una consulta vacía no puede reventar ni inventar relaciones.
- assert.deepEqual(related(''),{infografias:[],articulos:[]});
- assert.deepEqual(related(undefined),{infografias:[],articulos:[]});
+test('el material relacionado ve los articulos nuevos sin reiniciar el servidor',()=>{
+ const fs=require('fs'),os=require('os'),pathMod=require('path');
+ const dir=fs.mkdtempSync(pathMod.join(os.tmpdir(),'cgpt-related-vivo-'));
+ const previo=process.env.DATA_DIR;
+ process.env.DATA_DIR=dir;
+ const catalogo=pathMod.join(dir,'blog-catalog.json');
+ const relleno=[];
+ for(let i=0;i<200;i++) relleno.push({slug:'relleno-'+i,titulo:'Tema catolico numero '+i,descripcion:'Ficha de relleno numero '+i+'.',categoria:'formacion',publicado:true});
+ fs.writeFileSync(catalogo,JSON.stringify({posts:relleno,total:relleno.length}));
+ fs.writeFileSync(pathMod.join(dir,'infografias-catalog.json'),JSON.stringify({infografias:[],total:0}));
+ delete require.cache[require.resolve('../agent-related-content')];
+ try{
+  const {related}=require('../agent-related-content');
+  assert.deepEqual(related('la santa misa explicada'),{infografias:[],articulos:[]});
+
+  // Se publica uno, como hace la generación diaria, sin tocar el proceso.
+  fs.writeFileSync(catalogo,JSON.stringify({posts:[
+    {slug:'la-santa-misa',titulo:'La Santa Misa explicada paso a paso',descripcion:'Qué ocurre en cada parte de la santa misa.',categoria:'liturgia',publicado:true},
+    ...relleno
+  ],total:relleno.length+1}));
+  const despues=related('la santa misa explicada');
+  assert.equal(despues.articulos.length,1,'el artículo recién publicado ya se enlaza');
+  assert.equal(despues.articulos[0].url,'/blog/la-santa-misa');
+ } finally {
+  previo===undefined?delete process.env.DATA_DIR:process.env.DATA_DIR=previo;
+  delete require.cache[require.resolve('../agent-related-content')];
+  fs.rmSync(dir,{recursive:true,force:true});
+ }
 });
 
 test('las fuentes en otro idioma se identifican, no se transcriben, y el español va primero',async()=>{
@@ -441,4 +500,50 @@ test('sin material de Magisterium no se genera ningun articulo', async () => {
     () => openaiChat.generateContentJson({ contentType: 'blog', audience: 'adultos', topic: 'los sacramentos' }),
     /no se inventa/
   );
+});
+
+// ── Retirada del blog generado por plantilla ──
+test('la retirada quita solo los articulos de plantilla y se hace una sola vez', () => {
+ const fs=require('fs'),os=require('os'),pathMod=require('path');
+ const dir=fs.mkdtempSync(pathMod.join(os.tmpdir(),'cgpt-purga-'));
+ const previo=process.env.DATA_DIR;
+ process.env.DATA_DIR=dir;
+ fs.writeFileSync(pathMod.join(dir,'blog-catalog.json'), JSON.stringify({ posts: [
+   { slug:'plantilla-1', titulo:'Oracion: Guia Completa', fuente:'CatolicosGPT bulk editorial local' },
+   { slug:'plantilla-2', titulo:'Oracion: Para Familias', fuente:'CatolicosGPT bulk editorial local' },
+   { slug:'escrito-a-mano', titulo:'Artículo del administrador' },
+   { slug:'nuevo', titulo:'Los sacramentos', fuenteGeneracion:'magisterium+openai' }
+ ], total: 4 }));
+ delete require.cache[require.resolve('../blog-purga-bulk')];
+ try {
+  const purga=require('../blog-purga-bulk');
+  assert.equal(purga.purgaHecha(), false);
+
+  const r=purga.purgarBlogBulk();
+  assert.equal(r.hecho, true);
+  assert.equal(r.retirados, 2);
+  assert.equal(r.quedan, 2);
+
+  const catalogo=JSON.parse(fs.readFileSync(pathMod.join(dir,'blog-catalog.json'),'utf-8'));
+  const slugs=catalogo.posts.map(p=>p.slug).sort();
+  assert.deepEqual(slugs, ['escrito-a-mano','nuevo'], 'lo escrito a mano y lo nuevo se quedan');
+  assert.equal(catalogo.total, 2);
+
+  // Una segunda vuelta no vuelve a tocar nada: la marca vive en el disco.
+  assert.equal(purga.purgaHecha(), true);
+  assert.equal(purga.purgarBlogBulk().hecho, false);
+ } finally {
+  previo===undefined?delete process.env.DATA_DIR:process.env.DATA_DIR=previo;
+  delete require.cache[require.resolve('../blog-purga-bulk')];
+  fs.rmSync(dir,{recursive:true,force:true});
+ }
+});
+
+test('la nube no puede devolver los articulos de plantilla', () => {
+ const { esContenidoBulk } = require('../blog-purga-bulk');
+ assert.equal(esContenidoBulk({ fuente: 'CatolicosGPT bulk editorial local' }), true);
+ assert.equal(esContenidoBulk({ fuente: ' CatolicosGPT bulk editorial local ' }), true);
+ assert.equal(esContenidoBulk({ fuente: 'otra cosa' }), false);
+ assert.equal(esContenidoBulk({}), false);
+ assert.equal(esContenidoBulk(null), false);
 });
