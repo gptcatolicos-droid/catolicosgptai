@@ -102,6 +102,10 @@ app.use((req, res, next) => {
   }
   next();
 });
+// Va ANTES de las rutas de chat a propósito: su middleware anota la consulta y
+// deja pasar, así funciona para la ruta del agente y para la antigua sin tocar
+// ninguna de las dos.
+require('./consultas-chat').register(app, { getAuthedUser, isStrictAdminUser });
 require('./agent-routes').register(app, { getUser: getAuthedUser, isSuperAdmin: isStrictAdminUser });
 require('./children-guides').register(app, renderPage);
 require('./agent-about').register(app, renderPage);
@@ -2312,6 +2316,18 @@ app.get('/', (req, res) => {
         
         appendMessage('user', text);
         chatInput.value = '';
+
+        // Se manda como evento "search" con search_term porque es el que
+        // Analytics ya sabe leer: sale en el informe de búsquedas del sitio sin
+        // configurar ninguna dimensión personalizada.
+        try {
+          if (typeof gtag === 'function') {
+            gtag('event', 'search', {
+              search_term: text.replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, ' ').replace(/\d{5,}/g, ' ').trim().slice(0, 100),
+              tipo: 'chat_ia'
+            });
+          }
+        } catch (_) {}
         
         // Agregar burbuja de cargando...
         const loading = document.createElement('div');
@@ -8153,6 +8169,53 @@ async function renderLecturasDelDia(req, res, { soloEvangelio }) {
 app.get('/lecturas-del-dia', (req, res) => renderLecturasDelDia(req, res, { soloEvangelio: false }));
 app.get('/evangelio-del-dia', (req, res) => renderLecturasDelDia(req, res, { soloEvangelio: true }));
 
+// ── Qué pregunta la gente al chat ──────────────────────────────────────────
+// La misma información que el informe de búsquedas de Analytics, pero completa
+// y sin esperar veinticuatro horas a que Google la procese.
+app.get('/admin/consultas', requireStrictAdminPage, (req, res) => {
+  const consultas = require('./consultas-chat');
+  const datos = consultas.resumen();
+  const lista = consultas.top(300);
+
+  const filas = lista.map((c, i) => `
+    <tr>
+      <td class="border border-[#E6DFD4] p-2 text-xs text-ink2">${i + 1}</td>
+      <td class="border border-[#E6DFD4] p-2 text-sm">${escapeHtml(c.texto)}</td>
+      <td class="border border-[#E6DFD4] p-2 text-sm font-bold text-maroon text-right">${c.veces}</td>
+      <td class="border border-[#E6DFD4] p-2 text-[11px] text-ink2">${escapeHtml(String(c.ultima || '').slice(0, 10))}</td>
+    </tr>`).join('');
+
+  const vacio = `
+    <div class="bg-[#FFFCF4] border border-gold/30 rounded-2xl p-5">
+      <p class="text-espresso text-sm font-bold m-0">Todavía no hay consultas registradas.</p>
+      <p class="text-ink2 text-sm leading-relaxed mt-2 mb-0">Se empiezan a guardar desde ahora. Vuelve en unos días y aquí estará lo que más pregunta la gente.</p>
+    </div>`;
+
+  res.send(renderPage('Consultas del chat', `
+    <div class="max-w-4xl mx-auto px-4 py-8 flex flex-col gap-6">
+      <header class="flex flex-col gap-2">
+        <a href="/admin" class="text-xs text-maroon underline">← Volver al panel</a>
+        <h1 class="font-display font-bold text-espresso text-2xl m-0">Qué pregunta la gente al chat</h1>
+        <p class="text-ink2 text-sm m-0">${datos.total} consultas registradas · ${datos.distintas} preguntas distintas</p>
+        <p class="text-[11px] text-ink2 leading-relaxed m-0">
+          Las preguntas se agrupan sin tildes ni signos, así que "¿Qué es la Eucaristía?" y "que es la eucaristia" cuentan como una.
+          No se guarda quién preguntó, y se quitan correos, teléfonos y cifras largas antes de guardar nada.
+        </p>
+      </header>
+      ${lista.length ? `
+      <table class="w-full border-collapse">
+        <thead><tr class="bg-cream">
+          <th class="border border-[#E6DFD4] p-2 text-left text-[11px] uppercase tracking-wider">#</th>
+          <th class="border border-[#E6DFD4] p-2 text-left text-[11px] uppercase tracking-wider">Pregunta</th>
+          <th class="border border-[#E6DFD4] p-2 text-right text-[11px] uppercase tracking-wider">Veces</th>
+          <th class="border border-[#E6DFD4] p-2 text-left text-[11px] uppercase tracking-wider">Última</th>
+        </tr></thead>
+        <tbody>${filas}</tbody>
+      </table>` : vacio}
+    </div>
+  `, req));
+});
+
 const seoPillarsRouter = optionalRequire('./seo-pillars-router', null);
 if (seoPillarsRouter) {
   app.use('/', seoPillarsRouter);
@@ -8626,6 +8689,9 @@ app.get('/admin', async (req, res) => {
            navegan: caben dos y media en pantalla y hay que arrastrar a ciegas
            para encontrar el resto. Un desplegable nativo las muestra todas de
            un toque, con el teclado y el gesto que el teléfono ya conoce. -->
+      <div class="flex flex-wrap gap-2 mb-3">
+        <a href="/admin/consultas" class="acceso-liturgia">💬 Qué pregunta la gente al chat</a>
+      </div>
       <div class="admin-tab-select md:hidden flex flex-col gap-1 mb-1">
         <label for="admin-tab-select" class="text-[11px] font-bold text-ink-2 uppercase tracking-wide">Sección del panel</label>
         <select id="admin-tab-select" onchange="switchTab(this.value)" class="w-full border border-[#D1C7BD] bg-white rounded-xl px-3 py-3 text-sm font-semibold text-espresso outline-none focus:ring-2 focus:ring-gold">

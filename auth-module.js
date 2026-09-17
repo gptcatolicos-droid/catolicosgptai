@@ -94,6 +94,27 @@ function savePlanConfig(d) {
 // Firebase sin añadir ni borrar ninguno, la cuenta no cambia y el cambio no se
 // baja. Para esos casos está FIREBASE_FORZAR_DESCARGA=1, que baja todo igual
 // que antes.
+// Cuántos documentos tenía la nube la última vez que se bajó con éxito. Hace
+// falta porque la cuenta de la nube y la del disco no tienen por qué coincidir:
+// al bajar los posts se descartan los de plantilla, así que en el disco quedan
+// menos. Comparando solo esos dos números, la colección se bajaría entera en
+// CADA arranque para volver a descartar lo mismo, y eso es justo la sangría de
+// cuota que nos dejó sin Firestore.
+const CONTEOS_PATH = path.join(DATA_DIR, 'sync-conteos.json');
+
+function leerConteos() {
+  try { return JSON.parse(fs.readFileSync(CONTEOS_PATH, 'utf-8')); } catch (_) { return {}; }
+}
+
+function recordarConteo(nombreColeccion, cuantos) {
+  try {
+    const conteos = leerConteos();
+    conteos[nombreColeccion] = cuantos;
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(CONTEOS_PATH, JSON.stringify(conteos, null, 2), 'utf-8');
+  } catch (_) {}
+}
+
 async function debeDescargar(nombreColeccion, cuantosEnDisco) {
   if (process.env.FIREBASE_FORZAR_DESCARGA === '1') {
     console.log(`[Firebase Sync] ${nombreColeccion}: descarga forzada por FIREBASE_FORZAR_DESCARGA.`);
@@ -109,9 +130,17 @@ async function debeDescargar(nombreColeccion, cuantosEnDisco) {
   }
   if (enLaNube === cuantosEnDisco) {
     console.log(`[Firebase Sync] ${nombreColeccion}: ${cuantosEnDisco} en el disco y ${enLaNube} en la nube; no se baja nada.`);
+    recordarConteo(nombreColeccion, enLaNube);
+    return false;
+  }
+  // La nube no ha cambiado desde la última bajada: lo que falte en el disco
+  // falta porque se descartó a propósito, no porque no se haya traído.
+  if (leerConteos()[nombreColeccion] === enLaNube) {
+    console.log(`[Firebase Sync] ${nombreColeccion}: la nube sigue con ${enLaNube} documentos desde la última bajada; no se repite.`);
     return false;
   }
   console.log(`[Firebase Sync] ${nombreColeccion}: ${cuantosEnDisco} en el disco frente a ${enLaNube} en la nube; bajando el catálogo.`);
+  recordarConteo(nombreColeccion, enLaNube);
   return true;
 }
 
@@ -227,15 +256,14 @@ async function initFirebaseSync() {
     const blogModule = require('./blog-module');
     let localBlogData = blogModule.loadBlog();
     const localPosts = localBlogData.posts || [];
-    // Tras retirar el blog de plantilla, la colección de la nube guarda sobre
-    // todo esos mismos artículos: bajarla entera costaría miles de lecturas
-    // -toda la cuota diaria del proyecto- para descartar casi todo lo que
-    // llega. A partir de ahí manda el disco: lo nuevo se sube, no se baja.
-    // FIREBASE_FORZAR_DESCARGA=1 sigue trayéndolo todo si hace falta.
-    const purgaBlog = require('./blog-purga-bulk');
-    const bajarPosts = process.env.FIREBASE_FORZAR_DESCARGA === '1' || !purgaBlog.purgaHecha();
-    if (!bajarPosts) console.log('[Firebase Sync] posts: el disco manda desde la retirada del blog de plantilla; no se baja nada.');
-    const mergedPosts = (bajarPosts && await debeDescargar('posts', localPosts.length))
+    // Aquí se bloqueó la bajada de posts para no gastar la cuota trayendo los mil
+    // artículos de plantilla. Era una exageración con un coste alto: Search
+    // Console enseña que las páginas con más clics del sitio son artículos de
+    // catequesis que vivían en la nube, y bloquear la bajada impedía que
+    // volvieran. syncDownloadPosts ya descarta los de plantilla uno a uno, así
+    // que bajar trae lo bueno y deja fuera lo malo; y debeDescargar pregunta
+    // primero cuántos hay, que cuesta tres lecturas en vez de dos mil.
+    const mergedPosts = (await debeDescargar('posts', localPosts.length))
       ? await firebaseSync.syncDownloadPosts(localPosts)
       : localPosts;
     localBlogData.posts = mergedPosts;
@@ -540,5 +568,8 @@ module.exports = {
   authenticateToken, requireAdmin,
   checkInfografiaLimit, consumeInfografiaCredit, getPeriodKey,
   validateCoupon, useCoupon, createCoupon, upgradePlan,
-  loadPlanConfig, savePlanConfig
+  loadPlanConfig, savePlanConfig,
+  // Expuesto para las pruebas: decidir cuándo NO bajar es lo que mantuvo vivo
+  // el proyecto de Firestore, y eso hay que poder comprobarlo.
+  debeDescargar
 };

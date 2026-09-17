@@ -895,3 +895,97 @@ test('si ninguna fuente sirve no se devuelve la lectura de ayer', async () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// ── La bajada desde la nube no se repite sin motivo ──
+test('una coleccion no se vuelve a bajar si la nube no ha cambiado', async () => {
+  const fs = require('fs'), os = require('os'), pathMod = require('path');
+  const dir = fs.mkdtempSync(pathMod.join(os.tmpdir(), 'cgpt-conteos-'));
+  const previo = { DATA_DIR: process.env.DATA_DIR, SIN_NUBE: process.env.CATOLICOSGPT_SIN_NUBE };
+  process.env.DATA_DIR = dir;
+  process.env.CATOLICOSGPT_SIN_NUBE = '1';
+  fs.writeFileSync(pathMod.join(dir, 'users.json'), JSON.stringify({ users: [] }));
+  delete require.cache[require.resolve('../auth-module')];
+  try {
+    const auth = require('../auth-module');
+    // La nube dice 2627 y el disco tiene 4: hay que bajar.
+    let consultas = 0;
+    const firebase = require('../firebase-module');
+    const original = firebase.contarEnLaNube;
+    firebase.contarEnLaNube = async () => { consultas++; return 2627; };
+    try {
+      assert.equal(await auth.debeDescargar('posts', 4), true, 'la primera vez hay que bajar');
+      // Tras bajar, en el disco quedan menos porque se descartan los de
+      // plantilla. Si solo se comparan los dos números, se bajaría otra vez.
+      assert.equal(await auth.debeDescargar('posts', 1627), false, 'no debe repetirse si la nube no cambió');
+      // Y si la nube crece, sí se vuelve a bajar.
+      firebase.contarEnLaNube = async () => 2700;
+      assert.equal(await auth.debeDescargar('posts', 1627), true, 'si la nube cambia hay que bajar');
+      assert.ok(consultas >= 2);
+    } finally {
+      firebase.contarEnLaNube = original;
+    }
+  } finally {
+    for (const [k, v] of Object.entries({ DATA_DIR: previo.DATA_DIR, CATOLICOSGPT_SIN_NUBE: previo.SIN_NUBE })) {
+      v === undefined ? delete process.env[k] : process.env[k] = v;
+    }
+    delete require.cache[require.resolve('../auth-module')];
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// ── Qué pregunta la gente al chat ──
+test('las preguntas se agrupan aunque cambien tildes, signos y mayusculas', () => {
+  const fs = require('fs'), os = require('os'), pathMod = require('path');
+  const dir = fs.mkdtempSync(pathMod.join(os.tmpdir(), 'cgpt-consultas-'));
+  const previo = process.env.DATA_DIR;
+  process.env.DATA_DIR = dir;
+  delete require.cache[require.resolve('../consultas-chat')];
+  try {
+    const c = require('../consultas-chat');
+    c.registrar('¿Qué es la Eucaristía para niños?');
+    c.registrar('que es la eucaristia para ninos');
+    c.registrar('QUE ES LA EUCARISTIA PARA NINOS!!');
+    c.registrar('cómo se reza el santo rosario');
+
+    const top = c.top(10);
+    assert.equal(top.length, 2, 'deberían quedar dos preguntas distintas');
+    assert.equal(top[0].veces, 3, 'las tres formas de la misma pregunta cuentan juntas');
+    // Se conserva el texto tal como se escribió la primera vez, que se lee mejor.
+    assert.equal(top[0].texto, '¿Qué es la Eucaristía para niños?');
+    assert.equal(c.resumen().total, 4);
+  } finally {
+    previo === undefined ? delete process.env.DATA_DIR : process.env.DATA_DIR = previo;
+    delete require.cache[require.resolve('../consultas-chat')];
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('no se guardan correos, telefonos ni cifras largas', () => {
+  const c = require('../consultas-chat');
+  const limpio = c.limpiar('escribeme a juan.perez@gmail.com o al +57 300 123 4567, mi cedula es 1020304050');
+  assert.ok(!/gmail\.com|juan\.perez/.test(limpio), `se coló un correo: ${limpio}`);
+  assert.ok(!/300 123 4567|3001234567/.test(limpio), `se coló un teléfono: ${limpio}`);
+  assert.ok(!/1020304050/.test(limpio), `se coló una cédula: ${limpio}`);
+  // Una cita bíblica sí sobrevive: son pocas cifras seguidas.
+  assert.match(c.limpiar('que significa Juan 3,16'), /Juan 3,16/);
+});
+
+test('los saludos y los dedazos no ensucian el informe', () => {
+  const fs = require('fs'), os = require('os'), pathMod = require('path');
+  const dir = fs.mkdtempSync(pathMod.join(os.tmpdir(), 'cgpt-consultas2-'));
+  const previo = process.env.DATA_DIR;
+  process.env.DATA_DIR = dir;
+  delete require.cache[require.resolve('../consultas-chat')];
+  try {
+    const c = require('../consultas-chat');
+    assert.equal(c.registrar('hola'), null);
+    assert.equal(c.registrar('  '), null);
+    assert.equal(c.registrar('asdf'), null);
+    assert.ok(c.registrar('que es el purgatorio segun la Iglesia'));
+    assert.equal(c.top(10).length, 1);
+  } finally {
+    previo === undefined ? delete process.env.DATA_DIR : process.env.DATA_DIR = previo;
+    delete require.cache[require.resolve('../consultas-chat')];
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
