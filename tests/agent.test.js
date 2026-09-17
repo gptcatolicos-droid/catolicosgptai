@@ -143,3 +143,50 @@ test('las fuentes en otro idioma se identifican, no se transcriben, y el españo
  assert.equal(mezcla[0].language,'es','el español va primero');
  assert.ok(mezcla.slice(1).every(p=>p.language==='la'));
 });
+
+test('una pregunta que pide una lista busca también el texto enumerado y exige la lista completa',async()=>{
+ const agent=require('../catholic-agent');
+ const {MODES,searchPlan,asksForEnumeration}=agent;
+
+ // Se reconoce la forma de la pregunta, no un tema concreto de una lista fija.
+ assert.ok(asksForEnumeration('los 10 mandamientos'));
+ assert.ok(asksForEnumeration('cuáles son los sacramentos'));
+ assert.ok(asksForEnumeration('enumera las bienaventuranzas'));
+ assert.ok(!asksForEnumeration('qué es el purgatorio'));
+ assert.ok(!asksForEnumeration('por qué sufrimos'));
+
+ // Y esa forma dispara una segunda búsqueda dirigida al texto, porque /search
+ // devuelve comentarios sobre la lista y no la lista.
+ assert.equal(searchPlan('qué es el purgatorio').length,1);
+ const plan=searchPlan('los 10 mandamientos');
+ assert.equal(plan.length,2);
+ assert.equal(plan[0],'los 10 mandamientos');
+ assert.notEqual(plan[1],plan[0]);
+
+ // Contrato de extremo a extremo: dos búsquedas, pasajes repetidos fusionados
+ // una sola vez, y la orden de enumerar presente en lo que recibe el modelo.
+ const pasaje={document_title:'Catecismo',document_reference:'n. 2052',cited_text:'La Iglesia enseña que el Decálogo se recibe de Dios y la tradición lo transmite con fidelidad a los fieles.'};
+ const busquedas=[]; let instrucciones='',formato='',tope=0;
+ const fetcher=(url,init)=>{
+  const body=JSON.parse(init.body);
+  if(url.includes('/search')){
+   busquedas.push(body.query);
+   return Promise.resolve({ok:true,json:async()=>({data:[pasaje,pasaje]})});
+  }
+  instrucciones=body.instructions; tope=body.max_output_tokens;
+  formato=(body.instructions.split('FORMATO PREFERIDO: ')[1]||'');
+  return Promise.resolve({ok:true,json:async()=>({output:[{type:'message',content:[{type:'output_text',text:'1. No tendrás otro Dios [F1]'}]}],usage:{input_tokens:10,output_tokens:10}})});
+ };
+ const prev={MAGISTERIUM_API_KEY:process.env.MAGISTERIUM_API_KEY,OPENAI_API_KEY:process.env.OPENAI_API_KEY};
+ process.env.MAGISTERIUM_API_KEY='prueba';process.env.OPENAI_API_KEY='prueba';
+ try{
+  const result=await agent.run({query:'los 10 mandamientos',mode:'consulta',signal:new AbortController().signal,fetcher});
+  assert.equal(busquedas.length,2,'debe buscar dos veces ante una enumeración');
+  assert.equal(result.sources.length,1,'el mismo pasaje no puede ocupar dos fuentes');
+  assert.match(instrucciones,/lista|enumeración/i);
+  assert.match(formato,/COMPLETA/,'el modo breve debe exigir la lista completa');
+  assert.ok(tope>=900,`el tope de salida (${tope}) debe permitir una lista completa`);
+ } finally {
+  for(const [k,v] of Object.entries(prev)) v===undefined?delete process.env[k]:process.env[k]=v;
+ }
+});
