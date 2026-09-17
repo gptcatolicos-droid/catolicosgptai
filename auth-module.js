@@ -75,6 +75,44 @@ function savePlanConfig(d) {
   try { fs.writeFileSync(CONFIG_BACKUP, json, 'utf-8'); } catch(e) {}
 }
 
+// ── ¿Merece la pena bajar esta colección? ──────────────────────────────────
+// Antes se bajaba TODO en cada arranque. El catálogo del blog son más de dos
+// mil quinientos documentos y Firestore cobra una lectura por documento, así
+// que un par de despliegues agotaban la cuota diaria gratuita del proyecto y a
+// partir de ahí fallaba hasta lo pequeño: usuarios, cupones, el registro de
+// borrados. Y el aviso de Google es tajante: esta base de datos no puede
+// superar el límite gratuito ni activando facturación.
+//
+// Ahora primero se pregunta cuántos documentos hay -tres lecturas en vez de dos
+// mil quinientas- y solo se baja el catálogo si la cuenta no cuadra con lo que
+// ya hay en el disco. Con disco persistente eso significa bajarlo una vez y no
+// volver a tocarlo mientras nadie añada ni borre nada.
+//
+// El precio de esta decisión: si alguien EDITA un documento en la consola de
+// Firebase sin añadir ni borrar ninguno, la cuenta no cambia y el cambio no se
+// baja. Para esos casos está FIREBASE_FORZAR_DESCARGA=1, que baja todo igual
+// que antes.
+async function debeDescargar(nombreColeccion, cuantosEnDisco) {
+  if (process.env.FIREBASE_FORZAR_DESCARGA === '1') {
+    console.log(`[Firebase Sync] ${nombreColeccion}: descarga forzada por FIREBASE_FORZAR_DESCARGA.`);
+    return true;
+  }
+  if (typeof firebaseSync.contarEnLaNube !== 'function') return true;
+  const enLaNube = await firebaseSync.contarEnLaNube(nombreColeccion);
+  // Sin conteo no se sabe nada; se baja, que es como se comportaba antes.
+  if (enLaNube === null) return true;
+  if (enLaNube === 0) {
+    console.log(`[Firebase Sync] ${nombreColeccion}: la nube está vacía; no hay nada que bajar.`);
+    return false;
+  }
+  if (enLaNube === cuantosEnDisco) {
+    console.log(`[Firebase Sync] ${nombreColeccion}: ${cuantosEnDisco} en el disco y ${enLaNube} en la nube; no se baja nada.`);
+    return false;
+  }
+  console.log(`[Firebase Sync] ${nombreColeccion}: ${cuantosEnDisco} en el disco frente a ${enLaNube} en la nube; bajando el catálogo.`);
+  return true;
+}
+
 // ── Inicialización de la Sincronización de Fondo con Firestore ──
 async function initFirebaseSync() {
   console.log('[Firebase Sync] Intentando autenticar servidor en la nube...');
@@ -133,7 +171,11 @@ async function initFirebaseSync() {
     // descarga volvería a meter esas infografías en el catálogo.
     await registroEliminadas.hydrateFromCloud();
     let localInfografiasData = infografiasModule.loadCatalog({ incluirEliminadas: true });
-    const mergedInfografias = registroEliminadas.filter(await firebaseSync.syncDownloadInfografias(localInfografiasData.infografias || []));
+    const localInfografias = localInfografiasData.infografias || [];
+    const bajadasInfografias = (await debeDescargar('infografias', localInfografias.length))
+      ? await firebaseSync.syncDownloadInfografias(localInfografias)
+      : localInfografias;
+    const mergedInfografias = registroEliminadas.filter(bajadasInfografias);
     const driveRecovery = require('./drive-infografias-migration');
     const migrated = driveRecovery.migrateInfografiasToDrive(mergedInfografias);
     localInfografiasData.infografias = migrated.items;
@@ -152,7 +194,10 @@ async function initFirebaseSync() {
     console.log('[Firebase Sync] Unificando videos con la nube...');
     const videosModule = require('./videos-module');
     let localVideosData = videosModule.loadVideos();
-    const mergedVideos = await firebaseSync.syncDownloadVideos(localVideosData.videos || []);
+    const localVideos = localVideosData.videos || [];
+    const mergedVideos = (await debeDescargar('videos', localVideos.length))
+      ? await firebaseSync.syncDownloadVideos(localVideos)
+      : localVideos;
     localVideosData.videos = mergedVideos;
     localVideosData.total = mergedVideos.length;
     videosModule.saveVideos(localVideosData);
@@ -165,7 +210,10 @@ async function initFirebaseSync() {
     console.log('[Firebase Sync] Unificando podcasts con la nube...');
     const podcastModule = require('./podcast-module');
     let localPodcastsData = podcastModule.loadPodcasts();
-    const mergedPodcasts = await firebaseSync.syncDownloadPodcasts(localPodcastsData.podcasts || []);
+    const localPodcasts = localPodcastsData.podcasts || [];
+    const mergedPodcasts = (await debeDescargar('podcasts', localPodcasts.length))
+      ? await firebaseSync.syncDownloadPodcasts(localPodcasts)
+      : localPodcasts;
     localPodcastsData.podcasts = mergedPodcasts;
     localPodcastsData.total = mergedPodcasts.length;
     podcastModule.savePodcasts(localPodcastsData);
@@ -178,7 +226,10 @@ async function initFirebaseSync() {
     console.log('[Firebase Sync] Unificando blog posts con la nube...');
     const blogModule = require('./blog-module');
     let localBlogData = blogModule.loadBlog();
-    const mergedPosts = await firebaseSync.syncDownloadPosts(localBlogData.posts || []);
+    const localPosts = localBlogData.posts || [];
+    const mergedPosts = (await debeDescargar('posts', localPosts.length))
+      ? await firebaseSync.syncDownloadPosts(localPosts)
+      : localPosts;
     localBlogData.posts = mergedPosts;
     localBlogData.total = mergedPosts.length;
     blogModule.saveBlog(localBlogData);

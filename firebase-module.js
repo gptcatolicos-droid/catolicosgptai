@@ -73,6 +73,32 @@ if (isFirebaseEnabled) {
   }
 }
 
+// ── Conteo barato de una colección en la nube ──
+// Bajar una colección entera cuesta UNA LECTURA POR DOCUMENTO. El catálogo del
+// blog son más de dos mil quinientos documentos, así que cada arranque gastaba
+// dos mil quinientas lecturas solo en comprobar si había algo nuevo, y con dos
+// o tres despliegues se agotaba la cuota diaria gratuita del proyecto: a partir
+// de ahí Firestore respondía "Quota limit exceeded" a todo, y el mensaje avisa
+// de que esta base de datos no puede superar el límite gratuito ni pagando.
+//
+// getCountFromServer cuesta una lectura por cada mil documentos. Preguntar
+// "¿cuántos hay?" cuesta tres lecturas en lugar de dos mil quinientas, y con esa
+// respuesta se decide si merece la pena bajar el catálogo entero.
+async function contarEnLaNube(nombreColeccion) {
+  if (!isFirebaseEnabled) return null;
+  try {
+    const { getCountFromServer } = require('firebase/firestore');
+    const resumen = await getCountFromServer(collection(db, nombreColeccion));
+    const total = resumen.data().count;
+    return Number.isFinite(total) ? total : null;
+  } catch (err) {
+    // Sin conteo no se sabe nada, y devolver null hace que quien pregunta se
+    // comporte como antes: bajar por si acaso.
+    console.warn(`[Firebase Sync] No se pudo contar ${nombreColeccion} en la nube: ${err.message}`);
+    return null;
+  }
+}
+
 // ── 1. Manejador de Errores Críticos Exigido por el Skill ──
 const OperationType = {
   CREATE: 'create',
@@ -874,6 +900,7 @@ module.exports = {
   OperationType,
   handleFirestoreError,
   authenticateServer,
+  contarEnLaNube,
   syncDownloadUsers,
   syncUploadUser,
   syncDownloadCoupons,
