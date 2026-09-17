@@ -16,6 +16,9 @@
 // adivinar. Se activa con MAGISTERIUM_SONDEO=1 y se apaga después.
 const BASE = 'https://www.magisterium.com/api/v1';
 
+// Resultado del sondeo del 17/09/2026: las siete devolvieron 404 con la página
+// HTML de Next, no JSON. La API de Magisterium no publica el leccionario. Se
+// deja escrito para que nadie vuelva a intentarlo creyendo que falta probar.
 const CANDIDATAS = [
   '/readings',
   '/readings/today',

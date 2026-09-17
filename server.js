@@ -124,6 +124,14 @@ if (process.env.MAGISTERIUM_SONDEO === '1') {
   }, 15000);
 }
 
+// Sondeo de fuentes para las lecturas: cuál responde y cuál trae de verdad el
+// leccionario. Se enciende con LECTURAS_SONDEO=1 y se apaga.
+if (process.env.LECTURAS_SONDEO === '1') {
+  setTimeout(() => {
+    require('./sondeo-lecturas-fuentes').sondear().catch(e => console.warn('[Sondeo Lecturas] Falló:', e.message));
+  }, 18000);
+}
+
 // Las lecturas de hoy se traen solas, no cuando alguien entra. Si se
 // descargaran a la primera visita, esa persona se encontraría la página vacía
 // mientras espera -y es justo la que venía a leerlas-.
