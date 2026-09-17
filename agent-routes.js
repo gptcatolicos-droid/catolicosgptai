@@ -8,13 +8,18 @@ function register(app,options={}){
  // La cuota deja de medirse solo por IP: con sesión iniciada se mide por
  // cuenta, que es lo que permite vender un plan y no un rango de IPs.
  const getUser=typeof options.getUser==='function'?options.getUser:()=>null;
+ // El súper administrador queda fuera de TODOS los topes: consultas por
+ // minuto, cuota diaria y tope de gasto. Es la cuenta del dueño del servicio.
+ const isSuperAdmin=typeof options.isSuperAdmin==='function'?options.isSuperAdmin:()=>false;
  // Solo presencia, nunca valores: permite ver en los logs por qué el agente
  // aparece desactivado sin tener que adivinar cuál variable falta.
  console.log(`[Agente] configurado=${agent.configured()} | CATHOLIC_AGENT_ENABLED=${process.env.CATHOLIC_AGENT_ENABLED||'(sin definir)'} | MAGISTERIUM_API_KEY=${process.env.MAGISTERIUM_API_KEY?'presente':'FALTA'} | OPENAI_API_KEY=${process.env.OPENAI_API_KEY?'presente':'FALTA'}`);
  app.get('/favicon.png',(req,res)=>res.set('Cache-Control','public, max-age=86400').type('png').sendFile(path.join(__dirname,'favicon.png')));
  const budget=require('./agent-budget').createBudget();
+ const envInt=(name,fallback)=>{const n=Number(process.env[name]);return Number.isFinite(n)&&n>0?n:fallback;};
  const requests=new Map();let active=0;let exportsActive=0;
  function limited(req,res,next){
+  if(isSuperAdmin(getUser(req)))return next();
   const now=Date.now();for(const [k,v]of requests)if(v.until<now)requests.delete(k);
   const key=req.ip;const item=requests.get(key)||{count:0,until:now+60000};
   if(item.count>=8 || requests.size>10000){res.set('Retry-After','60');return res.status(429).json({error:'Espera un minuto antes de volver a consultar.'});}
@@ -28,6 +33,25 @@ function register(app,options={}){
  app.get('/agent-ui.js',freshAsset('agent-ui.js'));
  app.get('/agent-ui.css',freshAsset('agent-ui.css'));
  app.get('/api/agent/status',(req,res)=>res.json({available:agent.configured()}));
+ // Cuántas consultas le quedan a quien está preguntando. Hasta ahora el límite
+ // solo se descubría al chocar con él: la interfaz no tenía forma de avisar
+ // antes, ni de ofrecer el plan Premium en el momento en que importa.
+ app.get('/api/agent/cuota',(req,res)=>{
+  const account=getUser(req);
+  const superAdmin=isSuperAdmin(account);
+  const unlimited=superAdmin||Boolean(account && ['premium','admin'].includes(account.plan));
+  const limit=account?envInt('AGENT_FREE_DAILY_REQUESTS',10):envInt('AGENT_ANON_DAILY_REQUESTS',3);
+  const quotaKey=account?`user:${account.id}`:`ip:${req.ip}`;
+  const used=unlimited?0:budget.usage(quotaKey).used;
+  res.set('Cache-Control','no-store').json({
+   registrado:Boolean(account),
+   plan:account?account.plan:'visitante',
+   ilimitado:unlimited,
+   limite:unlimited?null:limit,
+   usadas:used,
+   restantes:unlimited?null:Math.max(0,limit-used)
+  });
+ });
  function sseWrite(res,payload){res.write(`data: ${JSON.stringify(payload)}\n\n`);}
  // El chat no puede ser un callejón sin salida: al final de cada consulta se
  // enlaza el material ya publicado en el sitio sobre ese mismo tema. Se resuelve
@@ -44,13 +68,15 @@ function register(app,options={}){
   if(!agent.configured())return res.status(503).json({error:'La investigación con fuentes no está disponible en este momento. Puedes utilizar la consulta habitual.'});
   if(active>=6)return res.status(429).json({error:'Hay varias investigaciones en curso. Inténtalo en un momento.'});
   const account=getUser(req);
+  const superAdmin=isSuperAdmin(account);
   const unlimited=Boolean(account && ['premium','admin'].includes(account.plan));
   const quotaKey=account?`user:${account.id}`:`ip:${req.ip}`;
+  // El gasto del súper administrador se sigue contabilizando, pero no lo frena.
+  const spending=superAdmin?budget.unmetered():budget;
   // Escalera de acceso: quien no se registra prueba el chat, quien se registra
   // tiene más margen y quien paga no tiene tope diario.
-  const envInt=(name,fallback)=>{const n=Number(process.env[name]);return Number.isFinite(n)&&n>0?n:fallback;};
   const limit=account?envInt('AGENT_FREE_DAILY_REQUESTS',10):envInt('AGENT_ANON_DAILY_REQUESTS',3);
-  try{budget.admit(quotaKey,{unlimited,limit});}catch(e){return res.status(429).json({error:e.message==='daily_quota'?(account?'Alcanzaste tu límite diario del plan gratuito. Con Premium el chat no tiene límite diario.':'Alcanzaste el límite de consultas para visitantes. Crea una cuenta gratis para tener más, o suscríbete a Premium para no tener límite diario.'):'La investigación ha alcanzado su límite temporal de uso. Puedes seguir consultando los recursos publicados.'});}
+  try{spending.admit(quotaKey,{unlimited,limit});}catch(e){return res.status(429).json({error:e.message==='daily_quota'?(account?'Alcanzaste tu límite diario del plan gratuito. Con Premium el chat no tiene límite diario.':'Alcanzaste el límite de consultas para visitantes. Crea una cuenta gratis para tener más, o suscríbete a Premium para no tener límite diario.'):'La investigación ha alcanzado su límite temporal de uso. Puedes seguir consultando los recursos publicados.'});}
   active++;const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),100000);const disconnect=()=>{if(!res.writableEnded)controller.abort();};res.on('close',disconnect);
   // El streaming SSE retransmite el texto del modelo apenas se genera (no espera
   // a que termine el turno completo) para que la primera palabra llegue en
@@ -64,7 +90,7 @@ function register(app,options={}){
    // las líneas que empiezan por ':' según la propia especificación SSE.
    const heartbeat=setInterval(()=>{ if(!res.writableEnded) res.write(': keep-alive\n\n'); },15000);
    try{
-    const result=await agent.run({query:query.trim(),history,mode,signal:controller.signal,budget,
+    const result=await agent.run({query:query.trim(),history,mode,signal:controller.signal,budget:spending,
      onDelta:delta=>sseWrite(res,{type:'delta',delta}),
      onStep:label=>sseWrite(res,{type:'step',label}),
      onStepDelta:delta=>sseWrite(res,{type:'step-delta',delta})
@@ -76,7 +102,7 @@ function register(app,options={}){
    }finally{clearInterval(heartbeat);clearTimeout(timer);res.off('close',disconnect);active--;if(!res.writableEnded)res.end();}
    return;
   }
-  try{const result=await agent.run({query:query.trim(),history,mode,signal:controller.signal,budget});if(!res.destroyed){res.set('Cache-Control','no-store');if(req.path==='/api/chat')res.type('text/plain').send(result.text+'\n\nFuentes: \n'+result.sources.map(s=>'['+s.id+'] '+s.title+' '+s.reference+' '+s.url).join('\n'));else res.json({...result,library:relatedLibrary(query)});}}
+  try{const result=await agent.run({query:query.trim(),history,mode,signal:controller.signal,budget:spending});if(!res.destroyed){res.set('Cache-Control','no-store');if(req.path==='/api/chat')res.type('text/plain').send(result.text+'\n\nFuentes: \n'+result.sources.map(s=>'['+s.id+'] '+s.title+' '+s.reference+' '+s.url).join('\n'));else res.json({...result,library:relatedLibrary(query)});}}
   catch(e){console.warn('[CatholicAgent]',e.name,e.message.replace(/[^a-zA-Z0-9_ ]/g,'').slice(0,60));if(!res.destroyed)res.status(502).json({error:'No se pudo completar la investigación con fuentes. Inténtalo de nuevo; no se ha sustituido por una respuesta sin verificar.'});}
   finally{clearTimeout(timer);res.off('close',disconnect);active--;}
  };

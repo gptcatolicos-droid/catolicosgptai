@@ -235,3 +235,49 @@ test('lo que el admin borra no vuelve en el siguiente despliegue, y se puede des
   fs.rmSync(dir,{recursive:true,force:true});
  }
 });
+
+test('el súper administrador no tiene tope: ni de consultas ni de gasto, pero su gasto se contabiliza',()=>{
+ const fs=require('fs'),os=require('os'),pathMod=require('path');
+ const {createBudget}=require('../agent-budget');
+ const dir=fs.mkdtempSync(pathMod.join(os.tmpdir(),'cgpt-admin-'));
+ const prevMensual=process.env.OPENAI_AGENT_MONTHLY_BUDGET_USD, prevDiario=process.env.OPENAI_AGENT_DAILY_BUDGET_USD;
+ try{
+  // Un tope de gasto ya agotado: para cualquier otra cuenta esto es el final.
+  process.env.OPENAI_AGENT_MONTHLY_BUDGET_USD='0';
+  process.env.OPENAI_AGENT_DAILY_BUDGET_USD='0';
+  const budget=createBudget(dir);
+  assert.throws(()=>budget.admit('user:premium',{unlimited:true}),/budget_exhausted/,'el tope frena incluso a Premium');
+
+  // El súper administrador pasa igualmente, y muchas veces seguidas.
+  const admin=budget.unmetered();
+  for(let i=0;i<25;i++) admin.admit('user:superadmin');
+
+  // Y su gasto sigue quedando registrado: no frena, pero tampoco se esconde.
+  const cuerpo={model:'gpt-4.1-mini',max_output_tokens:900,input:'x'};
+  admin.reserve(cuerpo);
+  const estado=JSON.parse(fs.readFileSync(pathMod.join(dir,'agent-budget.json'),'utf8'));
+  const mes=Object.values(estado.months)[0];
+  assert.ok(mes.usd>0,'el gasto del administrador debe contabilizarse aunque no le frene');
+  assert.ok(mes.calls>0);
+ } finally {
+  if(prevMensual===undefined)delete process.env.OPENAI_AGENT_MONTHLY_BUDGET_USD;else process.env.OPENAI_AGENT_MONTHLY_BUDGET_USD=prevMensual;
+  if(prevDiario===undefined)delete process.env.OPENAI_AGENT_DAILY_BUDGET_USD;else process.env.OPENAI_AGENT_DAILY_BUDGET_USD=prevDiario;
+  fs.rmSync(dir,{recursive:true,force:true});
+ }
+});
+
+test('la cuota se puede consultar antes de chocar con ella',()=>{
+ const fs=require('fs'),os=require('os'),pathMod=require('path');
+ const {createBudget}=require('../agent-budget');
+ const dir=fs.mkdtempSync(pathMod.join(os.tmpdir(),'cgpt-cuota-'));
+ try{
+  const budget=createBudget(dir);
+  assert.equal(budget.usage('ip:9.9.9.9').used,0,'quien no ha preguntado no ha gastado nada');
+  budget.admit('ip:9.9.9.9',{limit:3});
+  budget.admit('ip:9.9.9.9',{limit:3});
+  assert.equal(budget.usage('ip:9.9.9.9').used,2,'debe poder decirse cuántas lleva ANTES de agotarlas');
+  // Cada cliente cuenta por separado: el aviso de uno no puede salir del uso
+  // de otro.
+  assert.equal(budget.usage('ip:8.8.8.8').used,0);
+ } finally { fs.rmSync(dir,{recursive:true,force:true}); }
+});

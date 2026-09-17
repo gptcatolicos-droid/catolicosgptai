@@ -83,7 +83,7 @@ function getDailyContentModule() {
 app.use(cors());
 app.use(express.json({ limit: '80mb' }));
 app.use(express.urlencoded({ extended: true, limit: '80mb' }));
-require('./agent-routes').register(app, { getUser: getAuthedUser });
+require('./agent-routes').register(app, { getUser: getAuthedUser, isSuperAdmin: isStrictAdminUser });
 require('./children-guides').register(app, renderPage);
 require('./agent-about').register(app, renderPage);
 
@@ -1441,6 +1441,10 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-log-out"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
             </a>
           </div>
+          ${['premium','admin'].includes(activePlan) ? '' : `
+          <a href="/planes" class="w-full text-center text-xs bg-gold hover:bg-gold-deep text-white font-bold py-2 rounded transition flex items-center justify-center gap-1.5">
+            ✦ Hazte Premium
+          </a>`}
           <a href="/ajustes" class="w-full text-center text-xs border border-gold/40 hover:bg-[#FAF9F5] text-maroon font-bold py-1.5 rounded transition flex items-center justify-center gap-1">
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-cog"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="m20.5 10.5 1 .5-.5 1-1-.5z"/><circle cx="19" cy="12" r="1.5"/></svg>
             Ajustes de Perfil
@@ -1449,6 +1453,7 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
           <div class="flex flex-col gap-2">
             <a href="/login" class="w-full text-center text-xs border border-maroon hover:bg-maroon hover:text-white text-maroon py-2 rounded font-semibold transition uppercase tracking-wider">Ingresar</a>
             <a href="/register" class="w-full text-center text-xs bg-maroon hover:bg-gold text-white py-2 rounded font-semibold transition uppercase tracking-wider">Crear Cuenta</a>
+            <a href="/planes" class="w-full text-center text-xs text-maroon hover:underline font-semibold">Ver planes y precios</a>
           </div>
         `}
       </div>
@@ -1492,6 +1497,7 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
               <nav class="flex flex-col gap-1">
                 <a href="/santoral" onclick="toggleMobileMenu()" class="nav-link">Santoral</a>
                 <a href="/infografias" onclick="toggleMobileMenu()" class="nav-link">Infografías</a>
+                <a href="/planes" onclick="toggleMobileMenu()" class="nav-link">Planes y Premium</a>
                 <a href="/ninos" onclick="toggleMobileMenu()" class="nav-link">Niños</a>
                 <a href="/videos" onclick="toggleMobileMenu()" class="nav-link">Videos</a>
                 <a href="/podcasts" onclick="toggleMobileMenu()" class="nav-link">Podcast</a>

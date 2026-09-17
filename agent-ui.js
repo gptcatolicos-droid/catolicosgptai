@@ -61,6 +61,37 @@
   available=s.available;
  }).catch(()=>{available=false;});
 
+ // ── Consultas restantes ───────────────────────────────────────────────────
+ // El límite solo se descubría al chocar con él, y con un mensaje de error.
+ // Ahora se avisa antes, y solo cuando de verdad importa: el aviso aparece con
+ // dos consultas o menos. Con tres saldría ya en la primera visita de cualquier
+ // visitante y volvería a robar la pantalla que acabamos de despejar.
+ const AVISO_DESDE=2;
+ const quotaBar=withClass(document.createElement('div'),'agent-quota');
+ quotaBar.hidden=true;
+ form.parentNode.insertBefore(quotaBar,form.nextSibling);
+ function paintQuota(info){
+  if(!info||info.ilimitado||info.restantes===null||info.restantes>AVISO_DESDE){quotaBar.hidden=true;return;}
+  quotaBar.textContent='';
+  const quedan=info.restantes;
+  const texto=quedan===0
+   ?(info.registrado?'Agotaste tus consultas gratuitas de hoy.':'Agotaste las consultas para visitantes.')
+   :`Te queda${quedan===1?'':'n'} ${quedan} consulta${quedan===1?'':'s'} gratis hoy.`;
+  quotaBar.append(textEl('span',texto));
+  if(!info.registrado){
+   const alta=withClass(textEl('a','Crear cuenta gratis'),'agent-quota-link');
+   alta.href='/register';quotaBar.append(alta);
+  }
+  const planes=withClass(textEl('a','Ver Premium'),'agent-quota-link');
+  planes.href='/planes';quotaBar.append(planes);
+  quotaBar.hidden=false;
+ }
+ function refreshQuota(){
+  fetch('/api/agent/cuota',{headers:{Accept:'application/json'}})
+   .then(r=>r.ok?r.json():null).then(paintQuota).catch(()=>{});
+ }
+ refreshQuota();
+
  // Pantalla de inicio: una sola frase. El resto (subtítulo, enlace a "cómo
  // investiga") se quita, no se oculta, para que no ocupe alto en el móvil.
  const welcome=document.getElementById('welcome-screen');
@@ -303,7 +334,7 @@
    setStatus('');
   }
   catch(err){steps.finish();bubble.append(withClass(textEl('p',err.name==='AbortError'?'Investigación detenida.':err.message),'agent-error'));setStatus('');}
-  finally{setBusy(false);input.focus();}
+  finally{setBusy(false);input.focus();refreshQuota();}
  }
  form.addEventListener('submit',e=>{
   if(!available)return;e.preventDefault();e.stopImmediatePropagation();if(busy)return;

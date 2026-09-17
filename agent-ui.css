@@ -121,6 +121,12 @@ body.agent-home{background:var(--cream-2)!important}
 .agent-article-link:hover{color:var(--maroon);text-decoration:underline}
 .agent-article-link::after{content:' →';color:var(--gold-deep);font-weight:700}
 
+/* Aviso de consultas restantes. Aparece solo cuando quedan pocas, así que
+   puede permitirse ser visible sin competir con el compositor. */
+.agent-quota{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 14px;padding:8px 16px;border-top:1px solid var(--border);background:var(--gold-light);color:var(--maroon);font-size:12px;font-weight:600;text-align:center}
+.agent-quota[hidden]{display:none}
+.agent-quota-link{color:var(--maroon);font-weight:800;text-decoration:underline;white-space:nowrap}
+
 @media(max-width:767px){
   /* La altura vuelve a ser explícita. Intenté repartirla por flex a través de
      main/h-full y esa cadena no daba una altura definida: el chat se encogía
