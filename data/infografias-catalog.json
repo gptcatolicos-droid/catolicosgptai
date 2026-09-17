@@ -1,8 +1,42 @@
 {
-  "version": "5.1",
-  "total": 1,
-  "categorias": ["fiestas-liturgicas"],
+  "version": "5.2",
+  "total": 2,
+  "categorias": [
+    "santos-y-devociones",
+    "fiestas-liturgicas"
+  ],
   "infografias": [
+    {
+      "id": "inf-san-jose-novena-20260916",
+      "slug": "san-jose-esposo-de-maria-y-novena",
+      "tema": "San José, esposo de María y padre legal de Jesús",
+      "titulo": "San José — Vida, misión y novena",
+      "tipo": "santo",
+      "categoria": "santos-y-devociones",
+      "formato": "9:12",
+      "estilo": "cinematic",
+      "totalSlides": 10,
+      "metaDescription": "Carrusel católico sobre San José: esposo de la Virgen María, padre legal de Jesús, custodio de la Sagrada Familia y guía para rezar una novena tradicional a San José.",
+      "altText": "Carrusel CatolicosGPT sobre la vida de San José y la novena a San José",
+      "keywords": "San José, esposo de María, padre legal de Jesús, padre putativo de Jesús, Sagrada Familia, novena a San José, 19 de marzo, Nazaret, huida a Egipto, CatolicosGPT",
+      "imagenes": [
+        { "url": "https://drive.google.com/thumbnail?id=14ULHjetAAD7a_RiTARIu-qtrO6pr2Qlp&sz=w2400", "slide": 1, "model": "GPT Image", "formato": "9:12", "driveId": "14ULHjetAAD7a_RiTARIu-qtrO6pr2Qlp" },
+        { "url": "https://drive.google.com/thumbnail?id=1sqazixae5U2ZC7Mcmie9Mo102VHIGrk6&sz=w2400", "slide": 2, "model": "GPT Image", "formato": "9:12", "driveId": "1sqazixae5U2ZC7Mcmie9Mo102VHIGrk6" },
+        { "url": "https://drive.google.com/thumbnail?id=1ZDwCPnYQpf-XyunmyWUj7NpJAspcNheR&sz=w2400", "slide": 3, "model": "GPT Image", "formato": "9:12", "driveId": "1ZDwCPnYQpf-XyunmyWUj7NpJAspcNheR" },
+        { "url": "https://drive.google.com/thumbnail?id=12mbzKI-pkaJBPFiPupXfIF2j9_5ESIXa&sz=w2400", "slide": 4, "model": "GPT Image", "formato": "9:12", "driveId": "12mbzKI-pkaJBPFiPupXfIF2j9_5ESIXa" },
+        { "url": "https://drive.google.com/thumbnail?id=1Ed0ZEfjo5QOpnvNCUHypHENZHMS0Arvk&sz=w2400", "slide": 5, "model": "GPT Image", "formato": "9:12", "driveId": "1Ed0ZEfjo5QOpnvNCUHypHENZHMS0Arvk" },
+        { "url": "https://drive.google.com/thumbnail?id=1Vby4F3gdRV_mZXVkQ4Wto6GkRjK5lmas&sz=w2400", "slide": 6, "model": "GPT Image", "formato": "9:12", "driveId": "1Vby4F3gdRV_mZXVkQ4Wto6GkRjK5lmas" },
+        { "url": "https://drive.google.com/thumbnail?id=1FaZ4LYoz7ty_-Hh5Qqgge_YwJCvW9lm1&sz=w2400", "slide": 7, "model": "GPT Image", "formato": "9:12", "driveId": "1FaZ4LYoz7ty_-Hh5Qqgge_YwJCvW9lm1" },
+        { "url": "https://drive.google.com/thumbnail?id=1Z95c1ik_SkAOpXo_RPEqXVzZ3Qh9h9tZ&sz=w2400", "slide": 8, "model": "GPT Image", "formato": "9:12", "driveId": "1Z95c1ik_SkAOpXo_RPEqXVzZ3Qh9h9tZ" },
+        { "url": "https://drive.google.com/thumbnail?id=1WFz57CNtdJ6OCo9uO2M4VgJazKMsub-I&sz=w2400", "slide": 9, "model": "GPT Image", "formato": "9:12", "driveId": "1WFz57CNtdJ6OCo9uO2M4VgJazKMsub-I" },
+        { "url": "https://drive.google.com/thumbnail?id=1mxyQg7_GWl0oZx4hjdjV1KGlSxa-3NIZ&sz=w2400", "slide": 10, "model": "GPT Image", "formato": "9:12", "driveId": "1mxyQg7_GWl0oZx4hjdjV1KGlSxa-3NIZ" }
+      ],
+      "driveFolderId": "1O2n_IXFTgit55-WOwjcd0WxWfJ-ciPhz",
+      "zipDriveId": "12IR-_AMIcVB6YWS4oYAVV0V9NYOwHZfr",
+      "fechaCreacion": "2026-09-17T00:27:00Z",
+      "fechaISO": "2026-09-16",
+      "publicado": true
+    },
     {
       "id": "inf-exaltacion-santa-cruz-20260914",
       "slug": "exaltacion-de-la-santa-cruz",
