@@ -12,10 +12,15 @@ let db = null;
 let auth = null;
 let isFirebaseEnabled = false;
 
-// Intentar cargar la configuración de Firebase de forma asertiva pero tolerando fallos o ausencia de archivos
+// Intentar cargar la configuración de Firebase de forma asertiva pero tolerando fallos o ausencia de archivos.
+// CATOLICOSGPT_SIN_NUBE la salta por completo: inicializar Firestore abre un
+// canal que mantiene vivo el proceso, y en las pruebas eso hacía que la suite
+// tardara noventa segundos en terminar aunque los casos duraran medio segundo.
 try {
   const configPath = path.join(__dirname, 'firebase-applet-config.json');
-  if (fs.existsSync(configPath)) {
+  if (process.env.CATOLICOSGPT_SIN_NUBE === '1') {
+    console.log('[Firebase] Desactivado por CATOLICOSGPT_SIN_NUBE.');
+  } else if (fs.existsSync(configPath)) {
     firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     if (firebaseConfig && firebaseConfig.apiKey && firebaseConfig.projectId) {
       const { initializeApp } = require('firebase/app');

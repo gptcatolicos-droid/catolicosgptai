@@ -7,7 +7,7 @@
     "build:css": "vite build --config vite.tailwind.config.mjs",
     "build": "npm run build:css && mkdir -p dist",
     "start": "node production-entry.js",
-    "test:agent": "node --test tests/agent.test.js"
+    "test:agent": "CATOLICOSGPT_SIN_NUBE=1 node --test tests/agent.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",

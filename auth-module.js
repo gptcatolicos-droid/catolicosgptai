@@ -189,8 +189,14 @@ async function initFirebaseSync() {
   console.log('[Firebase Sync] Sincronización inicial exitosa.');
 }
 
-// Iniciar sincronización de fondo con pequeño delay para acelerar el arranque y la escucha de puerto de Express en Cloud Run
-setTimeout(() => {
+// La cuenta de administrador se restaura de inmediato, sin esperar a la nube:
+// es lo que impide que el correo de admin quede libre tras un reinicio.
+bootstrapAdminUser().catch(err => console.error('[Admin] Bootstrap falló:', err.message));
+
+// Iniciar sincronización de fondo con pequeño delay para acelerar el arranque y la escucha de puerto de Express en Cloud Run.
+// CATOLICOSGPT_SIN_NUBE la desactiva: sin esto, cargar este módulo en las
+// pruebas abre conexiones a Firestore que tardan minutos en rendirse.
+if (process.env.CATOLICOSGPT_SIN_NUBE !== '1') setTimeout(() => {
   console.log('[Firebase Sync] Iniciando sincronización de fondo diferida...');
   initFirebaseSync().catch(err => {
     console.error('[Firebase Sync] Falló el proceso de inicio de sincronización:', err.message);
@@ -217,6 +223,53 @@ function removeUser(id) {
   if (data.users.length === antes) return false;
   saveUsers(data);
   return true;
+}
+
+// ── Cuenta de administrador a prueba de reinicios ──────────────────────────
+// El servicio no tiene disco persistente: cada despliegue arranca con el
+// data/users.json del repositorio, que está vacío, y Firestore lleva días sin
+// cuota de lectura. Resultado: tras cada reinicio no existe ningún usuario, el
+// administrador se queda fuera de su propio panel y -mucho peor- el correo de
+// admin queda libre, así que CUALQUIERA podía registrarse con él y quedarse
+// con la consola.
+//
+// Con ADMIN_PASSWORD definida en el entorno, la cuenta se recrea sola en cada
+// arranque: el administrador entra siempre y el correo deja de estar libre,
+// porque registrarse con un correo que ya existe falla. La contraseña vive en
+// la configuración del servidor, no en el repositorio.
+async function bootstrapAdminUser() {
+  const email = (process.env.ADMIN_EMAIL || 'gptcatolicos@gmail.com').toLowerCase().trim();
+  const password = process.env.ADMIN_PASSWORD || '';
+  if (!password) return { creado: false, motivo: 'sin ADMIN_PASSWORD' };
+  if (password.length < 8) {
+    console.warn('[Admin] ADMIN_PASSWORD es demasiado corta (mínimo 8); no se crea la cuenta.');
+    return { creado: false, motivo: 'contraseña corta' };
+  }
+  // Si ya existe no se toca: sobrescribirla borraría la contraseña que el
+  // administrador pudo haber cambiado desde Ajustes.
+  if (getUserByEmail(email)) return { creado: false, motivo: 'ya existe' };
+  try {
+    const data = loadUsers();
+    data.users.push({
+      id: `u-admin-${Date.now()}`,
+      email,
+      passwordHash: await bcrypt.hash(password, 12),
+      nombre: 'Administrador',
+      plan: 'admin',
+      infografiasUsadas: 0,
+      periodoReset: null,
+      customLogo: null,
+      customNombre: null,
+      createdAt: new Date().toISOString(),
+      activo: true
+    });
+    saveUsers(data);
+    console.log(`[Admin] Cuenta de administrador restaurada desde el entorno: ${email}`);
+    return { creado: true };
+  } catch (err) {
+    console.error('[Admin] No se pudo restaurar la cuenta de administrador:', err.message);
+    return { creado: false, motivo: err.message };
+  }
 }
 
 // ── Clave de período para reset de contador ──
@@ -415,7 +468,7 @@ function upgradePlan(userId, plan) {
 }
 
 module.exports = {
-  register, login, getUserByEmail, getUserById, updateUser, loadUsers, removeUser,
+  register, login, getUserByEmail, getUserById, updateUser, loadUsers, removeUser, bootstrapAdminUser,
   authenticateToken, requireAdmin,
   checkInfografiaLimit, consumeInfografiaCredit, getPeriodKey,
   validateCoupon, useCoupon, createCoupon, upgradePlan,

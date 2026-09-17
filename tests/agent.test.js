@@ -325,3 +325,49 @@ test('exportar a Word y PDF es de Premium, y se cierra en el servidor',async()=>
   await new Promise(res=>servidor.close(res));
  }
 });
+
+test('la cuenta de administrador se restaura tras un reinicio y el correo deja de estar libre',async()=>{
+ const fs=require('fs'),os=require('os'),pathMod=require('path');
+ const dir=fs.mkdtempSync(pathMod.join(os.tmpdir(),'cgpt-admin-boot-'));
+ const previo={DATA_DIR:process.env.DATA_DIR,ADMIN_EMAIL:process.env.ADMIN_EMAIL,ADMIN_PASSWORD:process.env.ADMIN_PASSWORD,CATOLICOSGPT_SIN_NUBE:process.env.CATOLICOSGPT_SIN_NUBE};
+ process.env.DATA_DIR=dir;
+ process.env.CATOLICOSGPT_SIN_NUBE='1';
+ process.env.ADMIN_EMAIL='jefe@ejemplo.com';
+ process.env.ADMIN_PASSWORD='contrasena-larga-de-prueba';
+ // Un contenedor recien arrancado: el fichero de usuarios llega vacio.
+ fs.writeFileSync(pathMod.join(dir,'users.json'),JSON.stringify({users:[]}));
+ delete require.cache[require.resolve('../auth-module')];
+ try{
+  const auth=require('../auth-module');
+  assert.equal(auth.getUserByEmail('jefe@ejemplo.com'),null,'parte de cero, como tras un despliegue');
+
+  const r=await auth.bootstrapAdminUser();
+  assert.equal(r.creado,true);
+  const admin=auth.getUserByEmail('jefe@ejemplo.com');
+  assert.ok(admin,'el administrador debe existir tras el arranque');
+  assert.equal(admin.plan,'admin');
+  // La contrasena se guarda cifrada, nunca en claro.
+  assert.ok(admin.passwordHash && admin.passwordHash!=='contrasena-larga-de-prueba');
+  assert.ok(await auth.login({email:'jefe@ejemplo.com',password:'contrasena-larga-de-prueba'}),'debe poder entrar');
+
+  // Y esto es lo que cierra el agujero: con la cuenta ocupada, nadie puede
+  // reclamar el correo de admin registrandose.
+  await assert.rejects(
+   auth.register({nombre:'Impostor',email:'jefe@ejemplo.com',password:'otra-contrasena'}),
+   /ya est/i,
+   'nadie mas puede quedarse con el correo del administrador');
+
+  // Un segundo arranque no pisa la contrasena que el admin pudo cambiar.
+  const segundo=await auth.bootstrapAdminUser();
+  assert.equal(segundo.creado,false);
+  assert.equal(segundo.motivo,'ya existe');
+
+  // Sin ADMIN_PASSWORD no se inventa ninguna cuenta.
+  delete process.env.ADMIN_PASSWORD;
+  assert.equal((await auth.bootstrapAdminUser()).creado,false);
+ } finally {
+  for(const [k,v] of Object.entries(previo)) v===undefined?delete process.env[k]:process.env[k]=v;
+  delete require.cache[require.resolve('../auth-module')];
+  fs.rmSync(dir,{recursive:true,force:true});
+ }
+});
