@@ -362,8 +362,11 @@ async function login({ email, password }) {
   
   const targetEmail = email.toLowerCase().trim();
   const configuredAdminEmail = (process.env.ADMIN_EMAIL || 'gptcatolicos@gmail.com').toLowerCase().trim();
-  const configuredAdminPassword = process.env.ADMIN_PASSWORD || 'Comics2026*';
-  const isAdminCredentials = targetEmail === configuredAdminEmail && password === configuredAdminPassword;
+  // Tenía una contraseña por defecto escrita en el código y versionada: quien
+  // leyera el repositorio podía entrar como administrador. Sin ADMIN_PASSWORD
+  // definida, este atajo simplemente no existe y se entra por el camino normal.
+  const configuredAdminPassword = process.env.ADMIN_PASSWORD || '';
+  const isAdminCredentials = Boolean(configuredAdminPassword) && targetEmail === configuredAdminEmail && password === configuredAdminPassword;
 
   let user = getUserByEmail(targetEmail);
   

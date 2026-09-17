@@ -112,27 +112,27 @@ function safeLog(message) {
 // ── Función de Autenticación de Servidor para Permitir Escritura Segura ──
 async function authenticateServer() {
   if (!isFirebaseEnabled || !auth) return;
-  const email = 'sellerplusco@gmail.com';
-  const password = 'Comics2026*';
+  // Estas credenciales estaban ESCRITAS EN EL CÓDIGO y versionadas en GitHub, así
+  // que siguen en el historial del repositorio para siempre. Ahora se leen del
+  // entorno del servidor y no hay valor por defecto: sin ellas la sincronización
+  // no arranca, que es preferible a que arranque con una contraseña publicada.
+  const email = String(process.env.FIREBASE_SYNC_EMAIL || '').trim();
+  const password = String(process.env.FIREBASE_SYNC_PASSWORD || '');
+  if (!email || !password) {
+    console.warn('[Firebase Auth] Falta FIREBASE_SYNC_EMAIL o FIREBASE_SYNC_PASSWORD; la sincronización con la nube queda desactivada.');
+    return;
+  }
   try {
-    const { signInWithEmailAndPassword, createUserWithEmailAndPassword } = require('firebase/auth');
+    const { signInWithEmailAndPassword } = require('firebase/auth');
     try {
       await signInWithEmailAndPassword(auth, email, password);
       console.log('[Firebase Auth] Servidor autenticado con éxito como:', email);
     } catch (err) {
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
-        try {
-          console.log('[Firebase Auth] Intentando registrar usuario administrador de respaldo...');
-          await createUserWithEmailAndPassword(auth, email, password);
-          console.log('[Firebase Auth] Súper-administrador registrado y autenticado.');
-        } catch (regErr) {
-          if (regErr.code === 'auth/email-already-in-use') {
-            await signInWithEmailAndPassword(auth, email, password);
-            console.log('[Firebase Auth] Servidor autenticado en segundo intento.');
-          } else {
-            console.warn('[Firebase Auth] No se pudo auto-registrar el administrador del servidor:', regErr.message);
-          }
-        }
+        // Antes el servidor se auto-registraba con la contraseña del código: eso
+        // convertía una credencial publicada en una cuenta real con acceso a
+        // Firestore. La cuenta la crea ahora el administrador en la consola.
+        console.warn('[Firebase Auth] Credenciales rechazadas. Crea el usuario en Authentication > Users y revisa FIREBASE_SYNC_EMAIL y FIREBASE_SYNC_PASSWORD.');
       } else if (err.code === 'auth/operation-not-allowed') {
         console.warn('[Firebase Auth] El proveedor de Email/Password no está habilitado en tu consola de Firebase. Por favor, actívalo para permitir la sincronización.');
       } else {
