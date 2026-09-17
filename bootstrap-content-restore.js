@@ -92,10 +92,12 @@ function writeIfImproved(filename, listKey, backupCatalog, decorate) {
   try { fs.writeFileSync(runtimePath, json, 'utf8'); }
   catch (err) { console.warn(`[Bootstrap Content] No se pudo escribir ${runtimePath}:`, err.message); }
 
-  if (repoPath !== runtimePath) {
-    try { fs.writeFileSync(repoPath, json, 'utf8'); }
-    catch (_) {}
-  }
+  // Antes aquí se escribía también una copia dentro de la carpeta data DEL
+  // REPOSITORIO. Esa carpeta es la del contenedor: se borra en cada despliegue,
+  // así que no servía de respaldo de nada, y en cambio ensuciaba el checkout de
+  // quien levantara el sitio en su máquina. Con disco persistente el respaldo es
+  // el disco. La copia del repositorio vuelve a ser lo que dice ser: semilla de
+  // solo lectura.
 
   console.log(`[Bootstrap Content] ${filename}: restaurados ${mergedItems.length} registros sin borrar contenido actual.`);
   return mergedItems.length;

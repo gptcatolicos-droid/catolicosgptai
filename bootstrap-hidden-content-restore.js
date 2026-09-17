@@ -27,7 +27,12 @@ function restore(filename, listKey, backup) {
   const result = { ...backup, ...current, [listKey]: merged, total: merged.length };
   const json = JSON.stringify(result, null, 2);
   try { fs.writeFileSync(runtimePath, json, 'utf8'); } catch (err) { console.warn(`[Hidden Content] ${filename}:`, err.message); }
-  if (repoPath !== runtimePath) { try { fs.writeFileSync(repoPath, json, 'utf8'); } catch (_) {} }
+  // Antes aquí se escribía también una copia dentro de la carpeta data DEL
+  // REPOSITORIO. Esa carpeta es la del contenedor: se borra en cada despliegue,
+  // así que no servía de respaldo de nada, y en cambio ensuciaba el checkout de
+  // quien levantara el sitio en su máquina. Con disco persistente el respaldo es
+  // el disco. La copia del repositorio vuelve a ser lo que dice ser: semilla de
+  // solo lectura.
   console.log(`[Hidden Content] ${filename}: ${merged.length} registros preservados.`);
 }
 

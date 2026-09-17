@@ -58,7 +58,12 @@ function saveCatalog(c, itemToSync = null) {
   const json = JSON.stringify(c, null, 2);
   try { fs.writeFileSync(CATALOG_PATH, json, 'utf-8'); } catch(e) { console.error('[Catalog] Save error:', e.message); }
   if (nuevoTotal > 0) {
-    try { fs.writeFileSync(CATALOG_BACKUP, json, 'utf-8'); } catch(e) {}
+  // Antes aquí se escribía también una copia dentro de la carpeta data DEL
+  // REPOSITORIO. Esa carpeta es la del contenedor: se borra en cada despliegue,
+  // así que no servía de respaldo de nada, y en cambio ensuciaba el checkout de
+  // quien levantara el sitio en su máquina. Con disco persistente el respaldo es
+  // el disco. La copia del repositorio vuelve a ser lo que dice ser: semilla de
+  // solo lectura.
   }
 
   if (itemToSync) {
