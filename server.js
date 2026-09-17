@@ -7486,6 +7486,8 @@ app.get('/planes', (req, res) => {
 // suscripción en PayPal y el plan solo se activa cuando PayPal confirma el pago.
 app.post('/api/upgrade-plan', async (req, res) => {
   let user = getAuthedUser(req);
+  // Si la cuenta se crea aquí y el pago no llega a arrancar, hay que deshacerla.
+  let cuentaReciennCreada = null;
   if (!paypal.isReady()) {
     return res.status(503).json({ error: 'Los pagos no están disponibles en este momento. Inténtalo más tarde.' });
   }
@@ -7512,6 +7514,7 @@ app.post('/api/upgrade-plan', async (req, res) => {
       res.setHeader('Set-Cookie', `cgpt_token=${creds.token}; Path=/; HttpOnly; Max-Age=2592000; SameSite=None; Secure`);
       global.sandboxSession = { token: creds.token, userId: creds.user.id };
       user = creds.user;
+      cuentaReciennCreada = creds.user.id;
     } catch (e) {
       return res.status(400).json({ error: e.message || 'No se pudo crear la cuenta para la suscripción.' });
     }
@@ -7530,6 +7533,16 @@ app.post('/api/upgrade-plan', async (req, res) => {
     return res.json({ success: true, approveUrl: sub.approveUrl, subscriptionId: sub.id });
   } catch (e) {
     console.error('[PayPal] No se pudo crear la suscripción:', e.message);
+    // La cuenta que acabábamos de crear se retira: si se quedara, el comprador
+    // no podría reintentar (se le diría que ese correo ya tiene cuenta) ni
+    // entrar en ella, porque su contraseña se generó al azar.
+    if (cuentaReciennCreada) {
+      try {
+        auth.removeUser(cuentaReciennCreada);
+        res.setHeader('Set-Cookie', `cgpt_token=; Path=/; HttpOnly; Max-Age=0; SameSite=None; Secure`);
+        global.sandboxSession = null;
+      } catch (_) {}
+    }
     return res.status(502).json({ error: 'No se pudo iniciar el pago con PayPal. Inténtalo de nuevo.' });
   }
 });
@@ -12077,6 +12090,50 @@ app.get('/api/admin/drive/imagenes', async (req, res) => {
     res.status(503).json({ error: err.message || 'No se pudo leer Google Drive.', resources: [] });
   }
 });
+// ── Páginas de error ────────────────────────────────────────────────────────
+// Hasta aquí, una URL inexistente devolvía el "Cannot GET /x" que trae Express:
+// sin marca, sin navegación y sin etiqueta viewport, así que en el móvil salía
+// a 980px con scroll horizontal. En un sitio que vive de URLs indexadas, eso es
+// una puerta cerrada para quien llega desde Google con un enlace viejo.
+// Van al final a propósito: Express solo llega aquí si ninguna ruta respondió.
+app.use((req, res) => {
+  // Una petición de API merece JSON, no una página entera.
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'Recurso no encontrado.' });
+  }
+  res.status(404).send(renderPage('Página no encontrada', `
+    <div class="max-w-xl mx-auto px-4 py-16 text-center flex flex-col gap-4 items-center">
+      <div class="text-4xl text-gold">✝</div>
+      <h1 class="font-display text-2xl text-maroon font-bold">Esta página no existe</h1>
+      <p class="text-ink2 text-sm leading-relaxed">Puede que el enlace sea antiguo o que la dirección tenga una errata. Estos son los caminos más transitados:</p>
+      <div class="flex flex-wrap gap-2.5 justify-center pt-2">
+        <a href="/" class="bg-maroon hover:bg-gold text-white text-xs font-bold py-2.5 px-5 rounded-xl transition">Ir al chat</a>
+        <a href="/blog" class="border border-border hover:bg-cream2 text-maroon text-xs font-bold py-2.5 px-5 rounded-xl transition">Fe Católica</a>
+        <a href="/infografias" class="border border-border hover:bg-cream2 text-maroon text-xs font-bold py-2.5 px-5 rounded-xl transition">Infografías</a>
+        <a href="/santoral" class="border border-border hover:bg-cream2 text-maroon text-xs font-bold py-2.5 px-5 rounded-xl transition">Santoral</a>
+      </div>
+    </div>
+  `, req));
+});
+
+// Un fallo del servidor tampoco puede salir como un volcado de pila: ese texto
+// no le sirve a quien lo lee y sí le sirve a quien busca cómo atacar el sitio.
+app.use((err, req, res, next) => {
+  console.error('[Error no controlado]', req.method, req.path, err && err.message);
+  if (res.headersSent) return next(err);
+  if (req.path.startsWith('/api/')) {
+    return res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+  res.status(500).send(renderPage('Error', `
+    <div class="max-w-xl mx-auto px-4 py-16 text-center flex flex-col gap-4 items-center">
+      <div class="text-4xl text-maroon">✝</div>
+      <h1 class="font-display text-2xl text-maroon font-bold">Algo falló de nuestro lado</h1>
+      <p class="text-ink2 text-sm leading-relaxed">No es culpa tuya. Vuelve a intentarlo en un momento.</p>
+      <a href="/" class="bg-maroon hover:bg-gold text-white text-xs font-bold py-2.5 px-5 rounded-xl transition mt-2">Volver al inicio</a>
+    </div>
+  `, req));
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[CatólicosGPT v77] Servidor central corriendo en http://localhost:${PORT}`);
   try {

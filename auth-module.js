@@ -207,6 +207,18 @@ function updateUser(id, updates) {
   return null;
 }
 
+// Retira una cuenta. Solo se usa para deshacer una cuenta recién creada en un
+// pago que no llegó a empezar: dejarla ahí sería una trampa, porque el comprador
+// no conoce su contraseña y al reintentar se le diría que ya tiene cuenta.
+function removeUser(id) {
+  const data = loadUsers();
+  const antes = data.users.length;
+  data.users = data.users.filter(u => u.id !== id);
+  if (data.users.length === antes) return false;
+  saveUsers(data);
+  return true;
+}
+
 // ── Clave de período para reset de contador ──
 function getPeriodKey(periodo) {
   const now = new Date();
@@ -403,7 +415,7 @@ function upgradePlan(userId, plan) {
 }
 
 module.exports = {
-  register, login, getUserByEmail, getUserById, updateUser, loadUsers,
+  register, login, getUserByEmail, getUserById, updateUser, loadUsers, removeUser,
   authenticateToken, requireAdmin,
   checkInfografiaLimit, consumeInfografiaCredit, getPeriodKey,
   validateCoupon, useCoupon, createCoupon, upgradePlan,
