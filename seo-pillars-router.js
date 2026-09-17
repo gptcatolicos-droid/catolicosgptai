@@ -431,6 +431,27 @@ function renderSEOPage(req, pageData, relatedData) {
   return { html, seoTitle: pageData.seoTitle, metaDescription: pageData.metaDescription, keywords: pageData.keywords };
 }
 
+// ── El Rosario de hoy, con contenido de verdad ──────────────────────────────
+// Va ANTES del manejador genérico a propósito: "santo rosario de hoy" es la
+// búsqueda con más impresiones del sitio y hasta ahora caía en la plantilla
+// común, que servía el mismo texto de relleno que todas las demás páginas -sin
+// un solo misterio y sin una sola oración-. 3.593 impresiones y 26 clics: la
+// gente entraba, no encontraba el rosario y se iba.
+router.get('/rosario-del-dia', (req, res, next) => {
+  try {
+    const pagina = require('./rosario-del-dia').renderHtml();
+    if (!global.renderPageWithSSR) return next();
+    return res.send(global.renderPageWithSSR(pagina.seoTitle, pagina.html, req, {
+      description: pagina.metaDescription,
+      keywords: pagina.keywords,
+      ogType: 'article'
+    }));
+  } catch (err) {
+    console.error('[Rosario] No se pudo componer el rosario de hoy:', err.message);
+    return next();
+  }
+});
+
 // Master Route Dynamic Handler
 router.get('*', async (req, res, next) => {
   const urlPath = req.path;

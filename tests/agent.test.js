@@ -589,3 +589,59 @@ test('la nube no puede devolver los articulos de plantilla', () => {
  assert.equal(esContenidoBulk({}), false);
  assert.equal(esContenidoBulk(null), false);
 });
+
+// ── El Rosario de hoy ──
+test('los misterios del rosario siguen el orden que fija la Iglesia', () => {
+  const rosario = require('../rosario-del-dia');
+  // Fechas reales, a mediodía UTC para que Bogotá caiga en el mismo día.
+  const esperado = [
+    ['2026-09-14', 'lunes',     'Misterios Gozosos'],
+    ['2026-09-15', 'martes',    'Misterios Dolorosos'],
+    ['2026-09-16', 'miércoles', 'Misterios Gloriosos'],
+    ['2026-09-17', 'jueves',    'Misterios Luminosos'],
+    ['2026-09-18', 'viernes',   'Misterios Dolorosos'],
+    ['2026-09-19', 'sábado',    'Misterios Gozosos'],
+    ['2026-09-20', 'domingo',   'Misterios Gloriosos']
+  ];
+  for (const [fecha, dia, nombre] of esperado) {
+    const hoy = rosario.misteriosDeHoy(new Date(`${fecha}T17:00:00Z`));
+    assert.equal(hoy.dia.nombre, dia, `${fecha} debería ser ${dia}`);
+    assert.equal(hoy.nombre, nombre, `${fecha} (${dia}) debería rezar ${nombre}`);
+    assert.equal(hoy.misterios.length, 5, 'un rosario tiene cinco misterios');
+  }
+});
+
+test('cada misterio trae su cita biblica y su meditacion', () => {
+  const { MISTERIOS } = require('../rosario-del-dia');
+  const grupos = Object.values(MISTERIOS);
+  assert.equal(grupos.length, 4, 'gozosos, luminosos, dolorosos y gloriosos');
+  for (const grupo of grupos) {
+    assert.equal(grupo.misterios.length, 5);
+    for (const m of grupo.misterios) {
+      assert.ok(m.titulo && m.titulo.length > 8, `misterio sin título: ${JSON.stringify(m)}`);
+      assert.ok(/\d/.test(m.cita), `sin cita bíblica: ${m.titulo}`);
+      assert.ok(m.meditacion && m.meditacion.length > 30, `sin meditación: ${m.titulo}`);
+    }
+  }
+});
+
+test('la pagina del rosario trae el rosario entero, no una plantilla', () => {
+  const rosario = require('../rosario-del-dia');
+  const pagina = rosario.renderHtml(new Date('2026-09-17T17:00:00Z'));
+
+  // Los límites de Google, que es de lo que iba todo esto.
+  assert.ok(pagina.seoTitle.length <= 60, 'el seoTitle pasa de 60 caracteres');
+  assert.ok(pagina.metaDescription.length <= 158);
+  assert.ok(/rosario de hoy/i.test(pagina.seoTitle), 'el título no recoge la búsqueda');
+  assert.equal((pagina.html.match(/<h1/g) || []).length, 1, 'debe haber un solo h1');
+
+  // Y el contenido: los cinco misterios del día y las oraciones completas.
+  for (const m of rosario.MISTERIOS.luminosos.misterios) {
+    assert.ok(pagina.html.includes(m.titulo.replace(/&/g, '&amp;')), `falta el misterio "${m.titulo}"`);
+  }
+  assert.ok(/Padre nuestro/i.test(pagina.html), 'falta el Padrenuestro');
+  assert.ok(/Dios te salve, Mar/i.test(pagina.html), 'falta el Avemaría');
+  assert.ok(/HowTo/.test(pagina.html), 'falta el esquema HowTo');
+  // Lo que servía antes y no debe volver.
+  assert.ok(!/profunda herencia divina/.test(pagina.html), 'sigue saliendo el texto de relleno');
+});
