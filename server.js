@@ -826,46 +826,35 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
         padding: 0.75rem !important;
         gap: 0.9rem !important;
       }
+      /* La cabecera dejó de ser pegajosa. Con el título a dos líneas y el
+         subtítulo a tres, ocupaba media pantalla FIJA: había que leerla entera
+         en cada scroll y el selector de sección quedaba tapado debajo. Ahora se
+         va con el scroll y lo que se queda arriba es lo único que hace falta
+         para moverse, el selector. */
       .admin-header {
-        position: sticky;
-        top: 57px;
-        z-index: 30;
+        position: static;
         background: var(--cream);
-        padding: 0.75rem 0 0.85rem !important;
-        margin: -0.75rem 0 0 !important;
+        padding: 0.25rem 0 0.6rem !important;
+        margin: 0 !important;
       }
       .admin-header h1 {
-        font-size: 1.35rem !important;
-        line-height: 1.15 !important;
+        font-size: 1.25rem !important;
+        line-height: 1.2 !important;
       }
-      .admin-tabs {
+      /* El subtítulo repite lo que ya dicen las secciones; en el móvil solo
+         roba pantalla. */
+      .admin-header p { display: none !important; }
+      /* La fila de pestañas desaparece en el móvil: en su lugar manda el
+         desplegable, que cabe entero en pantalla y no obliga a arrastrar de
+         lado para descubrir qué secciones hay. */
+      .admin-tabs { display: none !important; }
+      .admin-tab-select {
         position: sticky;
-        top: 143px;
+        /* Justo debajo de la cabecera del sitio, que sí sigue fija. */
+        top: 57px;
         z-index: 29;
         background: var(--cream);
-        display: grid !important;
-        grid-auto-flow: column;
-        grid-auto-columns: minmax(132px, 1fr);
-        gap: 0.5rem !important;
-        overflow-x: auto;
-        border-bottom: 0 !important;
-        padding-bottom: 0.4rem !important;
-        scroll-snap-type: x mandatory;
-      }
-      .admin-tabs .tab-btn {
-        scroll-snap-align: start;
-        border: 1px solid var(--border) !important;
-        border-radius: 14px !important;
-        background: #fff;
-        justify-content: center;
-        padding: 0.8rem 0.9rem !important;
-        min-height: 44px;
-        white-space: nowrap;
-      }
-      .admin-tabs .tab-btn.active {
-        background: var(--maroon) !important;
-        color: #fff !important;
-        border-color: var(--maroon) !important;
+        padding: 0.5rem 0;
       }
       .admin-card {
         border-radius: 16px !important;
@@ -8236,6 +8225,22 @@ app.get('/admin', async (req, res) => {
       </div>
 
       <!-- SISTEMA DE TABS INTERACTIVO -->
+      <!-- En el móvil, ocho pestañas en una fila que se desplaza de lado no se
+           navegan: caben dos y media en pantalla y hay que arrastrar a ciegas
+           para encontrar el resto. Un desplegable nativo las muestra todas de
+           un toque, con el teclado y el gesto que el teléfono ya conoce. -->
+      <div class="admin-tab-select md:hidden flex flex-col gap-1 mb-1">
+        <label for="admin-tab-select" class="text-[11px] font-bold text-ink-2 uppercase tracking-wide">Sección del panel</label>
+        <select id="admin-tab-select" onchange="switchTab(this.value)" class="w-full border border-[#D1C7BD] bg-white rounded-xl px-3 py-3 text-sm font-semibold text-espresso outline-none focus:ring-2 focus:ring-gold">
+          <option value="infografias">🎨 Infografías (${catalog.infografias.length})</option>
+          <option value="blog">✍️ Fe Católica (${blogCatalog.posts.length})</option>
+          <option value="catequesis">📖 Catequesis IA (${(blogCatalog.posts || []).filter(p => ['catequesis-ninos','catequesis-jovenes'].includes(p.categoria)).length})</option>
+          <option value="recursos-pdf">📄 Recursos PDF (${(pdfCatalog.recursos || []).length})</option>
+          <option value="videos">🎥 Videos Curados (${videosCatalog.videos.length})</option>
+          <option value="podcasts">🎙️ Podcasts Spotify (${podcastsCatalog.podcasts.length})</option>
+          <option value="santoral">⛪ Santoral (${santoral.getAllSaints().length})</option>
+        </select>
+      </div>
       <div class="admin-tabs flex border-b border-[#E6DFD4] overflow-x-auto whitespace-nowrap gap-1">
         <button onclick="switchTab('infografias')" id="tab-btn-infografias" class="tab-btn px-5 py-3 font-semibold text-sm border-b-2 border-transparent text-ink-2 hover:text-maroon transition flex items-center gap-2">
           🎨 Infografías (${catalog.infografias.length})
@@ -8337,7 +8342,7 @@ app.get('/admin', async (req, res) => {
                     <span class="text-[10px] text-ink-2">Súbelas desde este aparato o elígelas del Drive; se agregan solas sin copiar enlaces.</span>
                   </div>
                   <button type="button" onclick="abrirExploradorDrive('infografias')" class="text-xs bg-maroon hover:bg-gold text-white py-2 px-4 rounded-lg font-bold transition flex items-center gap-1 cursor-pointer border-0">
-                    ☁️ Seleccionar imágenes
+                    🖼️ Subir o elegir imágenes
                   </button>
                 </div>
                 
@@ -9733,6 +9738,10 @@ app.get('/admin', async (req, res) => {
           activeBtn.classList.remove('border-transparent', 'text-ink-2');
           activeBtn.classList.add('border-maroon', 'text-maroon', 'active');
         }
+        // El desplegable del móvil y las pestañas del escritorio son dos caras
+        // de lo mismo: si se cambia por un lado, el otro tiene que seguirlo.
+        const selector = document.getElementById('admin-tab-select');
+        if (selector && selector.value !== name) selector.value = name;
         window.location.hash = name;
       }
 
@@ -11298,14 +11307,16 @@ app.get('/admin', async (req, res) => {
         if (previewImg) previewImg.src = resource.url;
         if (previewContainer) previewContainer.classList.remove('hidden');
 
-        const existingBadge = row.querySelector('.cloudinary-source-badge');
+        const existingBadge = row.querySelector('.imagen-origen-badge');
         if (existingBadge) existingBadge.remove();
 
         const header = row.querySelector('.flex.items-center.justify-between.border-b');
         if (header) {
           const badge = document.createElement('span');
-          badge.className = 'cloudinary-source-badge text-[10px] text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded font-bold';
-          badge.innerText = '✓ Cloudinary' + (bytes ? ' · ' + Math.round(bytes / 1024) + ' KB' : '');
+          badge.className = 'imagen-origen-badge text-[10px] text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded font-bold';
+          // El origen sale de la propia URL: lo subido vive en /subidas.
+          const origen = String(resource.url || '').startsWith('/subidas/') ? 'Subida' : 'Drive';
+          badge.innerText = '✓ ' + origen + (bytes ? ' · ' + Math.round(bytes / 1024) + ' KB' : '');
           header.appendChild(badge);
         }
 

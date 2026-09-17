@@ -117,13 +117,18 @@ function register(app, { getAuthedUser, isStrictAdminUser, express }) {
   asegurarCarpeta();
 
   // El nombre del fichero lleva seis bytes aleatorios, así que una URL siempre
-  // apunta al mismo contenido: se puede cachear un año sin miedo. Esto anula a
-  // propósito el 'no-cache' general, que existe para las páginas.
+  // apunta al mismo contenido: se puede cachear un año sin miedo.
+  //
+  // maxAge no basta. El middleware general del sitio pone 'no-cache' en toda
+  // respuesta GET, y express.static solo escribe su Cache-Control SI NO HAY
+  // NINGUNO puesto ya. Sin este setHeaders, cada imagen se revalidaba en cada
+  // visita pese a no cambiar nunca. Aquí sí se pisa, a propósito.
   app.use(RUTA_PUBLICA, express.static(CARPETA, {
-    immutable: true,
-    maxAge: '365d',
     fallthrough: true,
-    index: false
+    index: false,
+    setHeaders: (res) => {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
   }));
 
   app.post('/api/admin/subidas', soloAdmin, (req, res) => {
