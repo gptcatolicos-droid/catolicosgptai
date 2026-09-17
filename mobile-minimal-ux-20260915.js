@@ -85,6 +85,17 @@ const MOBILE_MINIMAL_UX = `
 })();
 </script>`;
 
+// Lo inyectado no aterriza en el HTML: aterriza DENTRO de un literal de
+// plantilla del propio server.js, que se vuelve a resolver al renderizar. Sin
+// escapar, /\\s+/ llega al navegador como /s+/ (busca la letra "s", no
+// espacios) y /\\/+$/ como //+$/, que es un comentario y rompe el script entero.
+function escaparParaPlantilla(texto) {
+  return String(texto)
+    .replace(/\\\\/g, '\\\\\\\\')
+    .replace(/`/g, '\\\\`')
+    .replace(/\\$\\{/g, '\\\\${');
+}
+
 Module._extensions['.js'] = function mobileMinimalUxLoader(mod, filename) {
   if (filename !== stableStartPath) return previousLoader(mod, filename);
   const source = fs.readFileSync(filename, 'utf8');
@@ -92,7 +103,7 @@ Module._extensions['.js'] = function mobileMinimalUxLoader(mod, filename) {
   let patched = source;
 
   if (!patched.includes('catolicosgpt-mobile-minimal-ux-20260915') && patched.includes(anchor)) {
-    patched = patched.replace(anchor, `const MOBILE_MINIMAL_UX = ${JSON.stringify(MOBILE_MINIMAL_UX)};\n\n${anchor}`);
+    patched = patched.replace(anchor, `const MOBILE_MINIMAL_UX = ${JSON.stringify(escaparParaPlantilla(MOBILE_MINIMAL_UX))};\n\n${anchor}`);
 
     // stable-start contains a literal "\\n" in the source. Match that exact text.
     const injectionLine = "source = source.replace('</head>', STABLE_MOBILE_CSS + '\\n</head>');";

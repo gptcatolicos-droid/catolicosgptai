@@ -3,17 +3,8 @@
 // Branding diferenciado (free vs premium) + 3 formatos
 // ══════════════════════════════════════════════════════════════════
 
-const { v2: cloudinary } = require('cloudinary');
 const fs   = require('fs');
 const path = require('path');
-const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'dwbqrp7kk';
-
-// ── Cloudinary config ──
-cloudinary.config({
-  cloud_name: CLOUDINARY_CLOUD_NAME,
-  api_key:    process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
 
 // ── Catálogo ──
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
@@ -419,45 +410,12 @@ CRÍTICO:
   return JSON.parse(text);
 }
 
-async function uploadToCloudinary(imageData, slug, index = 0, meta = {}) {
-  // Safe default background or return if no credentials configured
-  if (!process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-    console.warn('[Cloudinary] No configured credentials, returning source image direct.');
-    return imageData;
-  }
-  try {
-    const publicId = `catolicosgpt/infografias/${slug}-${index}-${Date.now()}`;
-    let source;
-    if (typeof imageData === 'string' && imageData.startsWith('http')) {
-      source = imageData;
-    } else if (typeof imageData === 'string' && imageData.length > 100) {
-      source = `data:image/png;base64,${imageData}`;
-    } else {
-      throw new Error('imageData inválido');
-    }
-    const context = {
-      slug,
-      slide: String(index + 1),
-      total_slides: String(meta.totalSlides || 1),
-      es_carrusel: String(meta.esCarrusel || false),
-      titulo: (meta.titulo || '').slice(0, 200),
-      descripcion: (meta.descripcion || '').slice(0, 500),
-      keywords: (meta.keywords || '').slice(0, 300),
-      categoria: meta.categoria || 'devocional',
-      tipo: meta.tipo || 'santo',
-      fecha: meta.fecha || new Date().toISOString().slice(0, 10)
-    };
-    const result = await cloudinary.uploader.upload(source, {
-      public_id: publicId, overwrite: false,
-      quality: 'auto:best', fetch_format: 'auto',
-      tags: ['catolicosgpt','infografia'],
-      context
-    });
-    return result.secure_url;
-  } catch(e) {
-    console.error('[Cloudinary upload failed]', e.message);
-    return imageData; // Fallback to raw data url
-  }
+// Ya no se sube nada a ningún servicio de imágenes: las infografías se publican
+// con enlaces del Drive de CatólicosGPT, que se eligen en el explorador del
+// admin. Esta función se conserva como paso de identidad para no tocar el flujo
+// de generación, que sigue entregando la imagen tal cual la recibe.
+async function conservarImagen(imageData) {
+  return imageData;
 }
 
 async function generarImagen(prompt, openai, formato = '9:16') {
@@ -541,7 +499,7 @@ async function generarInfografia({ tema, tipo: tipoOverride, formato = '9:16', e
       : buildPromptSantoDevocional(params, userPlan, customNombre, customLogo, validEstilo);
 
     const img = await generarImagen(prompt, openai, validFormato);
-    const cloudUrl = await uploadToCloudinary(img.data, slug, i, {
+    const cloudUrl = await conservarImagen(img.data, slug, i, {
       totalSlides, esCarrusel: totalSlides > 1,
       titulo: params.titulo || tema,
       descripcion: params.metaDescription || '',

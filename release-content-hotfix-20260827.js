@@ -237,13 +237,26 @@ try {
 // This is runtime DOM cleanup scoped to /fe-catolica and cannot affect article
 // pages, the global header, article cards or chat buttons.
 // ─────────────────────────────────────────────────────────────────────────────
+// Lo que se inyecta aquí no aterriza en el HTML: aterriza DENTRO de un literal
+// de plantilla del propio server.js, que se vuelve a resolver al renderizar la
+// página. Por eso una expresión regular como /\/+$/ llegaba al navegador
+// convertida en //+$/ —un comentario de línea— y se llevaba por delante el
+// script entero; y /\s+/ llegaba como /s+/, que busca la letra "s" en vez de
+// espacios y falla en silencio, que es peor.
+function escaparParaPlantilla(texto) {
+  return String(texto)
+    .replace(/\\/g, '\\\\')
+    .replace(/`/g, '\\`')
+    .replace(/\$\{/g, '\\${');
+}
+
 const originalReadFileSync = fs.readFileSync.bind(fs);
 const serverPath = path.resolve(__dirname, 'server.js');
 const FE_UI = `
 <script id="cgpt-fe-catolica-no-search">
 (function(){
   function clean(){
-    var p=(location.pathname||'').replace(/\/+$/,'').toLowerCase();
+    var p=(location.pathname||'').replace(/\\/+$/,'').toLowerCase();
     if(p!=='/fe-catolica') return;
     var inputs=[].slice.call(document.querySelectorAll('main input[type="search"],main input[type="text"]'));
     inputs.forEach(function(input){
@@ -272,7 +285,7 @@ fs.readFileSync = function releaseHotfixReadFile(file, options) {
   const encoding=typeof options==='string' ? options : (options && options.encoding);
   const wasBuffer=Buffer.isBuffer(result);
   let source=wasBuffer ? result.toString(encoding||'utf8') : String(result);
-  if(!source.includes('cgpt-fe-catolica-no-search')) source=source.replace('</head>', FE_UI+'\n</head>');
+  if(!source.includes('cgpt-fe-catolica-no-search')) source=source.replace('</head>', escaparParaPlantilla(FE_UI)+'\n</head>');
   return wasBuffer && !encoding ? Buffer.from(source,'utf8') : source;
 };
 

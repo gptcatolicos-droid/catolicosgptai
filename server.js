@@ -885,7 +885,7 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
         align-items: center;
         justify-content: center;
       }
-      #cloudinary-explorer-modal > div,
+      #drive-explorer-modal > div,
       #html-editor-modal > div {
         width: calc(100vw - 1rem) !important;
         height: calc(100svh - 1rem) !important;
@@ -4925,6 +4925,56 @@ async function listGoogleDrivePdfResources({ folderId = '', search = '' } = {}) 
     });
 }
 
+// El explorador de imágenes del admin. Antes leía el repositorio de Cloudinary;
+// ahora lee el Drive de CatólicosGPT con la misma cuenta de servicio que ya se
+// usaba para los PDFs. Sin folderId lista todas las imágenes que la cuenta de
+// servicio puede ver, que es lo más tolerante: basta con compartir una carpeta
+// con ella para que aparezca aquí.
+async function listGoogleDriveImageResources({ folderId = '', search = '' } = {}) {
+  const token = await getGoogleDriveAccessToken();
+  const activeFolderId = String(folderId || process.env.GOOGLE_DRIVE_IMAGES_FOLDER_ID || '').trim();
+  const clauses = ["mimeType contains 'image/'", 'trashed=false'];
+  if (activeFolderId) clauses.unshift(`'${activeFolderId.replace(/'/g, "\\'")}' in parents`);
+  // Drive filtra por nombre en el propio servidor, que es mucho más rápido que
+  // traerse el listado entero para descartarlo aquí.
+  const term = String(search || '').trim();
+  if (term) clauses.push(`name contains '${term.replace(/'/g, "\\'")}'`);
+
+  const params = new URLSearchParams({
+    q: clauses.join(' and '),
+    pageSize: '100',
+    orderBy: 'modifiedTime desc',
+    fields: 'files(id,name,mimeType,size,modifiedTime,thumbnailLink,webViewLink,imageMediaMetadata(width,height))'
+  });
+
+  const response = await fetch(`https://www.googleapis.com/drive/v3/files?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error?.message || 'No se pudo leer las imágenes de Google Drive.');
+
+  return (data.files || []).map(file => ({
+    id: file.id,
+    name: file.name || 'imagen',
+    title: titleCaseSpanishServer(String(file.name || '').replace(/\.[a-z0-9]+$/i, '').replace(/[-_]+/g, ' ')),
+    mimeType: file.mimeType || 'image/png',
+    size: Number(file.size || 0),
+    modifiedTime: file.modifiedTime || '',
+    // Esta es la URL que se guarda en el catálogo: sirve la imagen a tamaño
+    // completo sin pedir permisos, igual que las infografías ya migradas.
+    url: getGoogleDriveImageUrl(file.id),
+    thumbnail: file.thumbnailLink || getGoogleDriveImageUrl(file.id, 400),
+    width: file.imageMediaMetadata?.width || 0,
+    height: file.imageMediaMetadata?.height || 0,
+    webViewLink: file.webViewLink || getGoogleDriveViewUrl(file.id)
+  }));
+}
+
+function getGoogleDriveImageUrl(fileId = '', width = 2400) {
+  const id = String(fileId || '').trim();
+  return id ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w${width}` : '';
+}
+
 function getGoogleDriveViewUrl(fileId = '') {
   const id = String(fileId || '').trim();
   return id ? `https://drive.google.com/file/d/${encodeURIComponent(id)}/view` : '';
@@ -5039,98 +5089,15 @@ function pdfExternalButtonsHtml(pdf = {}, options = {}) {
 }
 
 function getSignedCloudinaryPdfUrl(publicId = '', format = 'pdf', resourceType = 'raw') {
-  if (!publicId || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) return '';
-  try {
-    const cloudinaryMod = require('cloudinary').v2;
-    cloudinaryMod.config({
-      cloud_name: CLOUDINARY_CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET
-    });
-    return cloudinaryMod.url(publicId, {
-      resource_type: resourceType || 'raw',
-      type: 'upload',
-      secure: true,
-      sign_url: true,
-      format: String(format || 'pdf').replace(/^\./, '') || 'pdf'
-    });
-  } catch (err) {
-    console.warn('[PDF Cloudinary Signed URL]', err.message);
-    return '';
-  }
+  // Cloudinary quedó fuera del proyecto: no hay credenciales ni SDK que firmar.
+  // Los PDFs se sirven por su URL guardada y los nuevos vienen de Drive.
+  return '';
 }
-
 function getPrivateCloudinaryPdfUrl(publicId = '', format = 'pdf', resourceType = 'raw') {
-  if (!publicId || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) return '';
-  try {
-    const cloudinaryMod = require('cloudinary').v2;
-    cloudinaryMod.config({
-      cloud_name: CLOUDINARY_CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET
-    });
-    if (!cloudinaryMod.utils || typeof cloudinaryMod.utils.private_download_url !== 'function') return '';
-    return cloudinaryMod.utils.private_download_url(publicId.replace(/\.pdf$/i, ''), String(format || 'pdf').replace(/^\./, '') || 'pdf', {
-      resource_type: resourceType || 'raw',
-      type: 'upload',
-      attachment: true,
-      expires_at: Math.floor(Date.now() / 1000) + 600
-    });
-  } catch (err) {
-    console.warn('[PDF Cloudinary Private URL]', err.message);
-    return '';
-  }
+  // Cloudinary quedó fuera del proyecto: no hay credenciales ni SDK que firmar.
+  // Los PDFs se sirven por su URL guardada y los nuevos vienen de Drive.
+  return '';
 }
-
-async function getCloudinaryVerifiedPdfCandidates(pdf = {}) {
-  if (!process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) return [];
-  const storedPublicId = String(pdf.cloudinaryPublicId || '').trim();
-  const derivedPublicId = extractCloudinaryRawPublicIdFromUrl(pdf.pdfUrl);
-  const publicId = storedPublicId || derivedPublicId;
-  if (!publicId) return [];
-  try {
-    const cloudinaryMod = require('cloudinary').v2;
-    cloudinaryMod.config({
-      cloud_name: CLOUDINARY_CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET
-    });
-    const resourceTypes = [String(pdf.cloudinaryResourceType || 'raw'), 'raw'].filter(Boolean).filter((type, index, arr) => arr.indexOf(type) === index);
-    const lookupIds = [
-      publicId,
-      publicId.replace(/\.pdf$/i, ''),
-      publicId.replace(/\.pdf$/i, '') + '.pdf'
-    ].filter(Boolean).filter((id, index, arr) => arr.indexOf(id) === index);
-    let resource = null;
-    let lookupError = null;
-    for (const resourceType of resourceTypes) {
-      for (const lookupId of lookupIds) {
-        try {
-          resource = await cloudinaryMod.api.resource(lookupId, { resource_type: resourceType });
-          if (resource) break;
-        } catch (err) {
-          lookupError = err;
-        }
-      }
-      if (resource) break;
-    }
-    if (!resource) throw lookupError || new Error('No se encontró el recurso PDF en Cloudinary.');
-    const format = String(resource.format || pdf.format || 'pdf').replace(/^\./, '') || 'pdf';
-    const version = resource.version || pdf.cloudinaryVersion || '';
-    const resourceType = resource.resource_type || 'raw';
-    return [
-      !isLikelyBlockedCloudinaryPdfUrl(resource.secure_url) ? resource.secure_url : '',
-      getCloudinaryRawPdfUrl(resource.public_id || publicId, format, version),
-      getCloudinaryRawPdfUrl(resource.public_id || publicId, format),
-      getSignedCloudinaryPdfUrl(resource.public_id || publicId, format, resourceType),
-      getPrivateCloudinaryPdfUrl(resource.public_id || publicId, format, resourceType)
-    ].filter(Boolean);
-  } catch (err) {
-    console.warn('[PDF Cloudinary Resource Lookup]', err.message, { publicId });
-    return [];
-  }
-}
-
 function getPdfDownloadFilename(pdf = {}) {
   const cleanFilename = recursosPdf.slugify(pdf.titulo || pdf.slug || 'catolicosgpt-recurso') || 'catolicosgpt-recurso';
   return `${cleanFilename}.pdf`;
@@ -8257,7 +8224,7 @@ app.get('/admin', async (req, res) => {
                     <span class="text-xs font-bold text-espresso">Biblioteca Cloudinary conectada</span>
                     <span class="text-[10px] text-ink-2">Selecciona imágenes desde ${cloudName}; se agregan al carrusel sin copiar URLs.</span>
                   </div>
-                  <button type="button" onclick="openCloudinaryExplorer('infografias')" class="text-xs bg-maroon hover:bg-gold text-white py-2 px-4 rounded-lg font-bold transition flex items-center gap-1 cursor-pointer border-0">
+                  <button type="button" onclick="abrirExploradorDrive('infografias')" class="text-xs bg-maroon hover:bg-gold text-white py-2 px-4 rounded-lg font-bold transition flex items-center gap-1 cursor-pointer border-0">
                     ☁️ Seleccionar imágenes
                   </button>
                 </div>
@@ -8695,7 +8662,7 @@ app.get('/admin', async (req, res) => {
                 <label class="font-semibold text-espresso text-xs">Imagen de Portada (Opcional)</label>
                 <div class="flex gap-2">
                   <input type="text" name="imagenPortada" id="blog_imagen_portada" placeholder="https://res.cloudinary.com/usuario/image/upload/..." class="border border-border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs flex-1 bg-white">
-                  <button type="button" onclick="openCloudinaryExplorer('blog_cover')" class="bg-maroon hover:bg-gold text-white px-3.5 py-2 rounded-lg font-bold text-xs transition cursor-pointer border-0">
+                  <button type="button" onclick="abrirExploradorDrive('blog_cover')" class="bg-maroon hover:bg-gold text-white px-3.5 py-2 rounded-lg font-bold text-xs transition cursor-pointer border-0">
                     ☁️ Portada
                   </button>
                 </div>
@@ -8709,7 +8676,7 @@ app.get('/admin', async (req, res) => {
                   <button type="button" onclick="openHtmlEditor('blog_content_editor')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded-md text-[10px] font-bold transition cursor-pointer flex items-center gap-1.5 shadow-sm border-0">
                     🌐 Editor HTML Integrado
                   </button>
-                  <button type="button" onclick="openCloudinaryExplorer('blog_content')" class="text-maroon border border-maroon hover:bg-maroon hover:text-white px-2.5 py-1 rounded-md text-[10px] font-bold transition cursor-pointer transition-all">
+                  <button type="button" onclick="abrirExploradorDrive('blog_content')" class="text-maroon border border-maroon hover:bg-maroon hover:text-white px-2.5 py-1 rounded-md text-[10px] font-bold transition cursor-pointer transition-all">
                     ☁️ Insertar Imagen Cloudinary
                   </button>
                 </div>
@@ -8865,7 +8832,7 @@ app.get('/admin', async (req, res) => {
               </div>
               <div class="flex flex-col sm:flex-row gap-2">
                 <input type="url" name="coverUrl" id="pdf_cover_url" placeholder="https://res.cloudinary.com/.../cover.jpg" class="flex-1 border border-border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs bg-white">
-                <button type="button" onclick="openCloudinaryExplorer('recursos-pdf-cover')" class="bg-cream border border-maroon text-maroon hover:bg-maroon hover:text-white px-4 py-2 rounded-lg font-bold text-xs transition cursor-pointer">Seleccionar cover</button>
+                <button type="button" onclick="abrirExploradorDrive('recursos-pdf-cover')" class="bg-cream border border-maroon text-maroon hover:bg-maroon hover:text-white px-4 py-2 rounded-lg font-bold text-xs transition cursor-pointer">Seleccionar cover</button>
               </div>
             </div>
 
@@ -8955,7 +8922,7 @@ app.get('/admin', async (req, res) => {
             <div class="flex flex-col gap-1.5">
               <div class="flex items-center justify-between">
                 <label class="font-semibold text-espresso text-xs">ID de YouTube o Link Completo</label>
-                <button type="button" onclick="openCloudinaryExplorer('videos')" class="text-maroon border border-maroon hover:bg-maroon hover:text-white px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer transition-all">
+                <button type="button" onclick="abrirExploradorDrive('videos')" class="text-maroon border border-maroon hover:bg-maroon hover:text-white px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer transition-all">
                   ☁️ Importar Video Cloudinary
                 </button>
               </div>
@@ -9039,7 +9006,7 @@ app.get('/admin', async (req, res) => {
             <div class="flex flex-col gap-1.5 md:col-span-2">
               <div class="flex items-center justify-between">
                 <label class="font-semibold text-espresso text-xs">Enlace de Spotify / Audio Local o Código Iframe</label>
-                <button type="button" onclick="openCloudinaryExplorer('podcasts')" class="text-maroon border border-maroon hover:bg-maroon hover:text-white px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer transition-all">
+                <button type="button" onclick="abrirExploradorDrive('podcasts')" class="text-maroon border border-maroon hover:bg-maroon hover:text-white px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer transition-all">
                   ☁️ Importar Audio Cloudinary
                 </button>
               </div>
@@ -9170,7 +9137,7 @@ app.get('/admin', async (req, res) => {
                 <label class="font-semibold text-espresso text-xs">URL de Foto (Cloudinary)</label>
                 <div class="flex gap-2">
                   <input type="text" name="foto_url" id="santo_foto_url" placeholder="https://res.cloudinary.com/..." class="border border-[#D1C7BD] rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs bg-white flex-1">
-                  <button type="button" onclick="openCloudinaryExplorer('santo_photo')" class="bg-maroon hover:bg-gold text-white px-3 py-2 rounded-lg font-bold text-xs transition cursor-pointer border-0">
+                  <button type="button" onclick="abrirExploradorDrive('santo_photo')" class="bg-maroon hover:bg-gold text-white px-3 py-2 rounded-lg font-bold text-xs transition cursor-pointer border-0">
                     ☁️ Foto
                   </button>
                 </div>
@@ -9216,7 +9183,7 @@ app.get('/admin', async (req, res) => {
                     <button type="button" onclick="openHtmlEditor('santo_biografia')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded-md text-[10px] font-bold transition cursor-pointer flex items-center gap-1.5 shadow-sm border-0">
                       🌐 Editor HTML Integrado
                     </button>
-                    <button type="button" onclick="openCloudinaryExplorer('santo_content')" class="text-maroon border border-maroon hover:bg-maroon hover:text-white px-2.5 py-1 rounded-md text-[10px] font-bold transition cursor-pointer transition-all">
+                    <button type="button" onclick="abrirExploradorDrive('santo_content')" class="text-maroon border border-maroon hover:bg-maroon hover:text-white px-2.5 py-1 rounded-md text-[10px] font-bold transition cursor-pointer transition-all">
                       ☁️ Insertar Imagen Cloudinary
                     </button>
                   </div>
@@ -9311,20 +9278,20 @@ app.get('/admin', async (req, res) => {
     </div>
 
     <!-- MODAL DE LA BIBLIOTECA CLOUDINARY -->
-    <div id="cloudinary-explorer-modal" class="fixed inset-0 bg-[#1A0E05]/70 backdrop-blur-xs hidden items-center justify-center z-50 p-4" style="z-index: 70;">
+    <div id="drive-explorer-modal" class="fixed inset-0 bg-[#1A0E05]/70 backdrop-blur-xs hidden items-center justify-center z-50 p-4" style="z-index: 70;">
       <div class="bg-[#FCFAF5] border border-[#D1C7BD] rounded-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
         
         <!-- HEADER -->
         <div class="bg-white border-b border-[#E6DFD4] px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
           <div class="flex items-center gap-2.5">
-            <span class="text-xl">☁️</span>
+            <span class="text-xl">📁</span>
             <div class="flex flex-col">
-              <h2 class="font-display font-bold text-espresso text-base">Biblioteca de Recursos de Cloudinary</h2>
-              <p class="text-[10px] text-ink2">Explorador director de recursos y carpetas del servidor ${cloudName}</p>
+              <h2 class="font-display font-bold text-espresso text-base">Imágenes del Drive de CatólicosGPT</h2>
+              <p class="text-[10px] text-ink2">Lee directamente la carpeta compartida con la cuenta de servicio</p>
             </div>
           </div>
           
-          <button type="button" onclick="closeCloudinaryExplorer()" class="text-ink2 hover:bg-cream-light p-2 rounded-xl transition cursor-pointer border-0 bg-transparent text-base font-bold">
+          <button type="button" onclick="cerrarExploradorDrive()" class="text-ink2 hover:bg-cream-light p-2 rounded-xl transition cursor-pointer border-0 bg-transparent text-base font-bold">
             ✕
           </button>
         </div>
@@ -9339,27 +9306,17 @@ app.get('/admin', async (req, res) => {
               <input type="text" id="cl-search" oninput="debounceFilterResources()" placeholder="Buscar por nombre..." class="border border-border rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-gold bg-white text-xs outline-none">
             </div>
             <div class="flex flex-col gap-1">
-              <label class="font-semibold text-espresso">Carpeta</label>
-              <select id="cl-folder-filter" onchange="fetchCloudinaryResources()" class="border border rounded-lg px-2 py-1.5 bg-white text-xs outline-none">
-                <option value="">-- Todas las carpetas --</option>
-              </select>
+              <label class="font-semibold text-espresso">Carpeta de Drive (opcional)</label>
+              <input type="text" id="cl-folder-filter" onchange="cargarImagenesDrive()" placeholder="ID de carpeta; vacío = todas" class="border border-border rounded-lg px-3 py-1.5 bg-white text-xs outline-none focus:ring-1 focus:ring-gold">
             </div>
-            <div class="flex flex-col gap-1">
-              <label class="font-semibold text-espresso">Tipo de Recurso</label>
-              <select id="cl-type-filter" onchange="fetchCloudinaryResources()" class="border border rounded-lg px-2 py-1.5 bg-white text-xs outline-none">
-                <option value="all">Todos los formatos</option>
-                <option value="image">Imágenes</option>
-                <option value="video">Videos</option>
-                <option value="audio">Audios / Podcasts</option>
-              </select>
-            </div>
+            <input type="hidden" id="cl-type-filter" value="image">
             <div class="flex flex-col gap-1">
               <label class="font-semibold text-espresso">Ordenamiento</label>
-              <select id="cl-sort-filter" onchange="drawCloudinaryResources()" class="border border rounded-lg px-2 py-1.5 bg-white text-xs outline-none">
+              <select id="cl-sort-filter" onchange="dibujarImagenesDrive()" class="border border rounded-lg px-2 py-1.5 bg-white text-xs outline-none">
                 <option value="recent">Más recientes primero</option>
                 <option value="old">Más antiguos primero</option>
                 <option value="name_asc">Nombre (A-Z)</option>
-                <option value="size_desc">Tamaño (Mayor primero)</option>
+                <option value="size_desc">Tamaño (mayor primero)</option>
               </select>
             </div>
           </div>
@@ -9371,7 +9328,7 @@ app.get('/admin', async (req, res) => {
           <!-- Loader -->
           <div id="cl-loader" class="flex flex-col items-center justify-center p-24 gap-3 text-ink2 text-xs">
             <div class="w-8 h-8 border-4 border-gold border-t-maroon rounded-full animate-spin"></div>
-            Explorando catálogo Cloudinary...
+            Leyendo el Drive de CatólicosGPT...
           </div>
 
           <!-- No resources -->
@@ -9393,10 +9350,10 @@ app.get('/admin', async (req, res) => {
           </div>
           
           <div class="flex items-center gap-2.5">
-            <button type="button" onclick="closeCloudinaryExplorer()" class="text-xs border text-espresso hover:bg-cream-light py-2 px-4 rounded-xl transition font-bold cursor-pointer border-border bg-white">
+            <button type="button" onclick="cerrarExploradorDrive()" class="text-xs border text-espresso hover:bg-cream-light py-2 px-4 rounded-xl transition font-bold cursor-pointer border-border bg-white">
               Cancelar
             </button>
-            <button type="button" onclick="confirmCloudinarySelection()" id="cl-confirm-btn" class="text-xs bg-gold hover:bg-gold-deep text-white py-2 px-5 rounded-xl transition font-bold cursor-pointer shadow-xs border-0">
+            <button type="button" onclick="confirmarSeleccionDrive()" id="cl-confirm-btn" class="text-xs bg-gold hover:bg-gold-deep text-white py-2 px-5 rounded-xl transition font-bold cursor-pointer shadow-xs border-0">
               ✓ Seleccionar Recursos
             </button>
           </div>
@@ -9499,7 +9456,7 @@ app.get('/admin', async (req, res) => {
           <button type="button" onclick="insertHtmlSnippet('<img src=&quot;&quot; alt=&quot;&quot; class=&quot;rounded-2xl mx-auto max-h-[350px] object-cover my-4&quot; />\\\\n', '')" class="px-2.5 py-1 bg-white hover:bg-cream-light border border-border text-[11px] font-semibold rounded-md text-espresso cursor-pointer transition">
             🖼️ Imagen URL
           </button>
-          <button type="button" onclick="openCloudinaryExplorer('html_editor_image')" class="px-2.5 py-1 bg-maroon hover:bg-gold border border-maroon text-[11px] font-bold rounded-md text-white cursor-pointer transition">
+          <button type="button" onclick="abrirExploradorDrive('html_editor_image')" class="px-2.5 py-1 bg-maroon hover:bg-gold border border-maroon text-[11px] font-bold rounded-md text-white cursor-pointer transition">
             ☁️ Imagen Cloudinary
           </button>
           <button type="button" onclick="insertHtmlSnippet('<a href=&quot;#&quot; class=&quot;text-maroon underline hover:text-gold&quot;>', '</a>')" class="px-2.5 py-1 bg-white hover:bg-cream-light border border-border text-[11px] font-semibold rounded-md text-espresso cursor-pointer transition">
@@ -10389,8 +10346,8 @@ app.get('/admin', async (req, res) => {
 
       // ── MÉTODOS DEL EXPOSITOR NATIVO DE CLOUDINARY ──
       let activeExplorerContext = ''; 
-      let originalCloudinaryResources = [];
-      let currentCloudinaryResources = [];
+      let imagenesDriveOriginales = [];
+      let imagenesDriveVisibles = [];
       let selectedResourcesMap = new Map();
       let debounceTimer = null;
 
@@ -10679,118 +10636,72 @@ app.get('/admin', async (req, res) => {
         }, 2000);
       }
 
-      function setSelectValueEnsuringOption(select, value, label) {
-        if (!select) return;
-        if (value && !Array.from(select.options).some(opt => opt.value === value)) {
-          const opt = document.createElement('option');
-          opt.value = value;
-          opt.innerText = label || ('/' + value);
-          select.appendChild(opt);
-        }
-        select.value = value || '';
-      }
-
-      function openCloudinaryExplorer(context) {
+      function abrirExploradorDrive(context) {
         activeExplorerContext = context;
         selectedResourcesMap.clear();
         document.getElementById('cl-selected-count').innerText = '0';
-        
-        // Configurar filtros automáticos inteligentes según el contexto
-        const typeFilter = document.getElementById('cl-type-filter');
-        const folderFilter = document.getElementById('cl-folder-filter');
-        
-        if (context === 'infografias') {
-          typeFilter.value = 'image';
-          setSelectValueEnsuringOption(folderFilter, '', '-- Todas las carpetas --');
-        } else if (context === 'blog_cover') {
-          typeFilter.value = 'image';
-          setSelectValueEnsuringOption(folderFilter, '', '-- Todas las carpetas --');
-        } else if (context === 'blog_content') {
-          typeFilter.value = 'image';
-          setSelectValueEnsuringOption(folderFilter, '', '-- Todas las carpetas --');
-        } else if (context === 'santo_photo' || context === 'santo_content') {
-          typeFilter.value = 'image';
-          setSelectValueEnsuringOption(folderFilter, '', '-- Todas las carpetas --');
-        } else if (context === 'html_editor_image') {
-          typeFilter.value = 'image';
-          setSelectValueEnsuringOption(folderFilter, '', '-- Todas las carpetas --');
-        } else if (context === 'videos') {
-          typeFilter.value = 'video';
-          setSelectValueEnsuringOption(folderFilter, '', '-- Todas las carpetas --');
-        } else if (context === 'podcasts') {
-          typeFilter.value = 'audio';
-          setSelectValueEnsuringOption(folderFilter, '', '-- Todas las carpetas --');
-        } else if (context === 'recursos-pdf') {
-          typeFilter.value = 'pdf';
-          setSelectValueEnsuringOption(folderFilter, 'catolicosgpt/recursos-pdf', '/catolicosgpt/recursos-pdf');
-        } else if (context === 'recursos-pdf-cover') {
-          typeFilter.value = 'image';
-          setSelectValueEnsuringOption(folderFilter, '', '-- Todas las carpetas --');
-        } else {
-          typeFilter.value = 'all';
-          setSelectValueEnsuringOption(folderFilter, '', '-- Todas las carpetas --');
-        }
-
-        document.getElementById('cloudinary-explorer-modal').classList.remove('hidden');
-        document.getElementById('cloudinary-explorer-modal').classList.add('flex');
-        
-        fetchCloudinaryResources();
+        // Ya no hay filtros por tipo ni carpetas predefinidas: el explorador lee
+        // imágenes del Drive de CatólicosGPT y punto. La carpeta se acota a mano
+        // cuando hace falta, con su id.
+        document.getElementById('cl-search').value = '';
+        const modal = document.getElementById('drive-explorer-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        cargarImagenesDrive();
       }
 
-      function closeCloudinaryExplorer() {
-        document.getElementById('cloudinary-explorer-modal').classList.add('hidden');
-        document.getElementById('cloudinary-explorer-modal').classList.remove('flex');
+      function cerrarExploradorDrive() {
+        document.getElementById('drive-explorer-modal').classList.add('hidden');
+        document.getElementById('drive-explorer-modal').classList.remove('flex');
       }
 
-      async function fetchCloudinaryResources() {
+      async function cargarImagenesDrive() {
         const grid = document.getElementById('cl-resources-grid');
         const loader = document.getElementById('cl-loader');
         const emptyAlert = document.getElementById('cl-empty');
         const emptyTitle = document.getElementById('cl-empty-title');
         const emptyMessage = document.getElementById('cl-empty-message');
-        
+
         grid.classList.add('hidden');
         loader.classList.remove('hidden');
         emptyAlert.classList.add('hidden');
-        if (emptyTitle) emptyTitle.innerText = '⚠️ Sin recursos que coincidan con la búsqueda o filtros.';
-        if (emptyMessage) emptyMessage.innerText = 'Modifica el filtro de tipo, carpeta o término de búsqueda.';
+        if (emptyTitle) emptyTitle.innerText = 'Sin imágenes que coincidan con la búsqueda.';
+        if (emptyMessage) emptyMessage.innerText = 'Prueba con otro término o con otra carpeta de Drive.';
 
         try {
-          const type = document.getElementById('cl-type-filter').value;
           const folder = document.getElementById('cl-folder-filter').value;
           const search = document.getElementById('cl-search').value.trim();
-
-          let query = \`/api/admin/cloudinary/resources?type=\${type}&folder=\${folder}&search=\${search}\`;
-          const res = await fetch(query);
+          const res = await fetch('/api/admin/drive/imagenes?folder=' + encodeURIComponent(folder) + '&search=' + encodeURIComponent(search));
           const data = await res.json();
-          if (!res.ok || data.error) {
-            throw new Error(data.error || 'No se pudo leer tu biblioteca de Cloudinary.');
-          }
+          if (!res.ok || data.error) throw new Error(data.error || 'No se pudo leer el Drive de CatólicosGPT.');
 
-          originalCloudinaryResources = data.resources || [];
-          currentCloudinaryResources = [...originalCloudinaryResources];
-
-          // Actualizar select de carpetas dinámicamente si es la primera carga
-          const fSelect = document.getElementById('cl-folder-filter');
-          const currentVal = fSelect.value;
-          fSelect.innerHTML = '<option value="">-- Todas las carpetas --</option>';
-          if (data.folders) {
-            data.folders.forEach(fold => {
-              const opt = document.createElement('option');
-              opt.value = fold;
-              opt.innerText = '/' + fold;
-              fSelect.appendChild(opt);
-            });
-          }
-          fSelect.value = currentVal;
-
-          drawCloudinaryResources();
+          // Drive habla otro idioma que la rejilla: se traduce aquí para no
+          // tocar el dibujado ni la selección, que funcionan bien.
+          imagenesDriveOriginales = (data.resources || []).map(f => ({
+            url: f.url,
+            secure_url: f.url,
+            thumbnail: f.thumbnail || f.url,
+            public_id: f.id,
+            name: f.name,
+            title: f.title,
+            format: (f.mimeType || '').split('/')[1] || 'png',
+            resource_type: 'image',
+            bytes: f.size || 0,
+            created_at: f.modifiedTime || '',
+            width: f.width || 0,
+            height: f.height || 0
+          }));
+          imagenesDriveVisibles = [...imagenesDriveOriginales];
+          dibujarImagenesDrive();
         } catch (err) {
-          console.error('Error cargando recursos de Cloudinary:', err);
+          console.error('Error cargando imágenes de Drive:', err);
           loader.classList.add('hidden');
           grid.classList.add('hidden');
-          if (emptyTitle) emptyTitle.innerText = '⚠️ Cloudinary no está disponible';
-          if (emptyMessage) emptyMessage.innerText = err.message || 'Revisa CLOUDINARY_API_KEY y CLOUDINARY_API_SECRET en Google Cloud.';
+          if (emptyTitle) emptyTitle.innerText = 'Google Drive no está disponible';
+          // El mensaje real del servidor dice si falta la cuenta de servicio o
+          // si la carpeta no está compartida con ella. Adivinarlo desde un
+          // error genérico cuesta media tarde.
+          if (emptyMessage) emptyMessage.innerText = err.message || 'Revisa GOOGLE_SERVICE_ACCOUNT_JSON y que la carpeta esté compartida con la cuenta de servicio.';
           emptyAlert.classList.remove('hidden');
         }
       }
@@ -10798,11 +10709,11 @@ app.get('/admin', async (req, res) => {
       function debounceFilterResources() {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
-          fetchCloudinaryResources();
+          cargarImagenesDrive();
         }, 300);
       }
 
-      function drawCloudinaryResources() {
+      function dibujarImagenesDrive() {
         const grid = document.getElementById('cl-resources-grid');
         const loader = document.getElementById('cl-loader');
         const emptyAlert = document.getElementById('cl-empty');
@@ -10810,18 +10721,18 @@ app.get('/admin', async (req, res) => {
 
         // Ordenar
         if (sortVal === 'recent') {
-          currentCloudinaryResources.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+          imagenesDriveVisibles.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
         } else if (sortVal === 'old') {
-          currentCloudinaryResources.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+          imagenesDriveVisibles.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
         } else if (sortVal === 'name_asc') {
-          currentCloudinaryResources.sort((a,b) => a.name.localeCompare(b.name));
+          imagenesDriveVisibles.sort((a,b) => a.name.localeCompare(b.name));
         } else if (sortVal === 'size_desc') {
-          currentCloudinaryResources.sort((a,b) => (b.bytes || 0) - (a.bytes || 0));
+          imagenesDriveVisibles.sort((a,b) => (b.bytes || 0) - (a.bytes || 0));
         }
 
         loader.classList.add('hidden');
 
-        if (currentCloudinaryResources.length === 0) {
+        if (imagenesDriveVisibles.length === 0) {
           grid.classList.add('hidden');
           emptyAlert.classList.remove('hidden');
           return;
@@ -10830,7 +10741,7 @@ app.get('/admin', async (req, res) => {
         emptyAlert.classList.add('hidden');
         grid.classList.remove('hidden');
 
-        grid.innerHTML = currentCloudinaryResources.map((r, idx) => {
+        grid.innerHTML = imagenesDriveVisibles.map((r, idx) => {
           const isSelected = selectedResourcesMap.has(r.url);
           const isAudio = r.resource_type === 'audio' || r.format === 'mp3';
           const isVideo = r.resource_type === 'video' || r.format === 'mp4';
@@ -10869,7 +10780,7 @@ app.get('/admin', async (req, res) => {
           } else {
             thumbHtml = \`
               <div class="w-full aspect-square overflow-hidden rounded-t-xl relative bg-cream-2 border-b flex items-center justify-center">
-                <img src="\${r.url}" class="w-full h-full object-cover" loading="lazy" referrerPolicy="no-referrer">
+                <img src="\${r.thumbnail || r.url}" class="w-full h-full object-cover" loading="lazy" referrerPolicy="no-referrer">
               </div>
             \`;
           }
@@ -10899,7 +10810,7 @@ app.get('/admin', async (req, res) => {
       }
 
       function toggleSelectResource(url, idx) {
-        const item = currentCloudinaryResources[idx];
+        const item = imagenesDriveVisibles[idx];
         if (selectedResourcesMap.has(url)) {
           selectedResourcesMap.delete(url);
         } else {
@@ -10911,7 +10822,7 @@ app.get('/admin', async (req, res) => {
           selectedResourcesMap.set(url, item);
         }
         document.getElementById('cl-selected-count').innerText = selectedResourcesMap.size;
-        drawCloudinaryResources();
+        dibujarImagenesDrive();
       }
 
       function escapeHtmlAttribute(value) {
@@ -11034,7 +10945,7 @@ app.get('/admin', async (req, res) => {
         insertTextAtCursor(textarea, html);
       }
 
-      function confirmCloudinarySelection() {
+      function confirmarSeleccionDrive() {
         const list = Array.from(selectedResourcesMap.values());
         if (list.length === 0) {
           alert('Por favor selecciona al menos un recurso de la biblioteca.');
@@ -11068,7 +10979,7 @@ app.get('/admin', async (req, res) => {
           document.getElementById('pdf_cover_url').value = list[0].url || '';
         }
 
-        closeCloudinaryExplorer();
+        cerrarExploradorDrive();
       }
 
       // ── CONTROL DE BLOQUES DE LA INFOGRAFÍA ──
@@ -11389,42 +11300,9 @@ app.post('/api/admin/recursos-pdf/upload', async (req, res) => {
   if (!filename || !dataUrl || !String(dataUrl).startsWith('data:application/pdf')) {
     return res.status(400).json({ error: 'Debes enviar un archivo PDF válido.' });
   }
-  if (!process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-    return res.status(503).json({ error: 'Cloudinary no está configurado en el servidor.' });
-  }
-
-  try {
-    const cloudinaryMod = require('cloudinary').v2;
-    cloudinaryMod.config({
-      cloud_name: CLOUDINARY_CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET
-    });
-
-    const safeBase = recursosPdf.slugify(String(filename).replace(/\.pdf$/i, ''));
-    const result = await cloudinaryMod.uploader.upload(dataUrl, {
-      resource_type: 'raw',
-      folder: 'catolicosgpt/recursos-pdf',
-      public_id: `${safeBase}-${Date.now()}`,
-      use_filename: true,
-      unique_filename: true,
-      overwrite: false,
-      access_mode: 'public'
-    });
-
-    return res.json({
-      url: result.secure_url || result.url,
-      public_id: result.public_id,
-      asset_id: result.asset_id || '',
-      version: result.version || '',
-      bytes: result.bytes || 0,
-      format: result.format || 'pdf',
-      resource_type: result.resource_type || 'raw'
-    });
-  } catch (e) {
-    console.error('[PDF Cloudinary Upload]', e.message);
-    return res.status(502).json({ error: 'No se pudo subir el PDF a Cloudinary: ' + e.message });
-  }
+  // La subida a Cloudinary se retiró del proyecto. Los PDFs se registran ahora
+  // pegando su enlace de Google Drive desde el explorador del admin.
+  return res.status(410).json({ error: 'La subida directa se retiró. Sube el PDF a la carpeta de Drive de CatólicosGPT y regístralo con su enlace desde el explorador.' });
 });
 
 app.post('/admin/recursos-pdf/guardar', async (req, res) => {
@@ -12131,113 +12009,23 @@ app.get('/admin/marcar-santo-del-dia', (req, res) => {
 });
 
 // ── SISTEMA INTEGRADO DE NAVEGACIÓN Y SELECCIÓN DE RECURSOS CLOUDINARY ──
-app.get('/api/admin/cloudinary/resources', async (req, res) => {
+app.get('/api/admin/drive/imagenes', async (req, res) => {
   const user = getAuthedUser(req);
-  if (!isStrictAdminUser(user)) {
-    return res.status(403).json({ error: 'No autorizado' });
-  }
-
-  const { type, folder, search } = req.query;
-
-  // Verificar si hay configuración real de Cloudinary activa
-  const hasCloudinary = process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET;
-  if (!hasCloudinary) {
-    return res.status(503).json({
-      error: 'Cloudinary real no está configurado. Define CLOUDINARY_API_KEY y CLOUDINARY_API_SECRET en Google Cloud.',
-      resources: [],
-      folders: [],
-      cloudName: CLOUDINARY_CLOUD_NAME,
-      source: 'cloudinary'
-    });
-  }
+  if (!isStrictAdminUser(user)) return res.status(403).json({ error: 'No autorizado' });
 
   try {
-    console.log('[Cloudinary API] Conectando con servidor real de Cloudinary...');
-    const cloudinaryMod = require('cloudinary').v2;
-    cloudinaryMod.config({
-      cloud_name: CLOUDINARY_CLOUD_NAME,
-      api_key:    process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET
+    const resources = await listGoogleDriveImageResources({
+      folderId: String(req.query.folder || ''),
+      search: String(req.query.search || '')
     });
-    let query = cloudinaryMod.search;
-    
-    let expressions = [];
-    if (folder) {
-      expressions.push(`folder:${folder}*`);
-    }
-    if (type && type !== 'all') {
-      if (type === 'audio') {
-        expressions.push('resource_type:video AND format:(mp3|wav|ogg|aac|m4a)');
-      } else if (type === 'pdf' || type === 'raw') {
-        expressions.push('resource_type:raw AND format:pdf');
-      } else {
-        expressions.push(`resource_type:${type}`);
-      }
-    }
-    if (search) {
-      expressions.push(`${search}*`);
-    }
-    
-    if (expressions.length > 0) {
-      query = query.expression(expressions.join(' AND '));
-    } else {
-      query = query.expression('resource_type:image OR resource_type:video OR resource_type:raw');
-    }
-
-    const searchResult = await query.max_results(100).execute();
-    
-    const resourcesFormatted = (searchResult.resources || []).map(r => {
-      const format = String(r.format || 'jpg').toLowerCase();
-      const isPdf = format === 'pdf' && r.resource_type === 'raw';
-      const publicId = String(r.public_id || '').replace(/\.pdf$/i, '');
-      const rawPdfUrl = isPdf
-        ? `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/${r.resource_type}/upload/${publicId}.pdf`
-        : '';
-      return {
-        public_id: r.public_id,
-        url: rawPdfUrl || r.secure_url || r.url,
-        secure_url: r.secure_url || r.url || rawPdfUrl,
-        asset_id: r.asset_id || '',
-        version: r.version || '',
-        name: (r.filename || r.public_id.split('/').pop()) + '.' + format,
-        format,
-        resource_type: r.resource_type === 'video' && ['mp3','wav','ogg','aac','m4a'].includes(format) ? 'audio' : r.resource_type,
-        bytes: r.bytes,
-        width: r.width || 1200,
-        height: r.height || 1200,
-        folder: r.asset_folder || r.folder || (r.public_id && r.public_id.includes('/') ? r.public_id.split('/').slice(0, -1).join('/') : '') || folder || 'general',
-        created_at: r.created_at
-      };
-    });
-
-    let folders = [];
-    try {
-      const foldersResult = await cloudinaryMod.api.root_folders();
-      folders = (foldersResult.folders || []).map(f => f.name);
-    } catch (fErr) {
-      console.warn('[Cloudinary API] No se pudieron leer carpetas raíz:', fErr.message);
-    }
-
-    const foldersFromResources = [...new Set(resourcesFormatted.map(r => r.folder).filter(Boolean))];
-    folders = [...new Set([...folders, ...foldersFromResources])].sort((a, b) => a.localeCompare(b));
-
-    return res.json({ resources: resourcesFormatted, folders, cloudName: CLOUDINARY_CLOUD_NAME, source: 'cloudinary' });
-  } catch (realErr) {
-    console.error('[Cloudinary API Error] Error llamando a API real:', realErr.message);
-    return res.status(502).json({
-      error: 'No se pudo conectar con tu repositorio real de Cloudinary: ' + realErr.message,
-      resources: [],
-      folders: [],
-      cloudName: CLOUDINARY_CLOUD_NAME,
-      source: 'cloudinary'
-    });
+    res.set('Cache-Control', 'no-store').json({ resources, source: 'drive' });
+  } catch (err) {
+    // El mensaje real importa: casi siempre es "falta la cuenta de servicio" o
+    // "la carpeta no está compartida", y adivinarlo desde un error genérico
+    // cuesta media tarde.
+    res.status(503).json({ error: err.message || 'No se pudo leer Google Drive.', resources: [] });
   }
 });
-
-// ════════════════════════════════════════════════════════════════════════════
-// ACTIVACIÓN DEL ESCUCHADOR PUERTO 3000
-// ════════════════════════════════════════════════════════════════════════════
-
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[CatólicosGPT v77] Servidor central corriendo en http://localhost:${PORT}`);
   try {

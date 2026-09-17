@@ -9,6 +9,17 @@ if (!global.__CATOLICOSGPT_UI_REGRESSION_GUARD__) {
   global.__CATOLICOSGPT_UI_REGRESSION_GUARD__ = true;
 
   const serverPath = require.resolve('./server');
+  // Lo inyectado no aterriza en el HTML: aterriza DENTRO de un literal de
+  // plantilla del propio server.js, que se vuelve a resolver al renderizar. Sin
+  // escapar, /\\s+/ llega al navegador como /s+/ (busca la letra "s", no
+  // espacios) y /\\/+$/ como //+$/, que es un comentario y rompe el script entero.
+  function escaparParaPlantilla(texto) {
+    return String(texto)
+      .replace(/\\\\/g, '\\\\\\\\')
+      .replace(/`/g, '\\\\`')
+      .replace(/\\$\\{/g, '\\\\${');
+  }
+
   const originalReadFileSync = fs.readFileSync.bind(fs);
 
   const UI_GUARD = `
@@ -100,8 +111,8 @@ if (!global.__CATOLICOSGPT_UI_REGRESSION_GUARD__) {
 </style>
 <script id="catolicosgpt-ui-regression-runtime-v1">
 (function(){
-  function cleanText(el){return String(el&&el.textContent||'').replace(/\s+/g,' ').trim();}
-  function pathname(){return (location.pathname||'/').replace(/\/+$/,'')||'/';}
+  function cleanText(el){return String(el&&el.textContent||'').replace(/\\s+/g,' ').trim();}
+  function pathname(){return (location.pathname||'/').replace(/\\/+$/,'')||'/';}
 
   function markHome(){
     if(pathname()!=='/') return;
@@ -122,7 +133,7 @@ if (!global.__CATOLICOSGPT_UI_REGRESSION_GUARD__) {
       if(!node || !node.querySelector || !node.querySelector('img')) return;
       node.classList.add('cgpt-inf-card');
       const raw=cleanText(node);
-      const m=raw.match(/(doctrinal|santo|devocional|serie|catequesis(?:-j[oó]venes)?)\s+(\d+)\s+diapositivas/i);
+      const m=raw.match(/(doctrinal|santo|devocional|serie|catequesis(?:-j[oó]venes)?)\\s+(\\d+)\\s+diapositivas/i);
       if(m && !node.querySelector('.cgpt-inf-meta')){
         const meta=document.createElement('div');meta.className='cgpt-inf-meta';
         const a=document.createElement('span');a.textContent=m[1];
@@ -180,7 +191,7 @@ if (!global.__CATOLICOSGPT_UI_REGRESSION_GUARD__) {
       if (resolved !== path.resolve(serverPath) || !encoding) return result;
       let source = String(result);
       if (!source.includes('catolicosgpt-ui-regression-guard-v1')) {
-        source = source.replace('</head>', UI_GUARD + '\n</head>');
+        source = source.replace('</head>', escaparParaPlantilla(UI_GUARD) + '\n</head>');
       }
       return source;
     } catch (_) {
