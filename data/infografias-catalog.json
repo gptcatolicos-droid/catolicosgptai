@@ -1,11 +1,43 @@
 {
-  "version": "5.2",
-  "total": 2,
+  "version": "5.3",
+  "total": 3,
   "categorias": [
+    "catequesis-y-doctrina",
     "santos-y-devociones",
     "fiestas-liturgicas"
   ],
   "infografias": [
+    {
+      "id": "inf-los-10-mandamientos-20260916",
+      "slug": "los-10-mandamientos",
+      "tema": "Los Diez Mandamientos",
+      "titulo": "Los 10 Mandamientos — Catequesis visual",
+      "tipo": "doctrinal",
+      "categoria": "catequesis-y-doctrina",
+      "formato": "1:1",
+      "estilo": "cinematic",
+      "totalSlides": 10,
+      "metaDescription": "Carrusel catequético de CatolicosGPT sobre los Diez Mandamientos, presentado en 10 slides para formación y evangelización.",
+      "altText": "Carrusel CatolicosGPT sobre los Diez Mandamientos",
+      "keywords": "Diez Mandamientos, 10 Mandamientos, Decálogo, catequesis católica, mandamientos de Dios, formación católica, CatolicosGPT",
+      "imagenes": [
+        { "url": "https://drive.google.com/thumbnail?id=1i4KyudnY-uQ7bxig3mgL9XpZ18H_IDPp&sz=w2400", "slide": 1, "model": "User supplied", "formato": "1:1", "driveId": "1i4KyudnY-uQ7bxig3mgL9XpZ18H_IDPp" },
+        { "url": "https://drive.google.com/thumbnail?id=169ScUHiRwmI_WNd_WTJmba7CzBlaHZB1&sz=w2400", "slide": 2, "model": "User supplied", "formato": "1:1", "driveId": "169ScUHiRwmI_WNd_WTJmba7CzBlaHZB1" },
+        { "url": "https://drive.google.com/thumbnail?id=1zrGdehRQo55eLHAFFI6gnFtHrQVCw8-K&sz=w2400", "slide": 3, "model": "User supplied", "formato": "1:1", "driveId": "1zrGdehRQo55eLHAFFI6gnFtHrQVCw8-K" },
+        { "url": "https://drive.google.com/thumbnail?id=156GuCf400MTo4nQEBOEvX1sPmyUpN1nQ&sz=w2400", "slide": 4, "model": "User supplied", "formato": "1:1", "driveId": "156GuCf400MTo4nQEBOEvX1sPmyUpN1nQ" },
+        { "url": "https://drive.google.com/thumbnail?id=1nQfHzzTGtkXSICiFOvT9qsULA6RH-XjW&sz=w2400", "slide": 5, "model": "User supplied", "formato": "1:1", "driveId": "1nQfHzzTGtkXSICiFOvT9qsULA6RH-XjW" },
+        { "url": "https://drive.google.com/thumbnail?id=1sDqs26OWX6HuysuL5NcGW0YuvFhCKRRf&sz=w2400", "slide": 6, "model": "User supplied", "formato": "1:1", "driveId": "1sDqs26OWX6HuysuL5NcGW0YuvFhCKRRf" },
+        { "url": "https://drive.google.com/thumbnail?id=1egsHliRybsRfxepTxune7ASuoI3uuroy&sz=w2400", "slide": 7, "model": "User supplied", "formato": "1:1", "driveId": "1egsHliRybsRfxepTxune7ASuoI3uuroy" },
+        { "url": "https://drive.google.com/thumbnail?id=1ygoSZHkMujCtniqtiON0kXCLKUDk4VEC&sz=w2400", "slide": 8, "model": "User supplied", "formato": "1:1", "driveId": "1ygoSZHkMujCtniqtiON0kXCLKUDk4VEC" },
+        { "url": "https://drive.google.com/thumbnail?id=1H0Aa31WA3qbmFjhFWDfNxOrYlj76PxWP&sz=w2400", "slide": 9, "model": "User supplied", "formato": "1:1", "driveId": "1H0Aa31WA3qbmFjhFWDfNxOrYlj76PxWP" },
+        { "url": "https://drive.google.com/thumbnail?id=1wdMvrpk525BZOep3f6htxpgVF9t7BH3c&sz=w2400", "slide": 10, "model": "User supplied", "formato": "1:1", "driveId": "1wdMvrpk525BZOep3f6htxpgVF9t7BH3c" }
+      ],
+      "driveFolderId": "1Zppt4-QWWdvA5SSJ5XYTlzW1nX1bp6E7",
+      "zipDriveId": "1fZdepOSgOXdziBH8KZMARHrUB4mP9-Ue",
+      "fechaCreacion": "2026-09-17T00:40:00Z",
+      "fechaISO": "2026-09-16",
+      "publicado": true
+    },
     {
       "id": "inf-san-jose-novena-20260916",
       "slug": "san-jose-esposo-de-maria-y-novena",
