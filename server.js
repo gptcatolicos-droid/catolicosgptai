@@ -132,6 +132,16 @@ if (process.env.LECTURAS_SONDEO === '1') {
   }, 18000);
 }
 
+// Comprobación de Google Drive al arrancar. La lista de imágenes solo se pide
+// cuando el administrador abre el explorador, así que sin esto no hay forma de
+// saber si la credencial y los permisos de la carpeta están bien hasta que
+// alguien se encuentra el fallo. Una línea en el registro lo dice de entrada.
+setTimeout(() => {
+  listGoogleDriveImageResources({})
+    .then(imgs => console.log(`[Drive] Conectado: ${imgs.length} imágenes visibles en la carpeta configurada.${imgs.length ? ` La primera: ${imgs[0].name}.` : ' Si esperabas ver imágenes, revisa que la carpeta esté compartida.'}`))
+    .catch(err => console.warn('[Drive] No se pudo leer:', err.message));
+}, 25000);
+
 // Las lecturas de hoy se traen solas, no cuando alguien entra. Si se
 // descargaran a la primera visita, esa persona se encontraría la página vacía
 // mientras espera -y es justo la que venía a leerlas-.
@@ -8020,11 +8030,28 @@ async function renderLecturasDelDia(req, res, { soloEvangelio }) {
     : todas;
 
   const titulo = soloEvangelio ? 'Evangelio de hoy' : 'Lecturas de la Misa de hoy';
-  const bloques = lecturas.map(l => `
-    <article class="bg-white border border-[#E6DFD4] rounded-2xl p-5 flex flex-col gap-2.5">
+  // evangelizo encabeza cada lectura con la referencia bíblica ("Carta I de San
+  // Pablo a los Corintios 15,1-11.") y no con "Primera lectura". La referencia
+  // es lo que se proclama, así que va de titular; el papel va encima, pequeño,
+  // para que la página se lea como un misal y no como una lista de citas.
+  const NOMBRE_PAPEL = {
+    primera: 'Primera lectura',
+    salmo: 'Salmo responsorial',
+    segunda: 'Segunda lectura',
+    aleluya: 'Aclamación antes del Evangelio',
+    evangelio: 'Evangelio'
+  };
+  const bloques = lecturas.map(l => {
+    const papel = NOMBRE_PAPEL[l.papel] || '';
+    // Cuando el rótulo y el titular dirían lo mismo, no se repite.
+    const repetido = papel && escapeHtml(l.titulo).toLowerCase().startsWith(papel.toLowerCase());
+    return `
+    <article class="bg-white border border-[#E6DFD4] rounded-2xl p-5 flex flex-col gap-2">
+      ${papel && !repetido ? `<p class="text-[11px] font-bold uppercase tracking-widest text-gold m-0">${escapeHtml(papel)}</p>` : ''}
       <h2 class="font-display font-bold text-maroon text-lg leading-snug m-0">${escapeHtml(l.titulo)}</h2>
-      <div class="text-ink2 text-sm leading-relaxed font-serif border-l-2 border-gold pl-4">${escapeHtml(l.texto).replace(/\n/g, '<br>')}</div>
-    </article>`).join('');
+      <div class="text-ink2 text-sm leading-relaxed font-serif border-l-2 border-gold pl-4 mt-1">${escapeHtml(l.texto).replace(/\n/g, '<br>')}</div>
+    </article>`;
+  }).join('');
 
   // Sin lecturas no se rellena con prosa: se dice lo que pasa y se ofrece a
   // dónde ir. Una página que promete las lecturas y entrega un sermón genérico
