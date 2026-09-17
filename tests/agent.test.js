@@ -406,3 +406,39 @@ test('el disco persistente se siembra en el primer arranque y no se pisa despues
   assert.equal(seedDataDir(pathMod.join(__dirname,'..','data')).sembrados.length,0);
  } finally { fs.rmSync(disco,{recursive:true,force:true}); }
 });
+
+// ── Temario diario: el sistema publica todos los días sin repetir tema ──
+test('el temario del día no repite combinaciones entre días', () => {
+  const daily = require('../daily-content-module');
+  const estado = {};
+  const vistos = new Set();
+  // Un mes entero de ejecuciones seguidas.
+  for (let dia = 0; dia < 30; dia++) {
+    const { plan, usados } = daily.temarioDelDia(estado);
+    assert.equal(plan.length, daily.ARTICULOS_POR_DIA, `el día ${dia} no llenó el cupo`);
+    for (const combo of plan) {
+      assert.ok(!vistos.has(combo.clave), `tema repetido el día ${dia}: ${combo.clave}`);
+      vistos.add(combo.clave);
+      usados.add(combo.clave);
+    }
+    estado.combosUsados = Array.from(usados);
+  }
+  assert.equal(vistos.size, 30 * daily.ARTICULOS_POR_DIA);
+});
+
+test('el temario reparte entre adultos, ninos y jovenes', () => {
+  const daily = require('../daily-content-module');
+  const { plan } = daily.temarioDelDia({});
+  const audiencias = new Set(plan.map(c => c.audiencia));
+  assert.ok(audiencias.has('adultos'), 'faltan articulos de adultos');
+  assert.ok(audiencias.has('niños'), 'faltan articulos de ninos');
+  assert.ok(audiencias.has('jovenes'), 'faltan articulos de jovenes');
+});
+
+test('sin material de Magisterium no se genera ningun articulo', async () => {
+  const openaiChat = require('../openai-chat-module');
+  await assert.rejects(
+    () => openaiChat.generateContentJson({ contentType: 'blog', audience: 'adultos', topic: 'los sacramentos' }),
+    /no se inventa/
+  );
+});
