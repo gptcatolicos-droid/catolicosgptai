@@ -575,7 +575,14 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
       --shadow-lg: 0 12px 24px rgba(37, 27, 21, 0.12);
     }
     
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    /* Este reinicio no lleva capa, y en Tailwind v4 las utilidades SÍ viven en
+       @layer utilities. Una declaración sin capa gana siempre a una con capa,
+       así que este "padding: 0" anulaba p-6, px-4 y todas las demás en el sitio
+       entero: las tarjetas perdían su relleno y los textos se salían del borde.
+       Tailwind ya hace este mismo reinicio en su preflight, dentro de su capa,
+       que es donde las utilidades pueden sobrescribirlo. Aquí se conserva solo
+       box-sizing, que ninguna utilidad necesita pisar. */
+    * { box-sizing: border-box; }
     
     body, select, input, button, textarea, a, p, h1, h2, h3, h4, h5, h6, span, label, div:not(.font-mono):not(code):not(pre), button *, a * {
       font-family: "Domine", serif !important;
@@ -4245,24 +4252,20 @@ app.get('/infografias', (req, res) => {
   const cats = ['doctrinal', 'santo', 'devocional', 'serie'];
 
   const filterHtml = `
-    <div class="bg-white border border-border rounded-xl p-5 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+    <div class="bg-white border border-border rounded-xl p-5 shadow-sm flex flex-col items-center gap-4">
       <div class="flex flex-wrap gap-2 justify-center">
         <a href="/infografias?categoria=all" class="px-4 py-1.5 rounded-full text-xs font-semibold ${cat==='all'?'bg-maroon text-white':'bg-cream border text-ink hover:bg-cream2'} transition">Todo</a>
         ${cats.map(c => `
           <a href="/infografias?categoria=${c}" class="px-4 py-1.5 rounded-full text-xs font-semibold capitalize ${cat===c?'bg-maroon text-white':'bg-cream border text-ink hover:bg-cream2'} transition">${c}</a>
         `).join('')}
       </div>
-      <form action="/infografias" method="GET" class="flex gap-2 w-full md:w-auto">
-        <input type="text" name="q" value="${q}" placeholder="Buscar infografías..." class="border border-border rounded-full px-4 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-gold flex-1">
-        <button type="submit" class="bg-maroon text-white px-4 py-1.5 rounded-full text-xs font-bold hover:bg-gold transition">Buscar</button>
-      </form>
     </div>
   `;
 
   const listHtml = items.length > 0 ? `
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       ${items.map(i => {
-        const thumb = i.imagenes?.[0]?.url || 'https://res.cloudinary.com/df9vdt2da/image/upload/v1714498302/catolicosgpt_hero.png';
+        const thumb = i.imagenes?.[0]?.url || '/favicon.png';
         return `
           <div class="seo-card flex flex-col justify-between overflow-hidden">
             <a href="/infografias/${i.slug}" class="block overflow-hidden rounded-lg mb-4 aspect-square bg-cream">
@@ -7355,20 +7358,14 @@ app.get('/planes', (req, res) => {
             </ul>
           </div>
           
-          ${user ? (
-            activePlan === 'premium' || activePlan === 'admin' ? `
-              <button class="w-full text-center py-2.5 bg-maroon text-white font-bold text-xs uppercase tracking-wider rounded-xl transition" disabled>
-                Suscripción Premium Activa ✓
-              </button>
-            ` : `
-              <button onclick="abrirCheckout()" class="w-full text-center py-3 bg-maroon hover:bg-gold text-white font-bold text-xs uppercase tracking-wider rounded-xl transition shadow active:scale-95 duration-200">
-                Obtener Licencia Premium
-              </button>
-            `
-          ) : `
-            <a href="/login?redirect=planes" class="w-full text-center py-3 bg-maroon hover:bg-gold text-white font-bold text-xs uppercase tracking-wider rounded-xl transition shadow flex items-center justify-center gap-1.5 duration-200">
-              Inicia Sesión para Comprar
-            </a>
+          ${user && (activePlan === 'premium' || activePlan === 'admin') ? `
+            <button class="w-full text-center py-2.5 bg-maroon text-white font-bold text-xs uppercase tracking-wider rounded-xl transition" disabled>
+              Suscripción Premium Activa ✓
+            </button>
+          ` : `
+            <button onclick="abrirCheckout()" class="w-full text-center py-3 bg-maroon hover:bg-gold text-white font-bold text-xs uppercase tracking-wider rounded-xl transition shadow active:scale-95 duration-200">
+              Suscribirme con PayPal · $4.99/mes
+            </button>
           `}
         </div>
 
@@ -7393,6 +7390,14 @@ app.get('/planes', (req, res) => {
           </div>
           
           <div class="flex flex-col gap-3 mt-1">
+            ${user ? '' : `
+            <div class="flex flex-col gap-2">
+              <label class="text-[10px] font-mono uppercase tracking-widest text-ink2" for="checkout-email">Tu correo</label>
+              <input type="email" id="checkout-email" required autocomplete="email" placeholder="tucorreo@ejemplo.com" class="border border-border rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-gold">
+              <input type="text" id="checkout-nombre" autocomplete="name" placeholder="Tu nombre (opcional)" class="border border-border rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-gold">
+              <p class="text-[10px] text-ink2 leading-relaxed">Con este correo se crea tu cuenta y queda asociada la suscripción. No hace falta contraseña ahora: la defines después desde Ajustes.</p>
+            </div>
+            `}
             <p class="text-[11px] text-ink2 leading-relaxed">El pago se realiza en PayPal. CatólicosGPT no recibe ni almacena los datos de tu tarjeta.</p>
             <button type="button" id="upgrade-submit-btn" onclick="procesarUpgrade(event)" class="w-full bg-maroon hover:bg-gold text-white font-bold py-3 rounded-xl transition uppercase tracking-wider shadow text-xs mt-1 flex items-center justify-center gap-1.5 duration-200">
               Continuar con PayPal · $4.99/mes
@@ -7401,7 +7406,7 @@ app.get('/planes', (req, res) => {
           </div>
           
           <div class="text-[9px] text-center text-ink2 italic font-serif leading-relaxed">
-            ✝ Encriptación bancaria simulada SSL. El dinero de prueba no es real; tu base de datos se actualizará al instante.
+            ✝ El cobro lo procesa PayPal con su propio cifrado. Tu plan se activa cuando PayPal confirma el pago.
           </div>
         </div>
       </div>
@@ -7432,15 +7437,35 @@ app.get('/planes', (req, res) => {
         btn.disabled = true;
         btn.innerHTML = 'Conectando con PayPal...';
 
+        const campoEmail = document.getElementById('checkout-email');
+        const campoNombre = document.getElementById('checkout-nombre');
+        const cuerpo = campoEmail
+          ? { email: campoEmail.value.trim(), nombre: campoNombre ? campoNombre.value.trim() : '' }
+          : {};
+        if (campoEmail && !campoEmail.checkValidity()) {
+          campoEmail.reportValidity();
+          btn.disabled = false;
+          btn.innerHTML = 'Continuar con PayPal · $4.99/mes';
+          return;
+        }
+
         try {
           const res = await fetch('/api/upgrade-plan', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(cuerpo)
           });
           const data = await res.json();
           // El plan no se activa aquí: se activa cuando PayPal confirma el pago.
           if (data.approveUrl) {
             window.location.href = data.approveUrl;
+            return;
+          }
+          // Un correo con cuenta no puede abrir sesión sin contraseña: se le
+          // manda a entrar y se vuelve aquí para terminar la suscripción.
+          if (data.requiereLogin) {
+            alert(data.error);
+            window.location.href = '/login?redirect=/planes';
             return;
           }
           alert(data.error || 'No se pudo iniciar el pago. Intenta de nuevo.');
@@ -7460,10 +7485,36 @@ app.get('/planes', (req, res) => {
 // sesión iniciada podía llamarlo y quedarse con el plan. Ahora abre una
 // suscripción en PayPal y el plan solo se activa cuando PayPal confirma el pago.
 app.post('/api/upgrade-plan', async (req, res) => {
-  const user = getAuthedUser(req);
-  if (!user) return res.status(401).json({ error: 'Debes iniciar sesión para suscribirte' });
+  let user = getAuthedUser(req);
   if (!paypal.isReady()) {
     return res.status(503).json({ error: 'Los pagos no están disponibles en este momento. Inténtalo más tarde.' });
+  }
+  // Comprar no debe exigir iniciar sesión antes. Basta el correo: con él se crea
+  // la cuenta en el momento, porque una suscripción tiene que pertenecer a
+  // alguien y el comprador necesita una forma de volver a entrar.
+  if (!user) {
+    const email = String((req.body || {}).email || '').trim().toLowerCase();
+    const nombre = String((req.body || {}).nombre || '').trim() || email.split('@')[0];
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Escribe un correo válido para asociar tu suscripción.' });
+    }
+    // Si el correo YA tiene cuenta no se inicia sesión sin contraseña: eso
+    // permitiría entrar en la cuenta ajena escribiendo su correo. Se pide
+    // entrar, y al volver el pago continúa.
+    if (auth.getUserByEmail(email)) {
+      return res.status(409).json({ error: 'Ese correo ya tiene cuenta. Inicia sesión y vuelve a Planes para completar la suscripción.', requiereLogin: true });
+    }
+    try {
+      // La contraseña se genera al azar: el comprador la cambia luego desde
+      // Ajustes. Pedirla aquí sería otro formulario entre él y el pago.
+      const provisional = `cgpt-${crypto.randomBytes(18).toString('base64url')}`;
+      const creds = await auth.register({ nombre, email, password: provisional });
+      res.setHeader('Set-Cookie', `cgpt_token=${creds.token}; Path=/; HttpOnly; Max-Age=2592000; SameSite=None; Secure`);
+      global.sandboxSession = { token: creds.token, userId: creds.user.id };
+      user = creds.user;
+    } catch (e) {
+      return res.status(400).json({ error: e.message || 'No se pudo crear la cuenta para la suscripción.' });
+    }
   }
   const appUrl = getPublicSiteUrl();
   try {

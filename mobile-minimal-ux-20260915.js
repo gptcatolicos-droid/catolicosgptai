@@ -91,9 +91,9 @@ const MOBILE_MINIMAL_UX = `
 // espacios) y /\\/+$/ como //+$/, que es un comentario y rompe el script entero.
 function escaparParaPlantilla(texto) {
   return String(texto)
-    .replace(/\\\\/g, '\\\\\\\\')
-    .replace(/`/g, '\\\\`')
-    .replace(/\\$\\{/g, '\\\\${');
+    .replace(/\\/g, '\\\\')
+    .replace(/`/g, '\\`')
+    .replace(/\$\{/g, '\\${');
 }
 
 Module._extensions['.js'] = function mobileMinimalUxLoader(mod, filename) {

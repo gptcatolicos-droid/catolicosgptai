@@ -15,9 +15,9 @@ if (!global.__CATOLICOSGPT_UI_REGRESSION_GUARD__) {
   // espacios) y /\\/+$/ como //+$/, que es un comentario y rompe el script entero.
   function escaparParaPlantilla(texto) {
     return String(texto)
-      .replace(/\\\\/g, '\\\\\\\\')
-      .replace(/`/g, '\\\\`')
-      .replace(/\\$\\{/g, '\\\\${');
+      .replace(/\\/g, '\\\\')
+      .replace(/`/g, '\\`')
+      .replace(/\$\{/g, '\\${');
   }
 
   const originalReadFileSync = fs.readFileSync.bind(fs);
