@@ -193,7 +193,11 @@ async function callJsonModel({ model, systemInstruction, prompt, maxOutputTokens
       input: clampText(prompt, settings.maxPromptChars),
       store: false,
       max_output_tokens: maxOutputTokens,
-      temperature
+      temperature,
+      // Pedir JSON en el texto del prompt es una sugerencia; esto es un
+      // contrato. Sin él, el modelo a veces envuelve la respuesta en prosa o en
+      // un bloque de código y el parseo falla por nada.
+      text: { format: { type: 'json_object' } }
     }),
     signal: AbortSignal.timeout(timeoutMs)
   });
@@ -203,6 +207,16 @@ async function callJsonModel({ model, systemInstruction, prompt, maxOutputTokens
     throw new Error(`OpenAI ${response.status}: ${errorText || response.statusText}`);
   }
   return response.json();
+}
+
+// Una respuesta cortada por el límite de tokens llega como JSON a medias, y el
+// error que salía era "OpenAI no devolvió JSON válido": cierto, pero inútil
+// para saber qué arreglar. Si viene truncada, que lo diga.
+function quedoTruncada(data) {
+  if (!data || typeof data !== 'object') return false;
+  if (data.status === 'incomplete') return true;
+  const motivo = data.incomplete_details && data.incomplete_details.reason;
+  return motivo === 'max_output_tokens';
 }
 
 async function generateSeoJson({ entityType, requestedField, context }) {
@@ -274,12 +288,21 @@ Escribe el artículo apoyándote solo en ese material. El contenidoMd debe lleva
     model: settings.seoModel,
     systemInstruction,
     prompt,
-    maxOutputTokens: positiveInt(process.env.OPENAI_CONTENT_MAX_OUTPUT_TOKENS, 1600),
-    timeoutMs: positiveInt(process.env.OPENAI_CONTENT_TIMEOUT_MS, 45000),
+    // 1600 tokens bastaban cuando el prompt no llevaba material. Con la
+    // respuesta de Magisterium dentro y un artículo entero más tres preguntas
+    // de salida, la respuesta se cortaba a media frase y el JSON llegaba roto:
+    // siete de cada diez artículos se perdían así.
+    maxOutputTokens: positiveInt(process.env.OPENAI_CONTENT_MAX_OUTPUT_TOKENS, 3500),
+    timeoutMs: positiveInt(process.env.OPENAI_CONTENT_TIMEOUT_MS, 90000),
     temperature: 0.25
   });
   const parsed = parseJsonObject(extractResponseText(data));
-  if (!parsed || !parsed.titulo || !parsed.contenidoMd) throw new Error('OpenAI no devolvió JSON de contenido válido.');
+  if (!parsed || !parsed.titulo || !parsed.contenidoMd) {
+    if (quedoTruncada(data)) {
+      throw new Error('La respuesta de OpenAI se cortó por el límite de tokens; sube OPENAI_CONTENT_MAX_OUTPUT_TOKENS.');
+    }
+    throw new Error('OpenAI no devolvió JSON de contenido válido.');
+  }
   return parsed;
 }
 

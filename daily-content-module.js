@@ -215,7 +215,12 @@ async function runDailyContentJob({ force = false } = {}) {
 
   const key = todayKey();
   const state = readState();
-  if (!force && state.lastRun === key) {
+  // "Ya se ejecutó hoy" no es lo mismo que "hoy ya están los diez". Si una
+  // tanda se quedó a medias -una respuesta cortada, un fallo de red-, marcar el
+  // día como hecho dejaba el blog con tres artículos hasta mañana. Mientras
+  // falten, se vuelve a intentar en la siguiente pasada.
+  const completoHoy = state.lastRun === key && Number(state.creadosUltimaVez || 0) >= ARTICULOS_POR_DIA;
+  if (!force && completoHoy) {
     return { skipped: true, reason: 'already_ran_today', key };
   }
 
@@ -231,12 +236,14 @@ async function runDailyContentJob({ force = false } = {}) {
     return { skipped: true, reason: 'existing_generated_posts_today', key, count: existingToday.length };
   }
 
+  // Lo que falte para llegar a diez, no diez más.
+  const faltan = Math.max(0, ARTICULOS_POR_DIA - existingToday.length);
   const { plan, usados } = temarioDelDia(state);
   const results = [];
   let creados = 0;
 
   for (const combo of plan) {
-    if (creados >= ARTICULOS_POR_DIA) break;
+    if (creados >= faltan) break;
     let resultado;
     try {
       resultado = await createOne({
@@ -259,12 +266,12 @@ async function runDailyContentJob({ force = false } = {}) {
 
   state.lastRun = key;
   state.lastRunAt = new Date().toISOString();
-  state.creadosUltimaVez = creados;
+  state.creadosUltimaVez = existingToday.length + creados;
   state.combosUsados = Array.from(usados);
   state.lastResults = results;
   writeState(state);
 
-  console.log(`[Daily Content] ${creados} de ${ARTICULOS_POR_DIA} artículos publicados hoy.`);
+  console.log(`[Daily Content] ${existingToday.length + creados} de ${ARTICULOS_POR_DIA} artículos publicados hoy (${creados} en esta pasada).`);
   return { success: true, key, creados, results };
 }
 
