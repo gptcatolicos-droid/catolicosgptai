@@ -737,3 +737,43 @@ test('si Magisterium no devuelve lecturas no se sirve la de otro dia', async () 
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('si la respuesta no es 200 pero el cuerpo trae las lecturas, se usan', async () => {
+  const m = require('../magisterium-lecturas');
+  const cuerpo = `<html><body>
+    <h3>Primera lectura</h3><p>Querido hermano: que nadie te desprecie por ser joven, procura ser modelo de los creyentes.</p>
+    <h3>Evangelio</h3><p>En aquel tiempo, un fariseo rogó a Jesús que comiera con él y Jesús entró en su casa.</p>
+  </body></html>`;
+  const fetcherLimitado = async () => ({
+    ok: false, status: 429,
+    headers: { get: () => 'text/html; charset=utf-8' },
+    text: async () => cuerpo
+  });
+  const previo = process.env.MAGISTERIUM_REINTENTO_MS;
+  process.env.MAGISTERIUM_REINTENTO_MS = '1';
+  try {
+    const r = await m.descargar('2026-09-17', fetcherLimitado);
+    assert.ok(r, 'se descartó una respuesta que sí traía las lecturas');
+    assert.equal(r.lecturas.length, 2);
+    assert.ok(/fariseo/.test(r.lecturas[1].texto));
+    assert.ok(/429/.test(r.via), 'la vía debe dejar constancia de que vino de un 429');
+  } finally {
+    previo === undefined ? delete process.env.MAGISTERIUM_REINTENTO_MS : process.env.MAGISTERIUM_REINTENTO_MS = previo;
+  }
+});
+
+test('si no es 200 y el cuerpo no trae lecturas, no se inventa nada', async () => {
+  const m = require('../magisterium-lecturas');
+  const fetcherBloqueado = async () => ({
+    ok: false, status: 429,
+    headers: { get: () => 'text/html' },
+    text: async () => '<html><body><h1>Demasiadas peticiones</h1><p>Intenta más tarde.</p></body></html>'
+  });
+  const previo = process.env.MAGISTERIUM_REINTENTO_MS;
+  process.env.MAGISTERIUM_REINTENTO_MS = '1';
+  try {
+    assert.equal(await m.descargar('2026-09-17', fetcherBloqueado), null);
+  } finally {
+    previo === undefined ? delete process.env.MAGISTERIUM_REINTENTO_MS : process.env.MAGISTERIUM_REINTENTO_MS = previo;
+  }
+});

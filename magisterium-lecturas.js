@@ -126,23 +126,56 @@ function guardarCache(datos) {
 // Descarga y analiza. Deja en el registro una huella de lo que recibió: desde
 // este entorno no se puede alcanzar magisterium.com, así que los registros de
 // producción son la única forma de comprobar que el análisis acierta.
-async function descargar(fecha, fetcher = fetch) {
-  const url = `${BASE}/${fecha}`;
-  const respuesta = await fetcher(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36',
-      'Accept': 'text/html,application/json;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'es-ES,es;q=0.9'
-    },
+async function pedir(url, fetcher) {
+  const cabeceras = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36',
+    'Accept': 'text/html,application/json;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'es-ES,es;q=0.9'
+  };
+  // Pedirlo sin identificarse devolvía 429: nos limitaban por anónimos. Ya
+  // tenemos clave de Magisterium para el chat; se usa también aquí.
+  const clave = String(process.env.MAGISTERIUM_API_KEY || '').trim();
+  if (clave) cabeceras.Authorization = `Bearer ${clave}`;
+
+  return fetcher(url, {
+    headers: cabeceras,
     signal: AbortSignal.timeout(Number(process.env.MAGISTERIUM_DAILY_MASS_TIMEOUT_MS) || 20000)
   });
+}
+
+async function descargar(fecha, fetcher = fetch) {
+  const url = `${BASE}/${fecha}`;
+  let respuesta = await pedir(url, fetcher);
+
+  // Un 429 puede ser un pico momentáneo. Se reintenta una vez, con espera; más
+  // de eso sería insistirle a quien acaba de pedir que no insistamos.
+  if (respuesta.status === 429) {
+    const espera = Number(process.env.MAGISTERIUM_REINTENTO_MS) || 4000;
+    console.warn(`[Lecturas Magisterium] ${fecha}: 429, reintentando en ${espera} ms.`);
+    await new Promise(r => setTimeout(r, espera));
+    respuesta = await pedir(url, fetcher);
+  }
 
   const tipo = String(respuesta.headers.get('content-type') || '');
   const cuerpo = await respuesta.text();
 
+  // Aunque el código no sea 200 se mira el cuerpo: una respuesta de 29 KB de
+  // HTML puede traer las lecturas igual, y descartarla por el código sería
+  // tirar lo que veníamos a buscar. Si no las trae, el registro dice qué llegó.
   if (!respuesta.ok) {
-    console.warn(`[Lecturas Magisterium] ${url} respondió ${respuesta.status} (${tipo}, ${cuerpo.length} bytes).`);
-    return null;
+    const textoFallo = htmlATexto(cuerpo);
+    const lecturasFallo = partirEnLecturas(textoFallo);
+    console.warn(`[Lecturas Magisterium] ${fecha}: HTTP ${respuesta.status} (${tipo.split(';')[0]}, ${cuerpo.length} bytes, texto ${textoFallo.length}, ${lecturasFallo.length} lecturas). Primeras líneas: ${JSON.stringify(textoFallo.split('\n').filter(Boolean).slice(0, 5))}`);
+    if (!lecturasFallo.length) return null;
+    console.log(`[Lecturas Magisterium] ${fecha}: el cuerpo del ${respuesta.status} sí traía las lecturas; se usan.`);
+    return {
+      fecha,
+      fuente: 'Magisterium',
+      url: `https://www.magisterium.com/es/widgets/daily-mass/${fecha}`,
+      via: `cuerpo de HTTP ${respuesta.status}`,
+      descargadoEn: new Date().toISOString(),
+      lecturas: lecturasFallo.slice(0, 6).map(l => ({ titulo: l.titulo, texto: l.texto }))
+    };
   }
 
   let lecturas = [];

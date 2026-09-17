@@ -115,6 +115,18 @@ if (!fs.existsSync(DATA_DIR)) {
   try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch(e) {}
 }
 
+// Las lecturas de hoy se traen solas, no cuando alguien entra. Si se
+// descargaran a la primera visita, esa persona se encontraría la página vacía
+// mientras espera -y es justo la que venía a leerlas-.
+setTimeout(() => {
+  const traer = () => require('./magisterium-lecturas').lecturasDeHoy()
+    .then(r => console.log(r ? `[Lecturas] ${r.lecturas.length} lecturas listas para ${r.fecha} (${r.fuente}).` : '[Lecturas] Hoy no se pudieron traer; la página lo dirá.'))
+    .catch(e => console.warn('[Lecturas] Fallo trayéndolas:', e.message));
+  traer();
+  // Cada seis horas: cubre el cambio de día y un fallo puntual de la fuente.
+  setInterval(traer, Number(process.env.LECTURAS_INTERVALO_MS) || 21600000);
+}, 20000);
+
 // ── Iniciar e-liturgia de fondo de forma diferida (evita saturación y bloqueos en el arranque de Cloud Run) ──
 setTimeout(() => {
   console.log('[Liturgia] Iniciando descarga diferida de la liturgia del día de fondo...');
