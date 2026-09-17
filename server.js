@@ -7274,6 +7274,14 @@ app.get('/misas', (req, res) => {
 app.get('/planes', (req, res) => {
   const user = getAuthedUser(req);
   const activePlan = user ? user.plan : 'free';
+  // Las cifras salen de las mismas variables que aplica el chat, no de un
+  // número escrito a mano: si mañana se cambia el tope, la página no miente.
+  const cupo = (nombre, porDefecto) => {
+    const n = Number(process.env[nombre]);
+    return Number.isFinite(n) && n > 0 ? n : porDefecto;
+  };
+  const limiteGratis = cupo('AGENT_FREE_DAILY_REQUESTS', 10);
+  const limiteVisitante = cupo('AGENT_ANON_DAILY_REQUESTS', 3);
 
   const html = `
     <div class="max-w-4xl mx-auto w-full px-4 py-8 flex flex-col gap-6">
@@ -7281,10 +7289,10 @@ app.get('/planes', (req, res) => {
       <!-- HERO HEADER -->
       <div class="flex flex-col gap-2 text-center max-w-2xl mx-auto pb-4">
         <h1 class="font-display font-medium text-3xl sm:text-4xl text-espresso tracking-tight leading-tight">
-          Exclusividad & <span class="italic text-gold font-serif">Branding Cristiano</span>
+          El chat católico <span class="italic text-gold font-serif">sin límite diario</span>
         </h1>
         <p class="font-serif text-ink2 text-base italic leading-relaxed">
-          Diseña y difunde de manera ilimitada con la V77. Configura el logo de tu parroquia y obtén descargas en alta resolución.
+          Consulta la fe con respuestas fundadas en el Magisterio, la Biblia y el Catecismo, con sus fuentes a la vista. Premium quita el tope de consultas al día.
         </p>
       </div>
 
@@ -7296,31 +7304,45 @@ app.get('/planes', (req, res) => {
           <div class="flex flex-col gap-3">
             <span class="text-[9px] font-mono bg-cream hover:bg-cream2 duration-200 text-espresso font-bold px-2 py-0.5 rounded self-start uppercase tracking-widest">Plan Comunitario</span>
             <h3 class="font-display font-bold text-espresso text-xl">Acceso Gratis</h3>
-            <p class="text-ink2 text-xs leading-relaxed font-serif italic font-medium">Adecuado para catequesis y oración personal esporádica.</p>
+            <p class="text-ink2 text-xs leading-relaxed font-serif italic font-medium">Para consultar la fe de vez en cuando, con todo el rigor de las fuentes.</p>
             <div class="flex items-baseline mt-2">
               <span class="font-display font-medium text-4xl text-espresso">$0</span>
               <span class="text-ink2 text-xs ml-1 font-mono">/ siempre</span>
             </div>
-            
+
             <ul class="flex flex-col gap-3 text-xs text-ink mt-4 border-t pt-4">
-              <li class="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="text-green-500 flex-shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                <span>Soporte total en el Chat Magisterial</span>
+              <li class="flex items-start gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="text-green-500 flex-shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                <span><strong>${limiteGratis} consultas al día</strong> con cuenta gratuita (${limiteVisitante} sin registrarte)</span>
               </li>
-              <li class="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="text-green-500 flex-shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                <span>Generar 1 infografía diaria</span>
+              <li class="flex items-start gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="text-green-500 flex-shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Respuestas con sus fuentes del Magisterio, y citas de la Biblia y del Catecismo</span>
               </li>
-              <li class="flex items-center gap-2 text-ink2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="text-espresso flex-shrink-0 opacity-40" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
-                <span>Watermark de CatólicosGPT</span>
+              <li class="flex items-start gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="text-green-500 flex-shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Cuadro sinóptico, cronología, resumen y compendios de citas</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="text-green-500 flex-shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Descarga de las respuestas en Word y PDF</span>
+              </li>
+              <li class="flex items-start gap-2 text-ink2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="text-espresso flex-shrink-0 opacity-40 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+                <span>Al llegar al tope, hay que esperar al día siguiente</span>
               </li>
             </ul>
           </div>
           
-          <button class="w-full text-center py-2.5 bg-cream text-espresso font-bold text-xs uppercase tracking-wider rounded-xl transition" disabled>
-            ${activePlan === 'free' ? 'Plan Actual Activado ✓' : 'Plan Tradicional'}
-          </button>
+          ${user ? `
+            <button class="w-full text-center py-2.5 bg-cream text-espresso font-bold text-xs uppercase tracking-wider rounded-xl transition" disabled>
+              ${activePlan === 'free' ? 'Tu plan actual ✓' : 'Plan gratuito'}
+            </button>
+          ` : `
+            <a href="/register" class="w-full text-center py-2.5 border border-maroon text-maroon hover:bg-maroon hover:text-white font-bold text-xs uppercase tracking-wider rounded-xl transition block">
+              Crear cuenta gratis
+            </a>
+          `}
         </div>
 
         <!-- PREMIUM CARD -->
@@ -7332,28 +7354,32 @@ app.get('/planes', (req, res) => {
           <div class="flex flex-col gap-3">
             <span class="text-[9px] font-mono bg-gold-light text-maroon font-bold px-2.5 py-0.5 rounded self-start uppercase tracking-widest">Sello de Oro</span>
             <h3 class="font-display font-medium text-espresso text-xl">Socio Premium</h3>
-            <p class="text-ink2 text-xs leading-relaxed font-serif italic font-medium">Ideal para templos, capillas, colegios doctrinales y agentes de evangelización digital.</p>
+            <p class="text-ink2 text-xs leading-relaxed font-serif italic font-medium">Para quien consulta a diario: catequistas, agentes de pastoral, docentes y familias en formación.</p>
             <div class="flex items-baseline mt-2">
               <span class="font-display font-bold text-4xl text-maroon">$4.99</span>
               <span class="text-ink2 text-xs ml-1 font-mono">/ mes</span>
             </div>
             
             <ul class="flex flex-col gap-3 text-xs text-ink mt-4 border-t pt-4">
-              <li class="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="text-gold flex-shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                <span>Generaciones <strong>ilimitadas</strong> de Infografías</span>
+              <li class="flex items-start gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="text-gold flex-shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                <span><strong>Consultas ilimitadas:</strong> sin tope diario, ni hoy ni mañana</span>
               </li>
-              <li class="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="text-gold flex-shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                <span><strong>Sin watermark:</strong> Marca de agua removida</span>
+              <li class="flex items-start gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="text-gold flex-shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Investigación con fuentes del Magisterio las veces que haga falta</span>
               </li>
-              <li class="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="text-gold flex-shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                <span>Formatos listos para Instagram, WhatsApp, Presentaciones</span>
+              <li class="flex items-start gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="text-gold flex-shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Consulta avanzada sin límite: profundizar, cuadro sinóptico, cronología, resumen y compendios de citas bíblicas y de santos</span>
               </li>
-              <li class="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="text-gold flex-shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                <span>Configurar logo parroquial y monograma cristiano</span>
+              <li class="flex items-start gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="text-gold flex-shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Exportación a Word y PDF de todo lo que consultes</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="text-gold flex-shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Cancelas cuando quieras desde tu cuenta de PayPal</span>
               </li>
             </ul>
           </div>
