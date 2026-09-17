@@ -1082,6 +1082,160 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
       margin: 0.75rem 0 1.25rem 1.35rem !important;
       line-height: 1.75 !important;
     }
+    /* ── Bloques de presentación de los artículos ────────────────────────────
+       Los mismos estilos valen para la vista previa del editor y para el
+       artículo publicado: si se ven distintos, el editor miente. */
+    .content-html blockquote.cita-destacada,
+    #html-editor-preview blockquote.cita-destacada {
+      margin: 1.75rem 0 !important;
+      padding: 1.1rem 1.25rem 1.1rem 1.5rem !important;
+      border-left: 4px solid var(--gold) !important;
+      background: #FFFCF4 !important;
+      border-radius: 0 14px 14px 0 !important;
+      font-style: italic !important;
+      color: var(--maroon) !important;
+    }
+    .content-html blockquote.cita-destacada p,
+    #html-editor-preview blockquote.cita-destacada p {
+      margin: 0 0 0.5rem 0 !important;
+      font-size: 1.05rem !important;
+      line-height: 1.7 !important;
+    }
+    .content-html blockquote.cita-destacada cite,
+    #html-editor-preview blockquote.cita-destacada cite {
+      display: block !important;
+      font-style: normal !important;
+      font-size: 0.78rem !important;
+      font-weight: 700 !important;
+      letter-spacing: 0.04em !important;
+      text-transform: uppercase !important;
+      color: var(--ink-2) !important;
+    }
+
+    .content-html aside.aviso-articulo,
+    #html-editor-preview aside.aviso-articulo {
+      margin: 1.75rem 0 !important;
+      padding: 1.1rem 1.25rem !important;
+      background: #F4F8F4 !important;
+      border: 1px solid #CFE0D0 !important;
+      border-radius: 14px !important;
+    }
+    .content-html aside.aviso-articulo h4,
+    #html-editor-preview aside.aviso-articulo h4 {
+      margin: 0 0 0.5rem 0 !important;
+      font-size: 0.78rem !important;
+      font-weight: 800 !important;
+      letter-spacing: 0.06em !important;
+      text-transform: uppercase !important;
+      color: #2F5D34 !important;
+    }
+    .content-html aside.aviso-articulo p,
+    #html-editor-preview aside.aviso-articulo p {
+      margin: 0 !important;
+      font-size: 0.95rem !important;
+    }
+
+    .content-html ul.puntos-clave,
+    #html-editor-preview ul.puntos-clave {
+      list-style: none !important;
+      margin: 1.5rem 0 !important;
+      padding: 0 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 0.6rem !important;
+    }
+    .content-html ul.puntos-clave li,
+    #html-editor-preview ul.puntos-clave li {
+      position: relative !important;
+      padding: 0.7rem 0.9rem 0.7rem 2.2rem !important;
+      background: #FFFDF8 !important;
+      border: 1px solid #E6DFD4 !important;
+      border-radius: 12px !important;
+      line-height: 1.6 !important;
+    }
+    .content-html ul.puntos-clave li::before,
+    #html-editor-preview ul.puntos-clave li::before {
+      content: '✦' !important;
+      position: absolute !important;
+      left: 0.85rem !important;
+      color: var(--gold) !important;
+      font-weight: 700 !important;
+    }
+
+    .content-html hr.separador-cruz,
+    #html-editor-preview hr.separador-cruz {
+      border: 0 !important;
+      margin: 2.25rem auto !important;
+      height: auto !important;
+      text-align: center !important;
+      overflow: visible !important;
+    }
+    .content-html hr.separador-cruz::after,
+    #html-editor-preview hr.separador-cruz::after {
+      content: '✝' !important;
+      display: block !important;
+      color: var(--gold) !important;
+      font-size: 1.15rem !important;
+    }
+
+    /* Tarjeta de infografía enlazada desde un artículo. */
+    .content-html a.infografia-embed,
+    #html-editor-preview a.infografia-embed {
+      display: flex !important;
+      align-items: center !important;
+      gap: 1rem !important;
+      margin: 1.75rem 0 !important;
+      padding: 0.9rem !important;
+      border: 1px solid #E6DFD4 !important;
+      border-radius: 16px !important;
+      background: #FFFDF8 !important;
+      text-decoration: none !important;
+      color: inherit !important;
+      transition: border-color .2s, box-shadow .2s !important;
+    }
+    .content-html a.infografia-embed:hover,
+    #html-editor-preview a.infografia-embed:hover {
+      border-color: var(--gold) !important;
+      box-shadow: 0 2px 10px rgba(37, 27, 21, 0.08) !important;
+    }
+    .content-html a.infografia-embed img,
+    #html-editor-preview a.infografia-embed img {
+      width: 92px !important;
+      height: 92px !important;
+      flex: 0 0 92px !important;
+      object-fit: cover !important;
+      border-radius: 12px !important;
+      background: #F9F6F0 !important;
+    }
+    .content-html a.infografia-embed .infografia-embed-texto strong,
+    #html-editor-preview a.infografia-embed .infografia-embed-texto strong {
+      display: block !important;
+      color: var(--maroon) !important;
+      font-size: 0.98rem !important;
+      line-height: 1.35 !important;
+      margin-bottom: 0.25rem !important;
+    }
+    .content-html a.infografia-embed .infografia-embed-texto span,
+    #html-editor-preview a.infografia-embed .infografia-embed-texto span {
+      display: block !important;
+      font-size: 0.78rem !important;
+      color: var(--ink-2) !important;
+      line-height: 1.5 !important;
+    }
+    @media (max-width: 520px) {
+      .content-html a.infografia-embed,
+      #html-editor-preview a.infografia-embed {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+      }
+      .content-html a.infografia-embed img,
+      #html-editor-preview a.infografia-embed img {
+        width: 100% !important;
+        height: 170px !important;
+        flex: none !important;
+      }
+    }
+
     .embedded-reader {
       width: 100%;
       max-width: 100%;
@@ -9395,6 +9549,34 @@ app.get('/admin', async (req, res) => {
     </div>
 
     <!-- MODAL DE LA BIBLIOTECA CLOUDINARY -->
+    <!-- SELECTOR DE INFOGRAFÍAS PARA EL EDITOR DE ARTÍCULOS -->
+    <!-- Va por encima del editor (z-index mayor) porque se abre desde dentro. -->
+    <div id="infografias-picker-modal" class="fixed inset-0 bg-[#1A0E05]/70 backdrop-blur-xs hidden items-center justify-center p-4" style="z-index: 80;">
+      <!-- Las medidas van en línea a propósito: el CSS de Tailwind se compila
+           escaneando el código, y clases nuevas como h-[85vh] o max-w-3xl no
+           estaban en ninguna otra parte del sitio, así que la hoja construida
+           no las traía. La caja crecía hasta 2758px de alto y las tarjetas
+           quedaban fuera de la pantalla. -->
+      <div class="bg-[#FCFAF5] border border-[#D1C7BD] rounded-2xl w-full flex flex-col overflow-hidden shadow-2xl" style="max-width: 48rem; height: 85vh;" onclick="event.stopPropagation()">
+        <div class="bg-white border-b border-[#E6DFD4] px-5 py-4 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <span class="text-xl">🎨</span>
+            <div class="flex flex-col">
+              <h2 class="font-display font-bold text-espresso text-base">Insertar una infografía</h2>
+              <p class="text-[10px] text-ink2">Se añade como tarjeta con enlace a su ficha</p>
+            </div>
+          </div>
+          <button type="button" onclick="cerrarSelectorInfografias()" class="text-ink2 hover:bg-cream-light p-2 rounded-xl transition cursor-pointer border-0 bg-transparent text-base font-bold">✕</button>
+        </div>
+        <div class="bg-[#F8F5EE] border-b border-[#E6DFD4] p-3">
+          <input type="text" id="infografias-picker-search" oninput="filtrarSelectorInfografias()" placeholder="Buscar infografía por título..." class="w-full border border-border rounded-lg px-3 py-2 bg-white text-xs outline-none focus:ring-1 focus:ring-gold">
+        </div>
+        <div class="flex-1 overflow-y-auto p-4" id="infografias-picker-lista">
+          <p class="text-xs text-ink2 italic p-8 text-center">Cargando infografías...</p>
+        </div>
+      </div>
+    </div>
+
     <div id="drive-explorer-modal" class="fixed inset-0 bg-[#1A0E05]/70 backdrop-blur-xs hidden items-center justify-center z-50 p-4" style="z-index: 70;">
       <div class="bg-[#FCFAF5] border border-[#D1C7BD] rounded-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
         
@@ -9584,7 +9766,22 @@ app.get('/admin', async (req, res) => {
             🖼️ Imagen URL
           </button>
           <button type="button" onclick="abrirExploradorDrive('html_editor_image')" class="px-2.5 py-1 bg-maroon hover:bg-gold border border-maroon text-[11px] font-bold rounded-md text-white cursor-pointer transition">
-            ☁️ Imagen Cloudinary
+            🖼️ Subir o elegir imagen
+          </button>
+          <button type="button" onclick="abrirSelectorInfografias()" class="px-2.5 py-1 bg-gold hover:bg-gold-deep border border-gold text-[11px] font-bold rounded-md text-white cursor-pointer transition">
+            🎨 Insertar infografía
+          </button>
+          <button type="button" onclick="insertHtmlSnippet('<blockquote class=&quot;cita-destacada&quot;>\\n  <p>', '</p>\\n  <cite>Fuente</cite>\\n</blockquote>\\n')" class="px-2.5 py-1 bg-white hover:bg-cream-light border border-border text-[11px] font-semibold rounded-md text-espresso cursor-pointer transition">
+            ❝ Cita destacada
+          </button>
+          <button type="button" onclick="insertHtmlSnippet('<aside class=&quot;aviso-articulo&quot;>\\n  <h4>Para recordar</h4>\\n  <p>', '</p>\\n</aside>\\n')" class="px-2.5 py-1 bg-white hover:bg-cream-light border border-border text-[11px] font-semibold rounded-md text-espresso cursor-pointer transition">
+            💡 Para recordar
+          </button>
+          <button type="button" onclick="insertHtmlSnippet('<ul class=&quot;puntos-clave&quot;>\\n  <li>', '</li>\\n  <li>Segundo punto</li>\\n  <li>Tercer punto</li>\\n</ul>\\n')" class="px-2.5 py-1 bg-white hover:bg-cream-light border border-border text-[11px] font-semibold rounded-md text-espresso cursor-pointer transition">
+            📌 Puntos clave
+          </button>
+          <button type="button" onclick="insertHtmlSnippet('<hr class=&quot;separador-cruz&quot;>\\n', '')" class="px-2.5 py-1 bg-white hover:bg-cream-light border border-border text-[11px] font-semibold rounded-md text-espresso cursor-pointer transition">
+            ✝ Separador
           </button>
           <button type="button" onclick="insertHtmlSnippet('<a href=&quot;#&quot; class=&quot;text-maroon underline hover:text-gold&quot;>', '</a>')" class="px-2.5 py-1 bg-white hover:bg-cream-light border border-border text-[11px] font-semibold rounded-md text-espresso cursor-pointer transition">
             🔗 Enlace
@@ -10901,6 +11098,106 @@ app.get('/admin', async (req, res) => {
         origenImagenes = 'dispositivo';
         pintarPestanasOrigen();
         cargarSubidasPropias();
+      }
+
+      // ── Selector de infografías del editor de artículos ──────────────────
+      // Antes, enlazar una infografía en un artículo exigía saberse el slug de
+      // memoria y escribir el HTML a mano. Ahora se elige de una lista y se
+      // inserta una tarjeta ya maquetada.
+      let infografiasDelSelector = [];
+
+      async function abrirSelectorInfografias() {
+        const modal = document.getElementById('infografias-picker-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.getElementById('infografias-picker-search').value = '';
+        const lista = document.getElementById('infografias-picker-lista');
+        lista.innerHTML = '<p class="text-xs text-ink2 italic p-8 text-center">Cargando infografías...</p>';
+        try {
+          const res = await fetch('/api/admin/infografias/lista');
+          const data = await res.json();
+          if (!res.ok || data.error) throw new Error(data.error || 'No se pudo leer el catálogo.');
+          infografiasDelSelector = data.infografias || [];
+          dibujarSelectorInfografias(infografiasDelSelector);
+        } catch (err) {
+          lista.innerHTML = '<p class="text-xs text-red-700 italic p-8 text-center"></p>';
+          lista.querySelector('p').innerText = err.message;
+        }
+      }
+
+      function cerrarSelectorInfografias() {
+        const modal = document.getElementById('infografias-picker-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+
+      function filtrarSelectorInfografias() {
+        const termino = document.getElementById('infografias-picker-search').value.trim().toLowerCase();
+        dibujarSelectorInfografias(infografiasDelSelector.filter(function(i) {
+          return !termino || i.titulo.toLowerCase().includes(termino) || i.slug.includes(termino);
+        }));
+      }
+
+      function dibujarSelectorInfografias(items) {
+        const lista = document.getElementById('infografias-picker-lista');
+        lista.innerHTML = '';
+        if (!items.length) {
+          lista.innerHTML = '<p class="text-xs text-ink2 italic p-8 text-center">No hay infografías que coincidan.</p>';
+          return;
+        }
+        const rejilla = document.createElement('div');
+        rejilla.className = 'grid gap-3';
+        rejilla.style.cssText = 'grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));';
+        items.forEach(function(inf) {
+          const tarjeta = document.createElement('button');
+          tarjeta.type = 'button';
+          tarjeta.className = 'flex items-center gap-3 text-left bg-white border border-border hover:border-gold rounded-xl p-2.5 cursor-pointer transition';
+          const img = document.createElement('img');
+          img.src = inf.thumb || '/favicon.png';
+          img.alt = '';
+          img.referrerPolicy = 'no-referrer';
+          img.className = 'rounded-lg object-cover bg-cream';
+          img.style.cssText = 'width:56px;height:56px;flex:0 0 56px;';
+          const texto = document.createElement('div');
+          texto.className = 'flex flex-col min-w-0';
+          const titulo = document.createElement('strong');
+          titulo.className = 'text-xs text-espresso leading-snug';
+          titulo.innerText = inf.titulo;
+          const meta = document.createElement('span');
+          meta.className = 'text-[10px] text-ink2';
+          meta.innerText = inf.totalSlides + (inf.totalSlides === 1 ? ' diapositiva' : ' diapositivas');
+          texto.appendChild(titulo);
+          texto.appendChild(meta);
+          tarjeta.appendChild(img);
+          tarjeta.appendChild(texto);
+          tarjeta.onclick = function() { insertarInfografiaEnArticulo(inf); };
+          rejilla.appendChild(tarjeta);
+        });
+        lista.appendChild(rejilla);
+      }
+
+      // Los valores vienen del catálogo, pero acaban dentro de atributos HTML:
+      // un título con comillas rompería la etiqueta si no se escapa.
+      function escaparAtributo(valor) {
+        return String(valor || '')
+          .replace(/&/g, '&amp;')
+          .replace(/"/g, '&quot;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+      }
+
+      function insertarInfografiaEnArticulo(inf) {
+        const titulo = escaparAtributo(inf.titulo);
+        const descripcion = escaparAtributo(inf.descripcion || 'Ver la infografía completa en CatólicosGPT');
+        const html = '<a class="infografia-embed" href="/infografias/' + escaparAtributo(inf.slug) + '">\\n'
+          + '  <img src="' + escaparAtributo(inf.thumb) + '" alt="' + titulo + '" loading="lazy">\\n'
+          + '  <span class="infografia-embed-texto">\\n'
+          + '    <strong>' + titulo + '</strong>\\n'
+          + '    <span>' + descripcion + '</span>\\n'
+          + '  </span>\\n'
+          + '</a>\\n';
+        cerrarSelectorInfografias();
+        insertHtmlSnippet(html, '');
       }
 
       function abrirExploradorDrive(context) {
@@ -12278,6 +12575,30 @@ app.get('/admin/marcar-santo-del-dia', (req, res) => {
 });
 
 // ── SISTEMA INTEGRADO DE NAVEGACIÓN Y SELECCIÓN DE RECURSOS CLOUDINARY ──
+// El editor de artículos necesita saber qué infografías existen para poder
+// enlazarlas sin que el administrador se aprenda los slugs de memoria.
+app.get('/api/admin/infografias/lista', (req, res) => {
+  const user = getAuthedUser(req);
+  if (!isStrictAdminUser(user)) return res.status(403).json({ error: 'No autorizado' });
+
+  const termino = String(req.query.q || '').trim().toLowerCase();
+  const catalogo = infografias.loadCatalog();
+  const lista = (catalogo.infografias || [])
+    .filter(i => i && i.slug)
+    .map(i => ({
+      slug: i.slug,
+      titulo: i.titulo || i.tema || i.slug,
+      tipo: i.tipo || '',
+      thumb: (i.imagenes && i.imagenes[0] && i.imagenes[0].url) || '',
+      totalSlides: i.totalSlides || (i.imagenes ? i.imagenes.length : 0),
+      descripcion: i.metaDescription || ''
+    }))
+    .filter(i => !termino || i.titulo.toLowerCase().includes(termino) || i.slug.includes(termino))
+    .slice(0, 120);
+
+  res.set('Cache-Control', 'no-store').json({ infografias: lista });
+});
+
 app.get('/api/admin/drive/imagenes', async (req, res) => {
   const user = getAuthedUser(req);
   if (!isStrictAdminUser(user)) return res.status(403).json({ error: 'No autorizado' });
