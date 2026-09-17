@@ -17,7 +17,12 @@ const COUPONS_PATH  = path.join(DATA_DIR, 'coupons.json');
 const CONFIG_PATH   = path.join(DATA_DIR, 'plan-config.json');
 const JWT_SECRET    = process.env.JWT_SECRET || 'cgpt-jwt-secret-2026-change-in-production';
 
-// Backup files if disk is secondary
+// Copias del repositorio. Sirven SOLO PARA LEER cuando el disco todavía no
+// tiene el fichero (primer arranque, antes de la siembra). Escribir en ellas
+// era un error: con DATA_DIR apuntando al disco, cada guardado dejaba también
+// una copia dentro de la carpeta del repositorio, que es efímera y engañosa; y
+// al correr las pruebas, escribía usuarios de prueba en el data/users.json
+// versionado, listos para commitearse y acabar sembrados en producción.
 const USERS_BACKUP    = path.join(__dirname, 'data', 'users.json');
 const COUPONS_BACKUP  = path.join(__dirname, 'data', 'coupons.json');
 const CONFIG_BACKUP   = path.join(__dirname, 'data', 'plan-config.json');
@@ -31,7 +36,6 @@ function loadUsers() {
 function saveUsers(d) {
   const json = JSON.stringify(d, null, 2);
   try { fs.writeFileSync(USERS_PATH, json, 'utf-8'); } catch(e) { console.error('[Auth] Error users save:', e.message); }
-  try { fs.writeFileSync(USERS_BACKUP, json, 'utf-8'); } catch(e) {}
 
   // Sincronización asincrónica de fondo hacia Firestore (Pillar 6, 12, 13)
   if (d && Array.isArray(d.users)) {
@@ -51,7 +55,6 @@ function loadCoupons() {
 function saveCoupons(d) {
   const json = JSON.stringify(d, null, 2);
   try { fs.writeFileSync(COUPONS_PATH, json, 'utf-8'); } catch(e) { console.error('[Auth] Error coupons save:', e.message); }
-  try { fs.writeFileSync(COUPONS_BACKUP, json, 'utf-8'); } catch(e) {}
 
   // Sincronización asincrónica de fondo hacia Firestore
   if (d && Array.isArray(d.coupons)) {
@@ -72,7 +75,6 @@ function savePlanConfig(d) {
   d.updatedAt = new Date().toISOString();
   const json = JSON.stringify(d, null, 2);
   try { fs.writeFileSync(CONFIG_PATH, json, 'utf-8'); } catch(e) { console.error('[Auth] Error plan-config save:', e.message); }
-  try { fs.writeFileSync(CONFIG_BACKUP, json, 'utf-8'); } catch(e) {}
 }
 
 // ── ¿Merece la pena bajar esta colección? ──────────────────────────────────
@@ -133,7 +135,6 @@ async function initFirebaseSync() {
     // Guardar unificados localmente
     const jsonUsers = JSON.stringify(localUsersData, null, 2);
     try { fs.writeFileSync(USERS_PATH, jsonUsers, 'utf-8'); } catch(e) {}
-    try { fs.writeFileSync(USERS_BACKUP, jsonUsers, 'utf-8'); } catch(e) {}
 
     // Subir todos los locales (por si había nuevos locales no registrados en Firestore)
     for (const u of mergedUsers) {
@@ -151,7 +152,6 @@ async function initFirebaseSync() {
 
     const jsonCoupons = JSON.stringify(localCouponsData, null, 2);
     try { fs.writeFileSync(COUPONS_PATH, jsonCoupons, 'utf-8'); } catch(e) {}
-    try { fs.writeFileSync(COUPONS_BACKUP, jsonCoupons, 'utf-8'); } catch(e) {}
 
     for (const c of mergedCoupons) {
       await firebaseSync.syncUploadCoupon(c).catch(() => {});
@@ -242,7 +242,13 @@ async function initFirebaseSync() {
 
 // La cuenta de administrador se restaura de inmediato, sin esperar a la nube:
 // es lo que impide que el correo de admin quede libre tras un reinicio.
-bootstrapAdminUser().catch(err => console.error('[Admin] Bootstrap falló:', err.message));
+// CATOLICOSGPT_SIN_NUBE la salta igual que a la sincronización: en las pruebas,
+// cargar este módulo escribía una cuenta de administrador dentro del
+// data/users.json DEL REPOSITORIO. Eso se habría commiteado y, peor, sembrado
+// en el disco de producción como usuario real con una contraseña de prueba.
+if (process.env.CATOLICOSGPT_SIN_NUBE !== '1') {
+  bootstrapAdminUser().catch(err => console.error('[Admin] Bootstrap falló:', err.message));
+}
 
 // Iniciar sincronización de fondo con pequeño delay para acelerar el arranque y la escucha de puerto de Express en Cloud Run.
 // CATOLICOSGPT_SIN_NUBE la desactiva: sin esto, cargar este módulo en las

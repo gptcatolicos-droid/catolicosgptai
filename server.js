@@ -105,6 +105,9 @@ app.use((req, res, next) => {
 require('./agent-routes').register(app, { getUser: getAuthedUser, isSuperAdmin: isStrictAdminUser });
 require('./children-guides').register(app, renderPage);
 require('./agent-about').register(app, renderPage);
+// Subida directa de imágenes al disco persistente: el administrador ya no
+// necesita subir la foto a otro servicio y volver con el enlace.
+require('./subidas-module').register(app, { getAuthedUser, isStrictAdminUser, express });
 
 // Servidor de medios y estáticos locales
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
@@ -8266,9 +8269,9 @@ app.get('/admin', async (req, res) => {
           <!-- Creador de Infografías Cloudinary (Soporte Carrusel & SEO IA) -->
           <div class="admin-card bg-white border border-border rounded-2xl p-6 shadow-sm flex flex-col gap-4">
             <h3 id="infografia-form-title" class="font-display font-semibold text-espresso text-lg border-b pb-2 flex items-center gap-2">
-              📥 Registrar Infografía (URLs de Cloudinary / Carrusel)
+              📥 Registrar Infografía (carrusel de hasta 10 imágenes)
             </h3>
-            <p class="text-ink-2 text-xs leading-relaxed">Sube o ingresa múltiples imágenes de tu carrusel e incorpora meta-descripciones y palabras clave optimizadas por Inteligencia Artificial.</p>
+            <p class="text-ink-2 text-xs leading-relaxed">Sube las imágenes desde tu celular o computador, o tráelas del Drive de CatólicosGPT. Hasta 10 por carrusel.</p>
             
             <form method="POST" action="/admin/crear-infografia-manual" id="infografiaManualForm" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm mt-2">
               <input type="hidden" name="infografia_original_id" id="infografia_original_id" value="">
@@ -8330,8 +8333,8 @@ app.get('/admin', async (req, res) => {
 
                 <div class="flex items-center justify-between flex-wrap gap-3 border border-gold/25 bg-[#FFFCF4] rounded-xl p-3">
                   <div class="flex flex-col gap-0.5">
-                    <span class="text-xs font-bold text-espresso">Biblioteca Cloudinary conectada</span>
-                    <span class="text-[10px] text-ink-2">Selecciona imágenes desde ${cloudName}; se agregan al carrusel sin copiar URLs.</span>
+                    <span class="text-xs font-bold text-espresso">Imágenes del carrusel</span>
+                    <span class="text-[10px] text-ink-2">Súbelas desde este aparato o elígelas del Drive; se agregan solas sin copiar enlaces.</span>
                   </div>
                   <button type="button" onclick="abrirExploradorDrive('infografias')" class="text-xs bg-maroon hover:bg-gold text-white py-2 px-4 rounded-lg font-bold transition flex items-center gap-1 cursor-pointer border-0">
                     ☁️ Seleccionar imágenes
@@ -8351,8 +8354,8 @@ app.get('/admin', async (req, res) => {
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                       <div class="flex flex-col gap-1 w-full">
-                        <label class="font-semibold text-espresso">URL de la Imagen Cloudinary</label>
-                        <input type="text" name="imageUrls[]" required placeholder="https://res.cloudinary.com/..." class="border border-[#D1C7BD] rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-gold text-xs bg-white w-full" oninput="previewImage('manual-row-1')">
+                        <label class="font-semibold text-espresso">Imagen</label>
+                        <input type="text" name="imageUrls[]" required placeholder="Súbela arriba o pega un enlace" class="border border-[#D1C7BD] rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-gold text-xs bg-white w-full" oninput="previewImage('manual-row-1')">
                       </div>
                       <div class="flex flex-col gap-1 w-full">
                         <label class="font-semibold text-espresso">Texto Alt de la Imagen (SEO)</label>
@@ -8484,8 +8487,8 @@ app.get('/admin', async (req, res) => {
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                   <div class="flex flex-col gap-1 w-full">
-                    <label class="font-semibold text-espresso">URL de la Imagen Cloudinary</label>
-                    <input type="text" name="imageUrls[]" required value="\${safeUrl}" placeholder="https://res.cloudinary.com/..." class="border border-[#D1C7BD] rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-gold text-xs bg-white w-full" oninput="previewImage('\${rowId}')">
+                    <label class="font-semibold text-espresso">Imagen</label>
+                    <input type="text" name="imageUrls[]" required value="\${safeUrl}" placeholder="Súbela arriba o pega un enlace" class="border border-[#D1C7BD] rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-gold text-xs bg-white w-full" oninput="previewImage('\${rowId}')">
                   </div>
                   <div class="flex flex-col gap-1 w-full">
                     <label class="font-semibold text-espresso">Texto Alt de la Imagen (SEO)</label>
@@ -8622,7 +8625,7 @@ app.get('/admin', async (req, res) => {
             if (form) form.reset();
             document.getElementById('infografia_original_id').value = '';
             document.getElementById('infografia_original_slug').value = '';
-            document.getElementById('infografia-form-title').innerText = '📥 Registrar Infografía (URLs de Cloudinary / Carrusel)';
+            document.getElementById('infografia-form-title').innerText = '📥 Registrar Infografía (carrusel de hasta 10 imágenes)';
             document.getElementById('infografia_submit_btn').innerText = 'Guardar en Catálogo General →';
             document.getElementById('infografia_audiencia_recurso').value = 'general';
             document.getElementById('infografia_mostrar_ninos').checked = false;
@@ -8940,7 +8943,7 @@ app.get('/admin', async (req, res) => {
                 <span class="text-[10px] text-ink2">Opcional. Si no asignas imagen, CatólicosGPT genera una portada visual automática.</span>
               </div>
               <div class="flex flex-col sm:flex-row gap-2">
-                <input type="url" name="coverUrl" id="pdf_cover_url" placeholder="https://res.cloudinary.com/.../cover.jpg" class="flex-1 border border-border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs bg-white">
+                <input type="url" name="coverUrl" id="pdf_cover_url" placeholder="Súbela con el botón o pega un enlace" class="flex-1 border border-border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs bg-white">
                 <button type="button" onclick="abrirExploradorDrive('recursos-pdf-cover')" class="bg-cream border border-maroon text-maroon hover:bg-maroon hover:text-white px-4 py-2 rounded-lg font-bold text-xs transition cursor-pointer">Seleccionar cover</button>
               </div>
             </div>
@@ -9245,7 +9248,7 @@ app.get('/admin', async (req, res) => {
               <div class="flex flex-col gap-1.5">
                 <label class="font-semibold text-espresso text-xs">URL de Foto (Cloudinary)</label>
                 <div class="flex gap-2">
-                  <input type="text" name="foto_url" id="santo_foto_url" placeholder="https://res.cloudinary.com/..." class="border border-[#D1C7BD] rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs bg-white flex-1">
+                  <input type="text" name="foto_url" id="santo_foto_url" placeholder="Súbela con el botón o pega un enlace" class="border border-[#D1C7BD] rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-gold text-xs bg-white flex-1">
                   <button type="button" onclick="abrirExploradorDrive('santo_photo')" class="bg-maroon hover:bg-gold text-white px-3 py-2 rounded-lg font-bold text-xs transition cursor-pointer border-0">
                     ☁️ Foto
                   </button>
@@ -9395,8 +9398,8 @@ app.get('/admin', async (req, res) => {
           <div class="flex items-center gap-2.5">
             <span class="text-xl">📁</span>
             <div class="flex flex-col">
-              <h2 class="font-display font-bold text-espresso text-base">Imágenes del Drive de CatólicosGPT</h2>
-              <p class="text-[10px] text-ink2">Lee directamente la carpeta compartida con la cuenta de servicio</p>
+              <h2 class="font-display font-bold text-espresso text-base">Imágenes</h2>
+              <p class="text-[10px] text-ink2" id="cl-subtitulo">Sube desde tu celular o computador, o trae una del Drive de CatólicosGPT</p>
             </div>
           </div>
           
@@ -9405,23 +9408,33 @@ app.get('/admin', async (req, res) => {
           </button>
         </div>
 
-        <!-- CONTROLES: FILTROS DEL REPOSITORIO CLOUDINARY REAL -->
+        <!-- ORIGEN DE LA IMAGEN: el dispositivo o Google Drive -->
         <div class="bg-[#F8F5EE] border-b border-[#E6DFD4] p-4 flex flex-col gap-3.5">
-          
-          <!-- CONTROLES DE FILTRO -->
-          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+
+          <div class="flex items-center gap-2 flex-wrap">
+            <button type="button" id="cl-tab-dispositivo" onclick="cambiarOrigenImagenes('dispositivo')" class="cl-tab text-xs font-bold py-2 px-4 rounded-xl border cursor-pointer transition">📱 Mis imágenes</button>
+            <button type="button" id="cl-tab-drive" onclick="cambiarOrigenImagenes('drive')" class="cl-tab text-xs font-bold py-2 px-4 rounded-xl border cursor-pointer transition">📁 Google Drive</button>
+          </div>
+
+          <div id="cl-panel-subir" class="flex flex-col gap-2 border border-gold/30 bg-white rounded-xl p-3">
+            <label for="cl-file-input" class="text-xs font-bold text-espresso">Sube fotos desde este celular o computador</label>
+            <input type="file" id="cl-file-input" accept="image/*" multiple onchange="subirImagenesSeleccionadas(this)" class="text-xs w-full">
+            <p id="cl-subida-estado" class="text-[10px] text-ink2 leading-relaxed">Se guardan en el disco del sitio y siguen ahí después de cada despliegue. Las fotos grandes se reducen solas antes de subirse.</p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
             <div class="flex flex-col gap-1">
               <label class="font-semibold text-espresso">Buscador</label>
-              <input type="text" id="cl-search" oninput="debounceFilterResources()" placeholder="Buscar por nombre..." class="border border-border rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-gold bg-white text-xs outline-none">
+              <input type="text" id="cl-search" oninput="debounceFilterResources()" placeholder="Buscar por nombre..." class="border border-border rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-gold bg-white text-xs outline-none w-full">
             </div>
-            <div class="flex flex-col gap-1">
+            <div class="flex flex-col gap-1" id="cl-folder-wrap">
               <label class="font-semibold text-espresso">Carpeta de Drive (opcional)</label>
-              <input type="text" id="cl-folder-filter" onchange="cargarImagenesDrive()" placeholder="ID de carpeta; vacío = todas" class="border border-border rounded-lg px-3 py-1.5 bg-white text-xs outline-none focus:ring-1 focus:ring-gold">
+              <input type="text" id="cl-folder-filter" onchange="cargarImagenesDrive()" placeholder="ID de carpeta; vacío = todas" class="border border-border rounded-lg px-3 py-1.5 bg-white text-xs outline-none focus:ring-1 focus:ring-gold w-full">
             </div>
             <input type="hidden" id="cl-type-filter" value="image">
             <div class="flex flex-col gap-1">
               <label class="font-semibold text-espresso">Ordenamiento</label>
-              <select id="cl-sort-filter" onchange="dibujarImagenesDrive()" class="border border rounded-lg px-2 py-1.5 bg-white text-xs outline-none">
+              <select id="cl-sort-filter" onchange="dibujarImagenesDrive()" class="border border-border rounded-lg px-2 py-1.5 bg-white text-xs outline-none w-full">
                 <option value="recent">Más recientes primero</option>
                 <option value="old">Más antiguos primero</option>
                 <option value="name_asc">Nombre (A-Z)</option>
@@ -10745,18 +10758,154 @@ app.get('/admin', async (req, res) => {
         }, 2000);
       }
 
+      // El explorador tiene dos orígenes: lo que el administrador sube desde el
+      // aparato que tiene en la mano y lo que ya está en el Drive de
+      // CatólicosGPT. Por defecto abre en el primero, que es el camino corto.
+      let origenImagenes = 'dispositivo';
+
+      function pintarPestanasOrigen() {
+        const activa = 'bg-maroon text-white border-maroon';
+        const inactiva = 'bg-white text-espresso border-border hover:bg-cream-light';
+        const dispositivo = document.getElementById('cl-tab-dispositivo');
+        const drive = document.getElementById('cl-tab-drive');
+        if (!dispositivo || !drive) return;
+        dispositivo.className = 'cl-tab text-xs font-bold py-2 px-4 rounded-xl border cursor-pointer transition ' + (origenImagenes === 'dispositivo' ? activa : inactiva);
+        drive.className = 'cl-tab text-xs font-bold py-2 px-4 rounded-xl border cursor-pointer transition ' + (origenImagenes === 'drive' ? activa : inactiva);
+        const panelSubir = document.getElementById('cl-panel-subir');
+        const carpeta = document.getElementById('cl-folder-wrap');
+        const subtitulo = document.getElementById('cl-subtitulo');
+        if (panelSubir) panelSubir.style.display = origenImagenes === 'dispositivo' ? '' : 'none';
+        if (carpeta) carpeta.style.display = origenImagenes === 'drive' ? '' : 'none';
+        if (subtitulo) subtitulo.innerText = origenImagenes === 'dispositivo'
+          ? 'Sube desde tu celular o tu computador; quedan guardadas en el sitio'
+          : 'Lee la carpeta del Drive compartida con la cuenta de servicio';
+      }
+
+      function cambiarOrigenImagenes(origen) {
+        origenImagenes = origen;
+        pintarPestanasOrigen();
+        cargarImagenesSegunOrigen();
+      }
+
+      function cargarImagenesSegunOrigen() {
+        if (origenImagenes === 'drive') return cargarImagenesDrive();
+        return cargarSubidasPropias();
+      }
+
+      async function cargarSubidasPropias() {
+        const grid = document.getElementById('cl-resources-grid');
+        const loader = document.getElementById('cl-loader');
+        const emptyAlert = document.getElementById('cl-empty');
+        const emptyTitle = document.getElementById('cl-empty-title');
+        const emptyMessage = document.getElementById('cl-empty-message');
+
+        grid.classList.add('hidden');
+        loader.classList.remove('hidden');
+        emptyAlert.classList.add('hidden');
+
+        try {
+          const res = await fetch('/api/admin/subidas');
+          const data = await res.json();
+          if (!res.ok || data.error) throw new Error(data.error || 'No se pudieron leer tus imágenes.');
+
+          const termino = document.getElementById('cl-search').value.trim().toLowerCase();
+          imagenesDriveOriginales = (data.imagenes || [])
+            .filter(function(f) { return !termino || f.nombre.toLowerCase().includes(termino); })
+            .map(function(f) {
+              return {
+                url: f.url, secure_url: f.url, thumbnail: f.url,
+                public_id: f.nombre, name: f.nombre, title: f.nombre,
+                format: (f.nombre.split('.').pop() || 'jpg'), resource_type: 'image',
+                bytes: f.bytes || 0, created_at: f.fecha || '', width: 0, height: 0
+              };
+            });
+          imagenesDriveVisibles = imagenesDriveOriginales.slice();
+          if (emptyTitle) emptyTitle.innerText = 'Todavía no has subido ninguna imagen.';
+          if (emptyMessage) emptyMessage.innerText = 'Usa el botón de arriba para subir fotos desde este aparato.';
+          dibujarImagenesDrive();
+        } catch (err) {
+          loader.classList.add('hidden');
+          grid.classList.add('hidden');
+          if (emptyTitle) emptyTitle.innerText = 'No se pudieron cargar tus imágenes';
+          if (emptyMessage) emptyMessage.innerText = err.message || 'Vuelve a intentarlo.';
+          emptyAlert.classList.remove('hidden');
+        }
+      }
+
+      // Una foto de celular pesa varios megas y mide cuatro mil píxeles de lado.
+      // Subirla entera tarda, llena el disco y no mejora nada en pantalla: se
+      // reduce en el navegador antes de enviarla. Los GIF se dejan intactos
+      // porque redibujarlos en un lienzo perdería la animación.
+      function reducirImagen(file, maxLado) {
+        return new Promise(function(resolve, reject) {
+          const lector = new FileReader();
+          lector.onerror = function() { reject(new Error('No se pudo leer el archivo.')); };
+          lector.onload = function() {
+            if (file.type === 'image/gif') return resolve(lector.result);
+            const img = new Image();
+            img.onerror = function() { reject(new Error('El archivo no parece una imagen.')); };
+            img.onload = function() {
+              const escala = Math.min(1, maxLado / Math.max(img.width, img.height));
+              if (escala === 1 && file.size <= 1200000) return resolve(lector.result);
+              const lienzo = document.createElement('canvas');
+              lienzo.width = Math.round(img.width * escala);
+              lienzo.height = Math.round(img.height * escala);
+              const ctx = lienzo.getContext('2d');
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillRect(0, 0, lienzo.width, lienzo.height);
+              ctx.drawImage(img, 0, 0, lienzo.width, lienzo.height);
+              resolve(lienzo.toDataURL('image/jpeg', 0.9));
+            };
+            img.src = lector.result;
+          };
+          lector.readAsDataURL(file);
+        });
+      }
+
+      async function subirImagenesSeleccionadas(input) {
+        const estado = document.getElementById('cl-subida-estado');
+        const archivos = Array.from(input.files || []);
+        if (!archivos.length) return;
+        let subidas = 0;
+        for (let i = 0; i < archivos.length; i++) {
+          const archivo = archivos[i];
+          if (estado) estado.innerText = 'Subiendo ' + (i + 1) + ' de ' + archivos.length + ': ' + archivo.name;
+          try {
+            const dataUrl = await reducirImagen(archivo, 2000);
+            const res = await fetch('/api/admin/subidas', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ dataUrl: dataUrl, nombre: archivo.name })
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) throw new Error(data.error || 'No se pudo subir.');
+            subidas++;
+          } catch (err) {
+            if (estado) estado.innerText = 'Falló ' + archivo.name + ': ' + err.message;
+            break;
+          }
+        }
+        input.value = '';
+        if (estado && subidas === archivos.length) {
+          estado.innerText = subidas === 1 ? 'Imagen subida. Ya puedes seleccionarla abajo.' : subidas + ' imágenes subidas. Ya puedes seleccionarlas abajo.';
+        }
+        origenImagenes = 'dispositivo';
+        pintarPestanasOrigen();
+        cargarSubidasPropias();
+      }
+
       function abrirExploradorDrive(context) {
         activeExplorerContext = context;
         selectedResourcesMap.clear();
         document.getElementById('cl-selected-count').innerText = '0';
-        // Ya no hay filtros por tipo ni carpetas predefinidas: el explorador lee
-        // imágenes del Drive de CatólicosGPT y punto. La carpeta se acota a mano
-        // cuando hace falta, con su id.
         document.getElementById('cl-search').value = '';
+        const estado = document.getElementById('cl-subida-estado');
+        if (estado) estado.innerText = 'Se guardan en el disco del sitio y siguen ahí después de cada despliegue. Las fotos grandes se reducen solas antes de subirse.';
         const modal = document.getElementById('drive-explorer-modal');
         modal.classList.remove('hidden');
         modal.classList.add('flex');
-        cargarImagenesDrive();
+        pintarPestanasOrigen();
+        cargarImagenesSegunOrigen();
       }
 
       function cerrarExploradorDrive() {
@@ -10818,7 +10967,7 @@ app.get('/admin', async (req, res) => {
       function debounceFilterResources() {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
-          cargarImagenesDrive();
+          cargarImagenesSegunOrigen();
         }, 300);
       }
 
@@ -11616,7 +11765,7 @@ app.post('/admin/crear-infografia-manual', async (req, res) => {
   }
 
   if (!titulo || !tema || imageUrls.length === 0) {
-    return res.status(400).send('Falta información requerida o no has seleccionado ninguna imagen de Cloudinary.');
+    return res.status(400).send('Falta información requerida o no has añadido ninguna imagen al carrusel.');
   }
 
   try {

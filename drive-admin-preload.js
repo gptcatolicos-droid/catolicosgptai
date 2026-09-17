@@ -1,7 +1,10 @@
-// CatolicosGPT — Google Drive support for infographic admin only.
-// Scope: manual URL entry in Admin > Infografias. Cloudinary remains supported.
-// IMPORTANT: Drive normalization is intentionally backend-only so it cannot break
-// the existing client-side admin controls (Add +1/+3/+5, reorder, preview, etc.).
+// CatolicosGPT — normalización de enlaces de Google Drive en el admin.
+//
+// Un enlace de Drive copiado del navegador apunta a una página, no a la imagen.
+// Aquí se convierte en la URL directa del fichero ANTES de guardarlo, en el
+// servidor, para no tocar los controles del admin que ya funcionan.
+// Las URLs de Cloudinary guardadas hace tiempo siguen sirviéndose tal cual: el
+// código de Cloudinary se retira, los datos de los usuarios no.
 
 const fs = require('fs');
 const path = require('path');
@@ -12,15 +15,12 @@ const serverPath = path.resolve(__dirname, 'server.js');
 function transformServerSource(source) {
   let text = String(source || '');
 
-  // Admin copy only. No classes, layout, CSS or visual structure are changed.
-  text = text
-    .replace(/📥 Registrar Infografía \(URLs de Cloudinary \/ Carrusel\)/g, '📥 Registrar Infografía (Google Drive o Cloudinary / Carrusel)')
-    .replace(/URL de la Imagen Cloudinary/g, 'URL de imagen (Google Drive o Cloudinary)')
-    .replace(/placeholder=\"https:\/\/res\.cloudinary\.com\/\.\.\.\"/g, 'placeholder="Pega enlace público de Google Drive o URL de Cloudinary"')
-    .replace(/Biblioteca Cloudinary conectada/g, 'Cloudinary legado + Google Drive')
-    .replace(/Selecciona imágenes desde \$\{cloudName\}; se agregan al carrusel sin copiar URLs\./g, 'Tus imágenes existentes de Cloudinary siguen disponibles. Para contenido nuevo, pega enlaces públicos de Google Drive en los campos de cada diapositiva.')
-    .replace(/Sube o ingresa múltiples imágenes de tu carrusel e incorpora meta-descripciones y palabras clave optimizadas por Inteligencia Artificial\./g, 'Ingresa hasta 10 imágenes por carrusel. Para contenido nuevo pega enlaces públicos de archivos de Google Drive; las URLs existentes de Cloudinary siguen funcionando.')
-    .replace(/Falta información requerida o no has seleccionado ninguna imagen de Cloudinary\./g, 'Falta información requerida o no has ingresado ninguna URL de imagen de Google Drive o Cloudinary.');
+  // Los textos del admin ya no se reescriben aquí. Estaban en este parche una
+  // docena de .replace que cambiaban "Cloudinary" por otra cosa sobre la marcha,
+  // así que el HTML que se veía en el navegador no coincidía con el de
+  // server.js y depurarlo era adivinar. La copia correcta vive ahora en
+  // server.js, escrita una vez. Aquí queda solo lo que no puede estar allí: la
+  // normalización de enlaces de Drive antes de guardarlos.
 
   // Authoritative backend normalizer. This keeps the existing browser JS untouched.
   const routeMarker = "// ACCIÓN: CREAR INFOGRAFÍA MANUALMENTE CON CAMPOS DE SEO E IMÁGENES MÚLTIPLES (CARRUSEL)";
@@ -35,12 +35,6 @@ function transformServerSource(source) {
   text = text.replace(
     "      url: String(url || '').trim(),",
     "      url: normalizeInfografiaImageUrl(url),"
-  );
-
-  // Keep reset copy consistent. No styling or behavior change.
-  text = text.replace(
-    "document.getElementById('infografia-form-title').innerText = '📥 Registrar Infografía (URLs de Cloudinary / Carrusel)';",
-    "document.getElementById('infografia-form-title').innerText = '📥 Registrar Infografía (Google Drive o Cloudinary / Carrusel)';"
   );
 
   return text;
