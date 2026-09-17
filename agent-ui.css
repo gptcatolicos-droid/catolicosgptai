@@ -52,7 +52,11 @@ body.agent-home{background:var(--cream-2)!important}
 .agent-source-head{display:flex;align-items:baseline;gap:8px;font-size:14px;color:var(--espresso)}
 .agent-source-id{flex:0 0 auto;padding:2px 7px;border-radius:999px;background:var(--gold-light);color:var(--maroon);font-size:10px;font-weight:700}
 .agent-source-meta{margin:6px 0 0;color:var(--ink-2);font-size:12px}
-.agent-source-quote{margin:8px 0 0;padding-left:10px;border-left:2px solid var(--gold);color:var(--ink-2);font-size:13px;font-style:italic;line-height:1.55}
+/* La cita se recorta a tres renglones: es una pista para decidir si abrir el
+   documento, no el documento entero dentro de la respuesta. */
+.agent-source-quote{margin:8px 0 0;padding-left:10px;border-left:2px solid var(--gold);color:var(--ink-2);font-size:13px;font-style:italic;line-height:1.55;display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+/* Aviso de idioma para los documentos que no están en español. */
+.agent-source-lang{display:inline-block;margin-top:8px;margin-right:12px;padding:2px 9px;border-radius:999px;background:var(--cream-2);border:1px solid var(--border);color:var(--ink-2);font-size:11px;font-weight:700}
 .agent-source-link{display:inline-block;margin-top:9px;color:var(--maroon);font-size:12px;font-weight:700;text-decoration:underline}
 .agent-source.is-extra{display:none}
 .agent-sources.is-open .agent-source.is-extra{display:block}

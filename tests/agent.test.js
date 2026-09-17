@@ -103,3 +103,43 @@ test('el material relacionado enlaza el tema consultado y calla cuando no hay na
  assert.deepEqual(related(''),{infografias:[],articulos:[]});
  assert.deepEqual(related(undefined),{infografias:[],articulos:[]});
 });
+
+test('las fuentes en otro idioma se identifican, no se transcriben, y el español va primero',async()=>{
+ const {citation,searchPassages}=require('../catholic-agent');
+ const {detect,name}=require('../agent-language');
+
+ // El idioma se reconoce sobre el texto citado.
+ assert.equal(detect('La caridad es la virtud teologal por la cual amamos a Dios sobre todas las cosas.'),'es');
+ assert.equal(detect("personne n'allume un flambeau pour le mettre sous le boisseau, mais on le met sur le chandelier."),'fr');
+ assert.equal(detect('Vitam segregem agens, tenuem fecit mercaturam, ut sibi et suis victum quaeritaret simulque haberet.'),'la');
+ assert.equal(name('la'),'latín');
+ // Ante un texto demasiado corto se calla en vez de etiquetar mal.
+ assert.equal(detect('Lumen Gentium 8'),'');
+
+ // Las entidades HTML llegaban sin resolver y se leían literalmente en pantalla.
+ const francesa=citation({document_title:'Histoire',cited_text:"le fond du c&oelig;ur, personne n&apos;allume un flambeau pour le mettre sous le boisseau afin qu&apos;il éclaire la maison."});
+ assert.ok(!francesa.quote.includes('&apos;'),'la entidad &apos; debe quedar resuelta');
+ assert.ok(francesa.quote.includes('cœur'));
+ assert.equal(francesa.language,'fr');
+ assert.equal(francesa.languageName,'francés');
+
+ // Con suficientes fuentes en español, las de otros idiomas no se devuelven.
+ const espanolas=n=>Array.from({length:n},(_,i)=>({document_title:`Documento ${i}`,cited_text:'La Iglesia enseña que esta doctrina de la fe se recibe de los apóstoles y se transmite con fidelidad.'}));
+ const latinas=n=>Array.from({length:n},(_,i)=>({document_title:`Acta ${i}`,cited_text:'Quae ab ineunte aetate religionis fuerat studiosa ac diligens, tunc pietatem impensius colere coepit atque etiam.'}));
+ const responder=(body)=>{
+  assert.ok(body.query,'la búsqueda necesita consulta');
+  return Promise.resolve({ok:true,json:async()=>({data:[...latinas(3),...espanolas(3)]})});
+ };
+ const fetcher=(url,init)=>responder(JSON.parse(init.body));
+ const soloEspanol=await searchPassages('la fe','auto',new AbortController().signal,fetcher);
+ assert.equal(soloEspanol.length,3);
+ assert.ok(soloEspanol.every(p=>p.language==='es'),'solo debe quedar evidencia en español');
+
+ // Pero si descartarlas dejaría la respuesta sin ninguna fuente, se conservan
+ // detrás de las españolas: responder sin evidencia sería peor.
+ const escaso=(url,init)=>Promise.resolve({ok:true,json:async()=>({data:[...latinas(2),...espanolas(1)]})});
+ const mezcla=await searchPassages('la fe','auto',new AbortController().signal,escaso);
+ assert.equal(mezcla.length,3);
+ assert.equal(mezcla[0].language,'es','el español va primero');
+ assert.ok(mezcla.slice(1).every(p=>p.language==='la'));
+});

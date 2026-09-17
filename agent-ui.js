@@ -111,7 +111,15 @@
    item.append(head);
    const meta=[s.author,s.reference,s.year].filter(Boolean).join(' · ');
    if(meta)item.append(withClass(textEl('p',meta),'agent-source-meta'));
-   if(s.quote)item.append(withClass(textEl('blockquote',s.quote),'agent-source-quote'));
+   // Un documento en latín o en francés se anuncia, no se transcribe: volcar
+   // el párrafo original obligaba a leer un idioma que quien pregunta no
+   // tiene por qué conocer. Queda el documento, su referencia, el idioma y el
+   // enlace, que es lo que sirve para ir a la fuente.
+   const foreign=s.language&&s.language!=='es';
+   if(foreign&&s.languageName)item.append(withClass(textEl('span','Documento en '+s.languageName),'agent-source-lang'));
+   // De las fuentes en español se muestra solo el arranque de la cita: la
+   // tarjeta es una pista para decidir si abrir el documento, no el documento.
+   if(s.quote&&!foreign)item.append(withClass(textEl('blockquote',s.quote),'agent-source-quote'));
    if(s.url){
     try{const u=new URL(s.url);
      if(['http:','https:'].includes(u.protocol)){
