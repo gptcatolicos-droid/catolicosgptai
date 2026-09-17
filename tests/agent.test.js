@@ -281,3 +281,47 @@ test('la cuota se puede consultar antes de chocar con ella',()=>{
   assert.equal(budget.usage('ip:8.8.8.8').used,0);
  } finally { fs.rmSync(dir,{recursive:true,force:true}); }
 });
+
+test('exportar a Word y PDF es de Premium, y se cierra en el servidor',async()=>{
+ const express=require('express');
+ const app=express();
+ app.use(express.json());
+ // El plan lo decide quien llama, como hace server.js con la sesión real.
+ let cuenta=null;
+ require('../agent-routes').register(app,{getUser:()=>cuenta});
+
+ const servidor=app.listen(0);
+ await new Promise(res=>servidor.once('listening',res));
+ const puerto=servidor.address().port;
+ const pedir=(ruta,opciones)=>fetch(`http://127.0.0.1:${puerto}${ruta}`,opciones);
+ const exportar=()=>pedir('/api/agent/export/docx',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:'hola',sources:[]})});
+
+ try{
+  // Visitante sin cuenta: cerrado.
+  const anonimo=await exportar();
+  assert.equal(anonimo.status,402,'un visitante no puede exportar');
+  const cuerpo=await anonimo.json();
+  assert.match(cuerpo.error,/Premium/);
+  assert.equal(cuerpo.url,'/planes','el mensaje debe llevar a donde se paga');
+
+  // Registrado gratuito: también cerrado. Ocultar el botón no protege nada;
+  // esta prueba llama al endpoint directamente, como haría cualquiera.
+  cuenta={id:'u1',plan:'free',email:'gratis@ejemplo.com'};
+  assert.equal((await exportar()).status,402,'el plan gratuito tampoco exporta');
+
+  // Y la cuota se lo dice a la interfaz, para que no muestre un botón que falla.
+  cuenta={id:'u1',plan:'free',email:'gratis@ejemplo.com'};
+  const cuotaGratis=await (await pedir('/api/agent/cuota')).json();
+  assert.equal(cuotaGratis.puedeDescargar,false);
+
+  // Premium: pasa el control de plan. Ya no responde 402.
+  cuenta={id:'u2',plan:'premium',email:'premium@ejemplo.com'};
+  assert.notEqual((await exportar()).status,402,'Premium sí puede exportar');
+  const cuotaPremium=await (await pedir('/api/agent/cuota')).json();
+  assert.equal(cuotaPremium.puedeDescargar,true);
+  assert.equal(cuotaPremium.ilimitado,true);
+ } finally {
+  // Sin esto el proceso de pruebas se queda colgado con el puerto abierto.
+  await new Promise(res=>servidor.close(res));
+ }
+});

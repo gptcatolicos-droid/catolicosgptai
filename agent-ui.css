@@ -66,6 +66,16 @@ body.agent-home{background:var(--cream-2)!important}
 .agent-downloads{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
 .agent-downloads button{padding:10px 15px;border-radius:12px;border:1px solid var(--border);background:#fff;color:var(--maroon);font-size:13px;cursor:pointer;min-height:44px}
 .agent-downloads button:hover{border-color:var(--gold);background:var(--gold-light)}
+/* Invitación a Premium, justo donde se intentó usar la función de pago. */
+.agent-premium{margin-top:12px;padding:14px 16px;border:1px solid var(--gold);border-radius:14px;background:var(--gold-light);display:flex;flex-direction:column;gap:7px}
+.agent-premium-title{color:var(--maroon);font-size:14px;font-weight:800}
+.agent-premium-text{margin:0;color:var(--ink-2);font-size:13px;line-height:1.5}
+.agent-premium-cta{align-self:flex-start;margin-top:3px;padding:10px 18px;border-radius:999px;background:var(--maroon);color:#fff;font-size:13px;font-weight:800;text-decoration:none}
+.agent-premium-cta:hover{background:var(--gold-deep)}
+/* El botón bloqueado se ve, pero se distingue del que sí descarga. */
+.agent-downloads button.is-premium{border-color:var(--gold);color:var(--gold-deep)}
+.agent-downloads button.is-premium::after{content:' ✦';font-weight:800}
+
 .agent-home button:focus-visible,.agent-home a:focus-visible,.agent-home textarea:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
 
 /* Panel "Pasos de investigación": una fila por evento step del servidor, con

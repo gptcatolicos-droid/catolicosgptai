@@ -7342,9 +7342,9 @@ app.get('/planes', (req, res) => {
                 <svg xmlns="http://www.w3.org/2000/svg" class="text-green-500 flex-shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                 <span>Cuadro sinóptico, cronología, resumen y compendios de citas</span>
               </li>
-              <li class="flex items-start gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="text-green-500 flex-shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                <span>Descarga de las respuestas en Word y PDF</span>
+              <li class="flex items-start gap-2 text-ink2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="text-espresso flex-shrink-0 opacity-40 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+                <span>Sin descarga en Word ni PDF</span>
               </li>
               <li class="flex items-start gap-2 text-ink2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="text-espresso flex-shrink-0 opacity-40 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
@@ -7394,7 +7394,7 @@ app.get('/planes', (req, res) => {
               </li>
               <li class="flex items-start gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="text-gold flex-shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                <span>Exportación a Word y PDF de todo lo que consultes</span>
+                <span><strong>Exportación a Word y PDF</strong> de todo lo que consultes, solo en Premium</span>
               </li>
               <li class="flex items-start gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="text-gold flex-shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>

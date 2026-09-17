@@ -11,6 +11,10 @@ function register(app,options={}){
  // El súper administrador queda fuera de TODOS los topes: consultas por
  // minuto, cuota diaria y tope de gasto. Es la cuenta del dueño del servicio.
  const isSuperAdmin=typeof options.isSuperAdmin==='function'?options.isSuperAdmin:()=>false;
+ // Una sola definición de "puede descargar", que consultan tanto la interfaz
+ // como el propio endpoint: si vivieran en dos sitios acabarían discrepando y
+ // el usuario vería un botón que luego le rechaza.
+ const esPremium=account=>Boolean(account && ['premium','admin'].includes(account.plan));
  // Solo presencia, nunca valores: permite ver en los logs por qué el agente
  // aparece desactivado sin tener que adivinar cuál variable falta.
  console.log(`[Agente] configurado=${agent.configured()} | CATHOLIC_AGENT_ENABLED=${process.env.CATHOLIC_AGENT_ENABLED||'(sin definir)'} | MAGISTERIUM_API_KEY=${process.env.MAGISTERIUM_API_KEY?'presente':'FALTA'} | OPENAI_API_KEY=${process.env.OPENAI_API_KEY?'presente':'FALTA'}`);
@@ -49,7 +53,8 @@ function register(app,options={}){
    ilimitado:unlimited,
    limite:unlimited?null:limit,
    usadas:used,
-   restantes:unlimited?null:Math.max(0,limit-used)
+   restantes:unlimited?null:Math.max(0,limit-used),
+   puedeDescargar:superAdmin||esPremium(account)
   });
  });
  function sseWrite(res,payload){res.write(`data: ${JSON.stringify(payload)}\n\n`);}
@@ -111,6 +116,17 @@ function register(app,options={}){
  app.post('/api/chat',(req,res,next)=>process.env.CATHOLIC_AGENT_ENABLED==='1'?limited(req,res,()=>handleResearch(req,res)):next());
  app.post('/api/agent/export/:format',limited,async(req,res)=>{
   const format=req.params.format;if(!['docx','pdf'].includes(format))return res.sendStatus(404);
+  // Exportar a Word y PDF es de Premium. Se comprueba en el servidor, no solo
+  // en la interfaz: ocultar un botón no protege nada, cualquiera puede llamar
+  // al endpoint a mano.
+  const account=getUser(req);
+  if(!isSuperAdmin(account) && !esPremium(account)){
+   return res.status(402).json({
+    error:'Descargar en Word y PDF es parte del plan Premium.',
+    premium:true,
+    url:'/planes'
+   });
+  }
   if(exportsActive>=3)return res.sendStatus(429);exportsActive++;
   try{const buffer=await docs[format==='docx'?'word':'pdf'](req.body||{});res.set({'Cache-Control':'no-store','Content-Disposition':`attachment; filename="catolicosgpt-material.${format}"`}).type(format==='pdf'?'application/pdf':'application/vnd.openxmlformats-officedocument.wordprocessingml.document').send(buffer);}
   catch{res.status(400).json({error:'No fue posible exportar el material.'});}finally{exportsActive--;}

@@ -67,10 +67,13 @@
  // dos consultas o menos. Con tres saldría ya en la primera visita de cualquier
  // visitante y volvería a robar la pantalla que acabamos de despejar.
  const AVISO_DESDE=2;
+ // Lo dice el servidor en /api/agent/cuota; la interfaz no lo adivina.
+ let puedeDescargar=false;
  const quotaBar=withClass(document.createElement('div'),'agent-quota');
  quotaBar.hidden=true;
  form.parentNode.insertBefore(quotaBar,form.nextSibling);
  function paintQuota(info){
+  if(info)puedeDescargar=Boolean(info.puedeDescargar);
   if(!info||info.ilimitado||info.restantes===null||info.restantes>AVISO_DESDE){quotaBar.hidden=true;return;}
   quotaBar.textContent='';
   const quedan=info.restantes;
@@ -225,9 +228,57 @@
   }
   return wrap;
  }
- function downloads(result,bubble){const bar=withClass(document.createElement('div'),'agent-downloads');
-  for(const [format,label]of [['docx','Descargar Word'],['pdf','Descargar PDF']]){const btn=textEl('button',label);btn.type='button';btn.onclick=async()=>{btn.disabled=true;try{const r=await fetch(`/api/agent/export/${format}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(result)});if(!r.ok)throw Error();const url=URL.createObjectURL(await r.blob());const a=document.createElement('a');a.href=url;a.download=`catolicosgpt-material.${format}`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch{setStatus('No se pudo descargar. Inténtalo de nuevo.');}finally{btn.disabled=false;}};bar.append(btn);}bubble.append(bar);
+ // Cuando una función es de pago, el momento de contarlo es justo cuando se
+ // intenta usar: ahí el valor está a la vista. Un aviso en su sitio convierte;
+ // un error seco solo frustra.
+ function premiumBlock(motivo){
+  const caja=withClass(document.createElement('div'),'agent-premium');
+  caja.append(withClass(textEl('strong',motivo),'agent-premium-title'));
+  caja.append(withClass(textEl('p','Con Premium descargas en Word y PDF todo lo que consultes, y el chat deja de tener límite diario. 4,99 USD al mes, se cancela cuando quieras.'),'agent-premium-text'));
+  const ir=withClass(textEl('a','Ver Premium · $4.99/mes'),'agent-premium-cta');
+  ir.href='/planes';
+  caja.append(ir);
+  return caja;
  }
+
+ function downloads(result,bubble){
+  const bar=withClass(document.createElement('div'),'agent-downloads');
+  // El botón no se esconde a quien no paga: verlo es lo que hace evidente lo
+  // que se gana. Al pulsarlo, en vez de fallar, explica y ofrece el paso.
+  for(const [format,label]of [['docx','Descargar Word'],['pdf','Descargar PDF']]){
+   const btn=textEl('button',label);
+   btn.type='button';
+   if(!puedeDescargar)btn.classList.add('is-premium');
+   btn.onclick=async()=>{
+    if(!puedeDescargar){
+     if(!bar.nextElementSibling||!bar.nextElementSibling.classList.contains('agent-premium')){
+      bar.after(premiumBlock('Descargar en Word y PDF es del plan Premium'));
+     }
+     return;
+    }
+    btn.disabled=true;
+    try{
+     const r=await fetch(`/api/agent/export/${format}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(result)});
+     // 402: el servidor manda. Puede pasar si la suscripción venció entre la
+     // carga de la página y el clic.
+     if(r.status===402){
+      puedeDescargar=false;btn.classList.add('is-premium');
+      bar.after(premiumBlock('Descargar en Word y PDF es del plan Premium'));
+      return;
+     }
+     if(!r.ok)throw Error();
+     const url=URL.createObjectURL(await r.blob());
+     const a=document.createElement('a');a.href=url;a.download=`catolicosgpt-material.${format}`;a.click();
+     setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }catch{
+     bubble.append(withClass(textEl('p','No se pudo descargar. Inténtalo de nuevo.'),'agent-error'));
+    }finally{btn.disabled=false;}
+   };
+   bar.append(btn);
+  }
+  bubble.append(bar);
+ }
+
  // Panel de "pasos de investigación" al estilo Magisterium: cada evento step
  // del servidor añade una fila; la anterior queda marcada como hecha y la
  // nueva como activa. step-delta muestra un adelanto en vivo de lo que
