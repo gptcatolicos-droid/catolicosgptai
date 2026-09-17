@@ -49,6 +49,22 @@ function mergeRecords(backupItems, currentItems) {
   return [...map.values()];
 }
 
+// Este respaldo existe para repoblar un catálogo que arrancó vacío, pero no
+// puede deshacer una decisión del administrador: lo que él borró se queda
+// borrado, aunque siga en el respaldo empaquetado.
+function dropDeleted(filename, items) {
+  if (filename !== 'infografias-catalog.json') return items;
+  try {
+    const removed = require('./infografias-eliminadas').filter(items);
+    if (removed.length !== items.length) {
+      console.log(`[Bootstrap Content] ${items.length - removed.length} infografías no se reponen: fueron borradas desde el admin.`);
+    }
+    return removed;
+  } catch (_) {
+    return items;
+  }
+}
+
 function writeIfImproved(filename, listKey, backupCatalog, decorate) {
   const runtimeDir = process.env.DATA_DIR || path.join(__dirname, 'data');
   const runtimePath = path.join(runtimeDir, filename);
@@ -62,7 +78,7 @@ function writeIfImproved(filename, listKey, backupCatalog, decorate) {
   const current = runtimeItems.length >= fallbackItems.length ? runtime : fallback;
   const currentItems = Array.isArray(current[listKey]) ? current[listKey] : [];
   const backupItems = Array.isArray(backupCatalog[listKey]) ? backupCatalog[listKey] : [];
-  const mergedItems = mergeRecords(backupItems, currentItems);
+  const mergedItems = dropDeleted(filename, mergeRecords(backupItems, currentItems));
 
   if (mergedItems.length <= currentItems.length) {
     console.log(`[Bootstrap Content] ${filename}: ${currentItems.length} registros, sin cambios.`);

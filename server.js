@@ -8595,7 +8595,10 @@ app.get('/admin', async (req, res) => {
         <div class="bg-white border rounded-2xl p-6 shadow-sm flex flex-col gap-3">
           <h3 class="font-display font-semibold text-espresso text-base flex items-center justify-between">
             <span>📋 Catálogo de Infografías Activas</span>
-            <span class="text-xs text-ink-2 font-serif">${catalog.infografias.length} elementos</span>
+            <span class="flex items-center gap-3">
+              <a href="/admin/papelera-infografias" class="text-xs font-bold text-maroon border border-border rounded-md px-3 py-1 hover:bg-cream-2">🗑 Papelera</a>
+              <span class="text-xs text-ink-2 font-serif">${catalog.infografias.length} elementos</span>
+            </span>
           </h3>
           <p class="text-[11px] text-ink2 italic">Arrastra las infografías para definir el orden en que aparecen en la galería y en las recomendaciones.</p>
           <div id="admin-infografias-sortable" class="admin-list max-h-[360px] overflow-y-auto border border-border rounded-xl divide-y text-xs">
@@ -8614,6 +8617,7 @@ app.get('/admin', async (req, res) => {
                     <div class="flex flex-col gap-0.5 truncate">
                       <span class="font-bold text-espresso">${i.titulo || i.tema}</span>
                       <span class="text-[10px] text-ink-2 truncate">Slug: <strong class="text-maroon">${i.slug}</strong> | Categoría: ${i.categoria || i.tipo}</span>
+                      ${i.publicado === false ? `<span class="text-[10px] text-amber-800 bg-amber-100 border border-amber-300 rounded-full px-2 py-0.5 font-bold w-fit">Oculta del sitio público</span>` : ''}
                       <code class="text-[10px] bg-[#F8F5EE] border border-border rounded px-2 py-1 text-maroon font-mono select-all">[infografia:${i.slug}]</code>
                       ${i.mostrarEnNinos ? `<span class="text-[10px] text-gold font-bold font-mono uppercase">Visible en /ninos${i.esDibujoNinos ? ' · colorear' : ''}${i.esImprimible ? ' · imprimible' : ''}</span>` : ''}
                     </div>
@@ -8638,7 +8642,8 @@ app.get('/admin', async (req, res) => {
                             class="text-[10px] text-indigo-700 hover:text-indigo-900 border border-indigo-200 px-2 py-0.5 rounded-md font-bold bg-white cursor-pointer">Editar</button>
                     <button type="button" onclick="copyShortcode('[infografia:${i.slug}]')" class="text-[10px] text-espresso hover:text-maroon border border-border px-2 py-0.5 rounded-md font-bold bg-white cursor-pointer">Copiar shortcode</button>
                     <a href="/infografias/${i.slug}" target="_blank" class="text-maroon font-bold hover:underline">Ver</a>
-                    <a href="/admin/eliminar-infografia?id=${i.id}" onclick="return confirm('¿Eliminar definitivamente?')" class="text-red-700 hover:underline">Eliminar</a>
+                    <a href="/admin/ocultar-infografia?id=${i.id}" class="text-[10px] ${i.publicado === false ? 'text-emerald-700 border-emerald-200' : 'text-amber-700 border-amber-200'} border px-2 py-0.5 rounded-md font-bold bg-white">${i.publicado === false ? 'Mostrar' : 'Ocultar'}</a>
+                    <a href="/admin/eliminar-infografia?id=${i.id}" onclick="return confirm('Se borrará de forma permanente y no volverá en los próximos despliegues. Podrás deshacerlo desde la papelera. ¿Continuar?')" class="text-red-700 hover:underline">Eliminar</a>
                   </div>
                 </div>
               `).join('')}
@@ -11909,9 +11914,51 @@ app.get('/admin/eliminar-podcast', (req, res) => {
 
 app.get('/admin/eliminar-infografia', (req, res) => {
   const user = getAuthedUser(req);
-  if (!isStrictAdminUser(user)) return res.status(403).send('No authorized');
+  if (!isStrictAdminUser(user)) return res.status(403).send('No autorizado');
   infografias.deleteInfografia(req.query.id);
   res.redirect('/admin#infografias');
+});
+
+// Ocultar no es borrar: la infografía sale del sitio público pero sigue en el
+// catálogo y se puede volver a mostrar de un clic. Es lo que hace falta para
+// retirar algo mientras se corrige, sin perderlo.
+app.get('/admin/ocultar-infografia', (req, res) => {
+  const user = getAuthedUser(req);
+  if (!isStrictAdminUser(user)) return res.status(403).send('No autorizado');
+  const catalogo = infografias.loadCatalog();
+  const actual = (catalogo.infografias || []).find(i => String(i.id) === String(req.query.id));
+  if (actual) infografias.updateInfografia(actual.id, { publicado: actual.publicado === false });
+  res.redirect('/admin#infografias');
+});
+
+// Papelera: lo borrado queda anotado para que ninguna rutina de recuperación
+// lo reponga, pero el administrador puede deshacerlo.
+app.get('/admin/papelera-infografias', (req, res) => {
+  const user = getAuthedUser(req);
+  if (!isStrictAdminUser(user)) return res.status(403).send('No autorizado');
+  const borradas = infografias.infografiasEliminadas();
+  const filas = borradas.length
+    ? borradas.map(entrada => `<li class="flex items-center justify-between gap-4 border-b border-border py-3">
+        <div class="flex flex-col gap-0.5 min-w-0">
+          <span class="text-sm font-bold text-espresso truncate">${escapeHtml(entrada.titulo || entrada.slug || entrada.id)}</span>
+          <code class="text-[10px] text-ink2 font-mono truncate">${escapeHtml([entrada.slug, entrada.id].filter(Boolean).join(' · '))}</code>
+        </div>
+        <a href="/admin/restaurar-infografia?clave=${encodeURIComponent(entrada.slug || entrada.id)}" class="text-xs font-bold text-emerald-700 border border-emerald-200 rounded-md px-3 py-1 hover:bg-emerald-50 flex-shrink-0">Restaurar</a>
+      </li>`).join('')
+    : '<li class="py-6 text-sm text-ink2 italic">No hay infografías borradas.</li>';
+  res.send(renderPage('Papelera de infografías', `<div class="max-w-2xl mx-auto px-4 py-10 flex flex-col gap-4">
+    <h1 class="font-display text-2xl text-maroon">Papelera de infografías</h1>
+    <p class="text-sm text-ink2">Estas claves están bloqueadas: ninguna rutina de recuperación las repondrá en los próximos despliegues. Restaurar una la devuelve al catálogo en el siguiente arranque.</p>
+    <ul class="bg-white border border-border rounded-xl px-5">${filas}</ul>
+    <a href="/admin#infografias" class="text-sm text-maroon underline">Volver al panel</a>
+  </div>`, req));
+});
+
+app.get('/admin/restaurar-infografia', (req, res) => {
+  const user = getAuthedUser(req);
+  if (!isStrictAdminUser(user)) return res.status(403).send('No autorizado');
+  infografias.restaurarInfografia(String(req.query.clave || ''));
+  res.redirect('/admin/papelera-infografias');
 });
 
 app.get('/admin/marcar-infografia-del-dia', (req, res) => {

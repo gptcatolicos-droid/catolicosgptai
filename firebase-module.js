@@ -368,6 +368,47 @@ async function syncDeleteInfografia(id) {
   }
 }
 
+// Registro de borrados permanentes. Sin disco persistente, Firestore es lo
+// único que recuerda que el administrador borró una infografía; sin esto, las
+// rutinas de recuperación la reponen en el siguiente arranque.
+async function syncUploadInfografiaEliminada(entry) {
+  if (!isFirebaseEnabled) return;
+  const registro = entry && typeof entry === 'object' ? entry : { id: String(entry || ''), slug: String(entry || '') };
+  const clave = String(registro.id || registro.slug || '').trim().toLowerCase();
+  if (!clave) return;
+  // La clave puede traer caracteres que Firestore no admite en una ruta.
+  const docId = encodeURIComponent(clave).replace(/%/g, '_');
+  const path = `infografias_eliminadas/${docId}`;
+  try {
+    await setDoc(doc(db, 'infografias_eliminadas', docId), {
+      id: String(registro.id || '').trim().toLowerCase(),
+      slug: String(registro.slug || '').trim().toLowerCase(),
+      titulo: String(registro.titulo || ''),
+      fecha: registro.fecha || new Date().toISOString()
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+async function syncDownloadInfografiasEliminadas(localKeys) {
+  if (!isFirebaseEnabled) return localKeys;
+  try {
+    const querySnapshot = await getDocs(collection(db, 'infografias_eliminadas'));
+    const remote = [];
+    querySnapshot.forEach(snapshot => {
+      const value = snapshot.data();
+      if (value && (value.id || value.slug || value.clave)) {
+        remote.push({ id: value.id || value.clave || '', slug: value.slug || value.clave || '', titulo: value.titulo || '', fecha: value.fecha || '' });
+      }
+    });
+    return [...(localKeys || []), ...remote];
+  } catch (err) {
+    console.error('[Firebase Sync] Error leyendo el registro de borrados:', err.message);
+    return localKeys;
+  }
+}
+
 // ── 5. Sincronización de Videos en la Nube ──
 async function syncDownloadVideos(localList) {
   if (!isFirebaseEnabled) {
@@ -835,6 +876,8 @@ module.exports = {
   syncDownloadInfografias,
   syncUploadInfografia,
   syncDeleteInfografia,
+  syncUploadInfografiaEliminada,
+  syncDownloadInfografiasEliminadas,
   syncDownloadVideos,
   syncUploadVideo,
   syncDeleteVideo,

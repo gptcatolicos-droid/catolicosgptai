@@ -126,8 +126,14 @@ async function initFirebaseSync() {
   try {
     console.log('[Firebase Sync] Unificando infografías con la nube...');
     const infografiasModule = require('./infografias-module');
-    let localInfografiasData = infografiasModule.loadCatalog();
-    const mergedInfografias = await firebaseSync.syncDownloadInfografias(localInfografiasData.infografias || []);
+    const registroEliminadas = require('./infografias-eliminadas');
+    // El registro de borrados se lee de la nube ANTES de bajar el catálogo:
+    // sin disco persistente, Firestore es lo único que recuerda lo que el
+    // administrador borró tras el último despliegue, y sin esa lista la
+    // descarga volvería a meter esas infografías en el catálogo.
+    await registroEliminadas.hydrateFromCloud();
+    let localInfografiasData = infografiasModule.loadCatalog({ incluirEliminadas: true });
+    const mergedInfografias = registroEliminadas.filter(await firebaseSync.syncDownloadInfografias(localInfografiasData.infografias || []));
     const driveRecovery = require('./drive-infografias-migration');
     const migrated = driveRecovery.migrateInfografiasToDrive(mergedInfografias);
     localInfografiasData.infografias = migrated.items;

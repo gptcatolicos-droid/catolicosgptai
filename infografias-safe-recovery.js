@@ -51,7 +51,16 @@ function restoreInfografiasSafely() {
     if (key) merged.set(key, item);
   }
 
-  const items = [...merged.values()];
+  // La línea base repuebla un catálogo vacío, pero no revive lo que el
+  // administrador borró a propósito.
+  let items = [...merged.values()];
+  try {
+    const visibles = require('./infografias-eliminadas').filter(items);
+    if (visibles.length !== items.length) {
+      console.log(`[Infografias Recovery] ${items.length - visibles.length} registros omitidos: borrados desde el admin.`);
+    }
+    items = visibles;
+  } catch (_) {}
   if (items.length <= currentItems.length) {
     console.log(`[Infografias Recovery] Catalog preserved (${currentItems.length} records).`);
     return { restored: false, total: currentItems.length };

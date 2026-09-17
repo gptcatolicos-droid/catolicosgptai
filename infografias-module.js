@@ -23,16 +23,30 @@ if (!fs.existsSync(DATA_DIR)) {
 const CATALOG_PATH = path.join(DATA_DIR, 'infografias-catalog.json');
 const CATALOG_BACKUP = path.join(__dirname, 'data', 'infografias-catalog.json');
 
-function loadCatalog() {
+const eliminadas = require('./infografias-eliminadas');
+
+// Tres rutinas distintas repueblan el catálogo en cada arranque y todas están
+// escritas para "nunca borrar contenido existente", así que lo borrado desde el
+// admin reaparecía. Filtrar aquí es el único punto por el que pasan todas: da
+// igual cuál lo reponga, no sale. `incluirEliminadas` es para el propio admin,
+// que necesita ver la papelera para poder deshacer.
+function loadCatalog({ incluirEliminadas = false } = {}) {
+  let data = null;
   try {
-    const data = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf-8'));
-    if (data && data.infografias) return data;
+    const parsed = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf-8'));
+    if (parsed && parsed.infografias) data = parsed;
   } catch(e) {}
-  try {
-    const data = JSON.parse(fs.readFileSync(CATALOG_BACKUP, 'utf-8'));
-    if (data && data.infografias) return data;
-  } catch(e) {}
-  return { version:'5.0', total:0, categorias:[], infografias:[] };
+  if (!data) {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(CATALOG_BACKUP, 'utf-8'));
+      if (parsed && parsed.infografias) data = parsed;
+    } catch(e) {}
+  }
+  if (!data) return { version:'5.0', total:0, categorias:[], infografias:[] };
+  if (incluirEliminadas) return data;
+  const visibles = eliminadas.filter(data.infografias);
+  if (visibles.length === data.infografias.length) return data;
+  return { ...data, infografias: visibles, total: visibles.length };
 }
 
 function saveCatalog(c, itemToSync = null) {
@@ -612,7 +626,12 @@ function getInfografiaDelDia() {
 }
 
 function deleteInfografia(id) {
-  const c = loadCatalog();
+  const c = loadCatalog({ incluirEliminadas: true });
+  // Se anota ANTES de quitarla: si el proceso muriera entre medias, prefiero
+  // una lápida sin registro a un registro que vuelve en el siguiente arranque.
+  const objetivo = c.infografias.find(i => String(i.id) === String(id));
+  if (objetivo) eliminadas.remember(objetivo);
+  else eliminadas.remember({ id });
   c.infografias = c.infografias.filter(i => i.id !== id);
   c.total = c.infografias.length;
   saveCatalog(c);
@@ -682,4 +701,11 @@ function reorderInfografias(orderedIds = []) {
   return c;
 }
 
-module.exports = { generarInfografia, detectarTipo, generateSlug, getInfografias, getInfografiaBySlug, setInfografiaDelDia, getInfografiaDelDia, deleteInfografia, updateInfografia, reorderInfografias, loadCatalog, saveCatalog, SIZES };
+// Deshacer un borrado: la infografía vuelve a estar disponible para las
+// rutinas de recuperación, que la repondrán en el siguiente arranque.
+function restaurarInfografia(clave) {
+  return eliminadas.forget({ id: clave, slug: clave });
+}
+function infografiasEliminadas() { return eliminadas.list(); }
+
+module.exports = { restaurarInfografia, infografiasEliminadas, generarInfografia, detectarTipo, generateSlug, getInfografias, getInfografiaBySlug, setInfografiaDelDia, getInfografiaDelDia, deleteInfografia, updateInfografia, reorderInfografias, loadCatalog, saveCatalog, SIZES };

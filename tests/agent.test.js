@@ -190,3 +190,48 @@ test('una pregunta que pide una lista busca también el texto enumerado y exige 
   for(const [k,v] of Object.entries(prev)) v===undefined?delete process.env[k]:process.env[k]=v;
  }
 });
+
+test('lo que el admin borra no vuelve en el siguiente despliegue, y se puede deshacer',()=>{
+ const fs=require('fs'),os=require('os'),pathMod=require('path');
+ const dir=fs.mkdtempSync(pathMod.join(os.tmpdir(),'cgpt-borrados-'));
+ const prev=process.env.DATA_DIR, prevNube=process.env.CATOLICOSGPT_SIN_NUBE;
+ process.env.DATA_DIR=dir;
+ process.env.CATOLICOSGPT_SIN_NUBE='1';
+ // El módulo cachea la lista y la ruta de datos, así que se carga limpio.
+ for(const m of ['../infografias-eliminadas']) delete require.cache[require.resolve(m)];
+ try{
+  const registro=require('../infografias-eliminadas');
+  registro.reset();
+
+  const catalogo=[{id:'a1',slug:'san-jose',titulo:'San José'},{id:'b2',slug:'rosario',titulo:'Rosario'}];
+  assert.equal(registro.filter(catalogo).length,2,'sin borrados no se filtra nada');
+
+  // Borrar anota la lápida por id Y por slug: las líneas base identifican los
+  // registros por uno u otro, y basta con que una lo cuele para resucitarlo.
+  registro.remember(catalogo[0]);
+  assert.equal(registro.list().length,1,'un borrado es UNA entrada, no dos claves sueltas');
+  assert.equal(registro.list()[0].titulo,'San José','la papelera debe poder nombrar lo que se borró');
+
+  // Un despliegue: la rutina de recuperación intenta reponer su línea base.
+  const repuesto=registro.filter([{id:'a1',slug:'san-jose'},{id:'b2',slug:'rosario'},{id:'c3',slug:'nuevo'}]);
+  assert.deepEqual(repuesto.map(i=>i.slug),['rosario','nuevo'],'lo borrado no puede volver');
+
+  // Y la reconoce aunque la línea base solo traiga uno de los dos campos.
+  assert.ok(registro.isDeleted({slug:'san-jose'}),'debe reconocerla solo por slug');
+  assert.ok(registro.isDeleted({id:'a1'}),'debe reconocerla solo por id');
+
+  // Deshacer: un borrado permanente sin marcha atrás sería una trampa.
+  assert.ok(registro.forget({slug:'san-jose'}));
+  assert.equal(registro.filter([{id:'a1',slug:'san-jose'}]).length,1,'restaurada vuelve al catálogo');
+
+  // Un registro sin id ni slug no puede crear una lápida vacía que bloquee
+  // todo lo que tampoco los tenga.
+  assert.equal(registro.remember({}),false);
+  assert.equal(registro.remember(null),false);
+ } finally {
+  if(prev===undefined)delete process.env.DATA_DIR;else process.env.DATA_DIR=prev;
+  if(prevNube===undefined)delete process.env.CATOLICOSGPT_SIN_NUBE;else process.env.CATOLICOSGPT_SIN_NUBE=prevNube;
+  delete require.cache[require.resolve('../infografias-eliminadas')];
+  fs.rmSync(dir,{recursive:true,force:true});
+ }
+});
