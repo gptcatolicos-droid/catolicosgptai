@@ -136,7 +136,7 @@ if (process.env.LECTURAS_SONDEO === '1') {
 // descargaran a la primera visita, esa persona se encontraría la página vacía
 // mientras espera -y es justo la que venía a leerlas-.
 setTimeout(() => {
-  const traer = () => require('./magisterium-lecturas').lecturasDeHoy()
+  const traer = () => require('./lecturas-diarias').lecturasDeHoy()
     .then(r => console.log(r ? `[Lecturas] ${r.lecturas.length} lecturas listas para ${r.fecha} (${r.fuente}).` : '[Lecturas] Hoy no se pudieron traer; la página lo dirá.'))
     .catch(e => console.warn('[Lecturas] Fallo trayéndolas:', e.message));
   traer();
@@ -7993,13 +7993,14 @@ function esEvangelio(titulo) {
 async function renderLecturasDelDia(req, res, { soloEvangelio }) {
   const fecha = liturgia.todayBogota();
   const fechaTexto = fechaLargaLiturgia(fecha);
-  // Magisterium publica las lecturas de cada día y siempre están; se prueba
-  // primero. Si fallara, queda el raspador de dominicos.org que ya existía.
+  // Las lecturas vienen de evangelizo.org y, si falla, de la sección en español
+  // de la USCCB. Las dos se comprobaron desde producción y coincidieron en el
+  // contenido del día, que es la mejor señal de que ambas están bien.
   let datos = null;
   try {
-    datos = await require('./magisterium-lecturas').lecturasDeHoy();
+    datos = await require('./lecturas-diarias').lecturasDeHoy();
   } catch (err) {
-    console.warn('[Lecturas] Magisterium no respondió:', err.message);
+    console.warn('[Lecturas] No se pudieron traer:', err.message);
   }
   if (!datos) {
     try { datos = await getOrGenerateLecturas(); } catch (err) {
@@ -8011,8 +8012,11 @@ async function renderLecturasDelDia(req, res, { soloEvangelio }) {
   // como si no hubiera nada: promete las lecturas de hoy y no las tiene.
   if (datos && datos.esRespaldo) datos = null;
   const todas = (datos && Array.isArray(datos.lecturas) ? datos.lecturas : []).filter(l => l && l.titulo && l.texto);
+  // Cada lectura ya viene con su papel (primera, salmo, evangelio...), así que
+  // el Evangelio se escoge por lo que es y no adivinando desde el título.
+  const esElEvangelio = l => l.papel === 'evangelio' || esEvangelio(l.titulo);
   const lecturas = soloEvangelio
-    ? (todas.filter(l => esEvangelio(l.titulo)).length ? todas.filter(l => esEvangelio(l.titulo)) : todas)
+    ? (todas.filter(esElEvangelio).length ? todas.filter(esElEvangelio) : todas)
     : todas;
 
   const titulo = soloEvangelio ? 'Evangelio de hoy' : 'Lecturas de la Misa de hoy';

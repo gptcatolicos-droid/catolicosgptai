@@ -777,3 +777,121 @@ test('si no es 200 y el cuerpo no trae lecturas, no se inventa nada', async () =
     previo === undefined ? delete process.env.MAGISTERIUM_REINTENTO_MS : process.env.MAGISTERIUM_REINTENTO_MS = previo;
   }
 });
+
+// ── Lecturas de la Misa del día ──
+// Los textos de estas pruebas son los que devolvieron de verdad las fuentes el
+// 17/09/2026, copiados de los registros de producción. No son inventados.
+const TEXTO_EVANGELIZO = `Jueves de la 24a semana del Tiempo Ordinario
+Carta I de San Pablo a los Corintios 15,1-11.
+Hermanos, les recuerdo la Buena Noticia que yo les he predicado, que ustedes han recibido y a la cual permanecen fieles.
+Por ella son salvados, si la conservan tal como yo se la anuncié; de lo contrario, habrán creído en vano.
+Les he trasmitido en primer lugar, lo que yo mismo recibí: Cristo murió por nuestros pecados, conforme a la Escritura.
+Salmo 118(117),1-2.16ab-17.28.
+¡Den gracias al Señor, porque es bueno,
+porque es eterno su amor!
+Que lo diga el pueblo de Israel:
+¡es eterno su amor!
+Evangelio según San Lucas 7,36-50.
+Un fariseo invitó a Jesús a comer con él. Jesús entró en la casa y se sentó a la mesa.
+Entonces una mujer pecadora que vivía en la ciudad se enteró de que Jesús estaba comiendo allí.`;
+
+const TEXTO_USCCB = `Jueves de la XXIV semana del Tiempo ordinario | USCCB
+Skip to main content
+Menu: Top Buttons
+Readings
+Primera lectura
+1 Corintios 15, 1-11
+Hermanos: Les recuerdo el Evangelio que yo les prediqué y que ustedes aceptaron y en el cual están firmes.
+Salmo 117, 1-2. 16ab-17. 28
+R. Demos gracias al Señor, porque es eterna su misericordia.
+Aclamación antes del Evangelio
+Aleluya, aleluya. Mis ovejas escuchan mi voz, dice el Señor.
+Evangelio
+Lucas 7, 36-50
+En aquel tiempo, un fariseo le rogó a Jesús que fuera a comer con él.`;
+
+test('evangelizo: las lecturas se separan por la referencia biblica', () => {
+  const l = require('../lecturas-diarias');
+  const lecturas = l.analizarEvangelizo(TEXTO_EVANGELIZO);
+  const papeles = lecturas.map(x => x.papel);
+  assert.deepEqual(papeles, ['primera', 'salmo', 'evangelio']);
+
+  const primera = lecturas[0];
+  assert.match(primera.titulo, /Corintios 15,1-11/);
+  assert.match(primera.texto, /les recuerdo la Buena Noticia/);
+  // Cada lectura se corta donde empieza la siguiente.
+  assert.ok(!/Den gracias al Señor/.test(primera.texto), 'la primera se comió el salmo');
+
+  assert.match(lecturas[1].titulo, /^Salmo 118/);
+  assert.match(lecturas[2].titulo, /Lucas 7,36-50/);
+  assert.match(lecturas[2].texto, /fariseo invitó a Jesús/);
+
+  // El encabezado del día no es una lectura.
+  assert.ok(!lecturas.some(x => /semana del Tiempo/.test(x.titulo)), 'el título del día se coló como lectura');
+});
+
+test('USCCB: las lecturas se separan por los rotulos del leccionario', () => {
+  const l = require('../lecturas-diarias');
+  const lecturas = l.analizarUSCCB(TEXTO_USCCB);
+  const papeles = lecturas.map(x => x.papel);
+  assert.deepEqual(papeles, ['primera', 'salmo', 'aleluya', 'evangelio']);
+  assert.match(lecturas[0].texto, /1 Corintios 15, 1-11/);
+  assert.match(lecturas[0].texto, /Les recuerdo el Evangelio/);
+  assert.match(lecturas[3].texto, /fariseo le rogó a Jesús/);
+  // Los menús de la página quedan fuera.
+  assert.ok(!lecturas.some(x => /Skip to main content/.test(x.texto)), 'se coló el menú de la página');
+});
+
+test('si la primera fuente falla se usa la segunda', async () => {
+  const fs = require('fs'), os = require('os'), pathMod = require('path');
+  const dir = fs.mkdtempSync(pathMod.join(os.tmpdir(), 'cgpt-lect-'));
+  const previo = process.env.DATA_DIR;
+  process.env.DATA_DIR = dir;
+  delete require.cache[require.resolve('../lecturas-diarias')];
+  try {
+    const l = require('../lecturas-diarias');
+    const fetcher = async (url) => {
+      if (url.includes('evangelizo')) return { ok: false, status: 503, text: async () => '' };
+      return { ok: true, status: 200, text: async () => TEXTO_USCCB };
+    };
+    const r = await l.lecturasDeHoy({ fetcher });
+    assert.ok(r, 'no se usó la segunda fuente');
+    assert.match(r.fuente, /USCCB/);
+    assert.equal(r.lecturas.length, 4);
+    // Y queda en caché para no volver a pedirlo hoy.
+    assert.ok(fs.existsSync(pathMod.join(dir, 'lecturas-del-dia.json')));
+  } finally {
+    previo === undefined ? delete process.env.DATA_DIR : process.env.DATA_DIR = previo;
+    delete require.cache[require.resolve('../lecturas-diarias')];
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('un muro antibots descarta la fuente, no se rodea', async () => {
+  const l = require('../lecturas-diarias');
+  const fetcher = async () => ({
+    ok: true, status: 200,
+    text: async () => '<html><body><h1>Vercel Security Checkpoint</h1><p>We are verifying your browser</p></body></html>'
+  });
+  await assert.rejects(() => l.desdeEvangelizo({ compacta: '20260917' }, fetcher), /muro antibots/);
+});
+
+test('si ninguna fuente sirve no se devuelve la lectura de ayer', async () => {
+  const fs = require('fs'), os = require('os'), pathMod = require('path');
+  const dir = fs.mkdtempSync(pathMod.join(os.tmpdir(), 'cgpt-lect-ayer-'));
+  const previo = process.env.DATA_DIR;
+  process.env.DATA_DIR = dir;
+  delete require.cache[require.resolve('../lecturas-diarias')];
+  try {
+    const l = require('../lecturas-diarias');
+    fs.writeFileSync(pathMod.join(dir, 'lecturas-del-dia.json'), JSON.stringify({
+      fecha: '2001-01-01', lecturas: [{ papel: 'evangelio', titulo: 'x', texto: 'lectura de otro día' }]
+    }));
+    const caido = async () => { throw new Error('sin red'); };
+    assert.equal(await l.lecturasDeHoy({ fetcher: caido }), null);
+  } finally {
+    previo === undefined ? delete process.env.DATA_DIR : process.env.DATA_DIR = previo;
+    delete require.cache[require.resolve('../lecturas-diarias')];
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
