@@ -8044,7 +8044,10 @@ function esEvangelio(titulo) {
   return /evangelio/i.test(String(titulo || ''));
 }
 
-async function renderLecturasDelDia(req, res, { soloEvangelio }) {
+// modo: 'lecturas' (todo), 'evangelio' (solo el Evangelio) o 'misa' (la misma
+// liturgia, presentada como "la Misa de hoy" para quien busca eso).
+async function renderLecturasDelDia(req, res, { modo = 'lecturas' } = {}) {
+  const soloEvangelio = modo === 'evangelio';
   const fecha = liturgia.todayBogota();
   const fechaTexto = fechaLargaLiturgia(fecha);
   // Las lecturas vienen de evangelizo.org y, si falla, de la sección en español
@@ -8073,7 +8076,9 @@ async function renderLecturasDelDia(req, res, { soloEvangelio }) {
     ? (todas.filter(esElEvangelio).length ? todas.filter(esElEvangelio) : todas)
     : todas;
 
-  const titulo = soloEvangelio ? 'Evangelio de hoy' : 'Lecturas de la Misa de hoy';
+  const titulo = modo === 'evangelio' ? 'Evangelio de hoy'
+    : modo === 'misa' ? 'La Misa de hoy'
+    : 'Lecturas de la Misa de hoy';
   // evangelizo encabeza cada lectura con la referencia bíblica ("Carta I de San
   // Pablo a los Corintios 15,1-11.") y no con "Primera lectura". La referencia
   // es lo que se proclama, así que va de titular; el papel va encima, pequeño,
@@ -8132,8 +8137,10 @@ async function renderLecturasDelDia(req, res, { soloEvangelio }) {
     <header class="flex flex-col gap-2.5">
       <p class="text-[11px] font-bold uppercase tracking-widest text-gold m-0">${escapeHtml(fechaTexto)}</p>
       <h1 class="font-display font-bold text-espresso text-3xl leading-tight m-0">${titulo}</h1>
-      <p class="text-ink2 text-base leading-relaxed m-0">${soloEvangelio
+      <p class="text-ink2 text-base leading-relaxed m-0">${modo === 'evangelio'
         ? 'El Evangelio que se proclama hoy en la Misa, con su texto completo.'
+        : modo === 'misa'
+        ? 'Todo lo que se proclama hoy en la Misa: primera lectura, salmo responsorial, segunda lectura cuando la hay y Evangelio, con su texto completo.'
         : 'Las lecturas que se proclaman hoy en la Misa: primera lectura, salmo responsorial, segunda lectura cuando la hay y Evangelio.'}</p>
       ${fuente}
     </header>
@@ -8150,24 +8157,34 @@ async function renderLecturasDelDia(req, res, { soloEvangelio }) {
     ${esquema}
   </div>`;
 
-  const seoTitle = soloEvangelio
-    ? `Evangelio de hoy, ${fechaTexto}`.slice(0, 60)
-    : `Lecturas de la Misa de hoy, ${fechaTexto}`.slice(0, 60);
-  const metaDescription = (soloEvangelio
+  const seoTitle = (modo === 'evangelio' ? `Evangelio de hoy, ${fechaTexto}`
+    : modo === 'misa' ? `Misa de hoy, ${fechaTexto}`
+    : `Lecturas de la Misa de hoy, ${fechaTexto}`).slice(0, 60);
+  const metaDescription = (modo === 'evangelio'
     ? `Evangelio de hoy ${fechaTexto} con su texto completo, tal como se proclama en la Misa.`
+    : modo === 'misa'
+    ? `Misa de hoy ${fechaTexto}: las lecturas y el Evangelio que se proclaman hoy, con su texto completo.`
     : `Lecturas de la Misa de hoy ${fechaTexto}: primera lectura, salmo, segunda lectura y Evangelio, con su texto completo.`).slice(0, 158);
 
   return res.send(renderPage(seoTitle, html, req, {
     description: metaDescription,
-    keywords: soloEvangelio
+    keywords: modo === 'evangelio'
       ? 'evangelio de hoy, evangelio del dia, evangelio de hoy comentado, lecturas de hoy, misa de hoy'
+      : modo === 'misa'
+      ? 'misa de hoy, misa del dia, lecturas de la misa de hoy, evangelio de hoy, liturgia de hoy'
       : 'lecturas de la misa de hoy, lecturas del dia, primera lectura de hoy, salmo de hoy, evangelio de hoy',
     ogType: 'article'
   }));
 }
 
-app.get('/lecturas-del-dia', (req, res) => renderLecturasDelDia(req, res, { soloEvangelio: false }));
-app.get('/evangelio-del-dia', (req, res) => renderLecturasDelDia(req, res, { soloEvangelio: true }));
+app.get('/lecturas-del-dia', (req, res) => renderLecturasDelDia(req, res, { modo: 'lecturas' }));
+app.get('/evangelio-del-dia', (req, res) => renderLecturasDelDia(req, res, { modo: 'evangelio' }));
+// /misa-de-hoy estaba en el sitemap -o sea, le deciamos a Google que la
+// rastreara- y devolvia 404. Era el unico enlace roto del sitio entero: 953
+// rutas rastreadas, 906 correctas, 46 redirecciones y esta. "Misa de hoy" es
+// ademas una busqueda con demanda propia, asi que se crea con contenido en vez
+// de quitarla del sitemap.
+app.get('/misa-de-hoy', (req, res) => renderLecturasDelDia(req, res, { modo: 'misa' }));
 
 // ── Qué pregunta la gente al chat ──────────────────────────────────────────
 // La misma información que el informe de búsquedas de Analytics, pero completa
