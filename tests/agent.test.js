@@ -665,3 +665,75 @@ test('el texto devocional de respaldo va marcado como tal', () => {
   assert.ok(/if \(datos && datos\.esRespaldo\) datos = null;/.test(fuente),
     'la página de lecturas ya no descarta el respaldo');
 });
+
+// ── Lecturas de la Misa desde Magisterium ──
+test('las lecturas se sacan por los rotulos del leccionario, no por la maquetacion', () => {
+  const m = require('../magisterium-lecturas');
+  // Dos maquetaciones distintas del mismo contenido: el análisis no puede
+  // depender de las etiquetas, porque un rediseño las cambia.
+  const conH3 = `<html><body><main>
+    <h2>Jueves de la XXIV semana del Tiempo Ordinario</h2>
+    <h3>Primera lectura</h3>
+    <p>Lectura de la primera carta del apóstol san Pablo a Timoteo 4, 12-16</p>
+    <p>Querido hermano: Que nadie te desprecie por ser joven; al contrario, procura ser modelo de los creyentes en la palabra, en la conducta, en el amor, en la fe, en la pureza.</p>
+    <h3>Salmo responsorial</h3>
+    <p>Sal 110, 7-8. 9. 10</p>
+    <p>R. Grandes son las obras del Señor. Las obras de sus manos son justicia y derecho, sus decretos son fidedignos.</p>
+    <h3>Evangelio</h3>
+    <p>Lectura del santo evangelio según san Lucas 7, 36-50</p>
+    <p>En aquel tiempo, un fariseo rogó a Jesús que comiera con él; Jesús entró en casa del fariseo y se recostó a la mesa.</p>
+  </main></body></html>`;
+  const conDivs = conH3.replace(/<h3>/g, '<div class="x9">').replace(/<\/h3>/g, '</div>')
+                       .replace(/<p>/g, '<div>').replace(/<\/p>/g, '</div>');
+
+  for (const [nombre, html] of [['con h3', conH3], ['con divs', conDivs]]) {
+    const lecturas = m.partirEnLecturas(m.htmlATexto(html));
+    const claves = lecturas.map(l => l.clave);
+    assert.ok(claves.includes('primera'), `${nombre}: falta la primera lectura`);
+    assert.ok(claves.includes('salmo'), `${nombre}: falta el salmo`);
+    assert.ok(claves.includes('evangelio'), `${nombre}: falta el evangelio`);
+    const evangelio = lecturas.find(l => l.clave === 'evangelio');
+    assert.ok(/fariseo rogó a Jesús/.test(evangelio.texto), `${nombre}: el evangelio no trae su texto`);
+    const primera = lecturas.find(l => l.clave === 'primera');
+    assert.ok(/Que nadie te desprecie/.test(primera.texto), `${nombre}: la primera lectura no trae su texto`);
+    // Y cada sección se corta donde empieza la siguiente.
+    assert.ok(!/fariseo/.test(primera.texto), `${nombre}: la primera lectura se comió el evangelio`);
+  }
+});
+
+test('las lecturas se leen del JSON incrustado cuando lo hay', () => {
+  const m = require('../magisterium-lecturas');
+  const html = `<html><body><script id="__NEXT_DATA__" type="application/json">${JSON.stringify({
+    props: { pageProps: { dailyMass: { readings: [
+      { title: 'Primera lectura', text: 'Querido hermano: Que nadie te desprecie por ser joven, procura ser modelo de los creyentes.' },
+      { title: 'Evangelio', text: 'En aquel tiempo, un fariseo rogó a Jesús que comiera con él y Jesús entró en su casa.' }
+    ] } } }
+  })}</script></body></html>`;
+  const lecturas = m.lecturasDesdeJsonIncrustado(html);
+  assert.equal(lecturas.length, 2);
+  assert.equal(lecturas[0].titulo, 'Primera lectura');
+  assert.ok(/fariseo/.test(lecturas[1].texto));
+});
+
+test('si Magisterium no devuelve lecturas no se sirve la de otro dia', async () => {
+  const m = require('../magisterium-lecturas');
+  const fs = require('fs'), os = require('os'), pathMod = require('path');
+  const dir = fs.mkdtempSync(pathMod.join(os.tmpdir(), 'cgpt-lecturas-'));
+  const previo = process.env.DATA_DIR;
+  process.env.DATA_DIR = dir;
+  delete require.cache[require.resolve('../magisterium-lecturas')];
+  try {
+    const mod = require('../magisterium-lecturas');
+    // Caché de ayer en el disco.
+    fs.writeFileSync(pathMod.join(dir, 'lecturas-magisterium.json'), JSON.stringify({
+      fecha: '2001-01-01', lecturas: [{ titulo: 'Evangelio', texto: 'lectura de otro día' }]
+    }));
+    const caido = async () => { throw new Error('sin red'); };
+    const resultado = await mod.lecturasDeHoy({ fetcher: caido });
+    assert.equal(resultado, null, 'devolvió la lectura de otro día como si fuera la de hoy');
+  } finally {
+    previo === undefined ? delete process.env.DATA_DIR : process.env.DATA_DIR = previo;
+    delete require.cache[require.resolve('../magisterium-lecturas')];
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

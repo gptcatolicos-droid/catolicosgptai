@@ -2117,6 +2117,20 @@ app.get('/', (req, res) => {
         
         <!-- CHAT INPUT WRAP -->
         <div class="chat-input-wrap p-2.5 sm:p-4 border-t border-border bg-white shadow-inner">
+          <!-- Accesos de liturgia, encima del campo del chat. Lo que la gente
+               busca a diario -las lecturas de hoy y el rosario- estaba a varios
+               clics de distancia o directamente no se encontraba. -->
+          <div class="max-w-3xl mx-auto flex gap-2 flex-wrap justify-center mb-2.5">
+            <a href="/lecturas-del-dia" class="inline-flex items-center gap-1.5 text-xs font-bold text-maroon bg-[#FFFCF4] border border-gold/40 hover:bg-gold hover:text-white hover:border-gold rounded-full py-1.5 px-3.5 transition no-underline">
+              📖 Lecturas de la Misa de hoy
+            </a>
+            <a href="/rosario-del-dia" class="inline-flex items-center gap-1.5 text-xs font-bold text-maroon bg-[#FFFCF4] border border-gold/40 hover:bg-gold hover:text-white hover:border-gold rounded-full py-1.5 px-3.5 transition no-underline">
+              📿 Santo Rosario de hoy
+            </a>
+            <a href="/santo-del-dia" class="inline-flex items-center gap-1.5 text-xs font-bold text-maroon bg-[#FFFCF4] border border-gold/40 hover:bg-gold hover:text-white hover:border-gold rounded-full py-1.5 px-3.5 transition no-underline">
+              ✝ Santo del día
+            </a>
+          </div>
           <form id="chat-form" onsubmit="enviarMensaje(event)" class="max-w-3xl mx-auto flex gap-2 items-end">
             <textarea id="chat-input" rows="1" placeholder="Pregunta sobre fe, liturgia, moral cristiana..." required class="flex-1 border border-border rounded-2xl px-4 sm:px-5 py-2.5 sm:py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent bg-[#FAF9F5]/40" autocomplete="off"></textarea>
             <button type="submit" class="bg-maroon hover:bg-gold text-white p-3 sm:p-3.5 rounded-full transition duration-300 shadow-md transform hover:scale-105 active:scale-95 flex-shrink-0">
@@ -7950,9 +7964,18 @@ function esEvangelio(titulo) {
 async function renderLecturasDelDia(req, res, { soloEvangelio }) {
   const fecha = liturgia.todayBogota();
   const fechaTexto = fechaLargaLiturgia(fecha);
+  // Magisterium publica las lecturas de cada día y siempre están; se prueba
+  // primero. Si fallara, queda el raspador de dominicos.org que ya existía.
   let datos = null;
-  try { datos = await getOrGenerateLecturas(); } catch (err) {
-    console.error('[Lecturas] No se pudieron obtener:', err.message);
+  try {
+    datos = await require('./magisterium-lecturas').lecturasDeHoy();
+  } catch (err) {
+    console.warn('[Lecturas] Magisterium no respondió:', err.message);
+  }
+  if (!datos) {
+    try { datos = await getOrGenerateLecturas(); } catch (err) {
+      console.error('[Lecturas] No se pudieron obtener:', err.message);
+    }
   }
 
   // Si lo que llegó es el texto devocional de respaldo, para esta página es
