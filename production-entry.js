@@ -2,6 +2,15 @@
 // Presentation is delivered from a compiled local Tailwind bundle so mobile does
 // not depend on cdn.tailwindcss.com. Recovery/admin/content remain in stable-start.
 
+// LO PRIMERO DE TODO: sembrar el disco persistente. Un disco recién creado está
+// vacío, y cualquier módulo que lea DATA_DIR antes de esto vería un sitio sin
+// usuarios ni catálogos. Tiene que ir por delante de todo lo demás.
+try {
+  require('./data-dir-seed').seedDataDir();
+} catch (err) {
+  console.warn('[Production] No se pudo sembrar el disco de datos:', err.message);
+}
+
 try {
   require('./local-tailwind-runtime');
 } catch (err) {

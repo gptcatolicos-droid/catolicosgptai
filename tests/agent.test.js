@@ -371,3 +371,38 @@ test('la cuenta de administrador se restaura tras un reinicio y el correo deja d
   fs.rmSync(dir,{recursive:true,force:true});
  }
 });
+
+test('el disco persistente se siembra en el primer arranque y no se pisa despues',()=>{
+ const fs=require('fs'),os=require('os'),pathMod=require('path');
+ const {seedDataDir}=require('../data-dir-seed');
+ const disco=fs.mkdtempSync(pathMod.join(os.tmpdir(),'cgpt-disco-'));
+ try{
+  // Primer arranque: el disco esta vacio, como uno recien creado en Render.
+  assert.equal(fs.readdirSync(disco).length,0);
+  const primero=seedDataDir(disco);
+  assert.ok(primero.sembrados.length>5,'debe copiar los catalogos del repositorio');
+  assert.ok(primero.sembrados.includes('users.json'));
+  assert.ok(primero.sembrados.includes('blog-catalog.json'));
+
+  // El administrador crea algo: aqui lo simulamos editando un fichero.
+  const usuarios=pathMod.join(disco,'users.json');
+  fs.writeFileSync(usuarios,JSON.stringify({users:[{id:'u1',email:'real@ejemplo.com'}]}));
+
+  // Segundo arranque: NO puede pisar lo que ya hay. Esta es la regla entera.
+  const segundo=seedDataDir(disco);
+  assert.equal(segundo.sembrados.length,0,'no se siembra nada sobre un disco poblado');
+  assert.equal(JSON.parse(fs.readFileSync(usuarios,'utf8')).users[0].email,'real@ejemplo.com',
+   'el dato del disco sobrevive al arranque');
+
+  // Si falta un fichero suelto, ese si se repone, sin tocar los demas.
+  fs.unlinkSync(pathMod.join(disco,'blog-catalog.json'));
+  const tercero=seedDataDir(disco);
+  assert.deepEqual(tercero.sembrados,['blog-catalog.json']);
+  assert.equal(JSON.parse(fs.readFileSync(usuarios,'utf8')).users[0].email,'real@ejemplo.com');
+
+  // Sin DATA_DIR no se hace nada: el sitio ya usa la carpeta del repositorio.
+  assert.equal(seedDataDir('').sembrados.length,0);
+  // Y nunca se copia la carpeta del repositorio sobre si misma.
+  assert.equal(seedDataDir(pathMod.join(__dirname,'..','data')).sembrados.length,0);
+ } finally { fs.rmSync(disco,{recursive:true,force:true}); }
+});
