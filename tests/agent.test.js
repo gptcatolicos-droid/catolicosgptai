@@ -645,3 +645,23 @@ test('la pagina del rosario trae el rosario entero, no una plantilla', () => {
   // Lo que servía antes y no debe volver.
   assert.ok(!/profunda herencia divina/.test(pagina.html), 'sigue saliendo el texto de relleno');
 });
+
+// ── Lecturas del día: nunca dar por litúrgico lo que no lo es ──
+test('el texto devocional de respaldo va marcado como tal', () => {
+  const fs = require('fs');
+  const fuente = fs.readFileSync(require('path').join(__dirname, '..', 'server.js'), 'utf-8');
+
+  // El respaldo existe y se sirve cuando la descarga falla. Lo que no puede
+  // volver a pasar es que se presente como la liturgia del día.
+  const i = fuente.indexOf("lecturas: [\n        {\n          titulo: 'Primera Lectura");
+  assert.ok(i > 0, 'no se encontró el texto devocional de respaldo');
+  const bloque = fuente.slice(Math.max(0, i - 1200), i);
+  assert.ok(/esRespaldo:\s*true/.test(bloque), 'el respaldo no se marca con esRespaldo');
+  assert.ok(!/fuente:\s*'Subsidio Devocional CatólicosGPT'/.test(bloque),
+    'la fuente vuelve a hacerlo pasar por litúrgico');
+  assert.ok(/no son las lecturas de hoy/i.test(bloque), 'la fuente no dice la verdad');
+
+  // Y la página que promete las lecturas del día lo descarta.
+  assert.ok(/if \(datos && datos\.esRespaldo\) datos = null;/.test(fuente),
+    'la página de lecturas ya no descarta el respaldo');
+});

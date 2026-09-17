@@ -2834,8 +2834,18 @@ async function getOrGenerateLecturas() {
     }
   }
   if (!data || !data.lecturas || data.lecturas.length === 0) {
+    // OJO CON ESTO. Lo que sigue NO son las lecturas del día: es un texto
+    // devocional fijo que se sirve cuando la descarga falla. Se presentaba como
+    // "las lecturas de hoy" con su fuente y su homilía, así que un catequista
+    // preparando la Misa se lo habría creído. Un sitio católico que da por
+    // litúrgico lo que no lo es hace más daño que una página vacía.
+    //
+    // Sigue aquí porque como lectura devocional vale, pero ahora va marcado:
+    // esRespaldo dice la verdad y cada página decide si puede mostrarlo. Las
+    // que prometen las lecturas del día no lo muestran.
     return {
-      fuente: 'Subsidio Devocional CatólicosGPT',
+      esRespaldo: true,
+      fuente: 'Texto devocional de CatólicosGPT (no son las lecturas de hoy)',
       lecturas: [
         {
           titulo: 'Primera Lectura — Lectura de la Carta del Apóstol San Pablo',
@@ -6489,6 +6499,7 @@ app.get('/liturgia-de-las-horas', async (req, res) => {
         <!-- EVANGELIO & LECTURAS -->
         <section class="bg-white border rounded-2xl p-6 shadow-sm flex flex-col gap-4">
           <h2 class="font-display font-bold text-maroon text-base border-b pb-2">📖 Evangelio del día y Lecturas</h2>
+          ${lect && lect.esRespaldo ? '<p class="text-[11px] text-ink2 bg-[#FFFCF4] border border-gold/30 rounded-lg p-2.5 m-0">Las lecturas de hoy no se han podido descargar. Lo que sigue es un texto devocional, no la liturgia del día.</p>' : ''}
           ${lect && lect.lecturas && lect.lecturas.length > 0 ? lect.lecturas.map((l, i) => `
             <div class="flex flex-col gap-2 mt-2">
               <h3 class="font-display font-semibold text-espresso text-sm">${l.titulo}</h3>
@@ -7914,6 +7925,123 @@ app.get('/recursos/:slug', (req, res) => {
 global.renderPageWithSSR = renderPage;
 
 // Montar el Router Programático de 10 Pilares SEO Católicos
+// ── Lecturas y Evangelio de hoy, con las lecturas de verdad ─────────────────
+// Estas dos URLs caían en la plantilla genérica de los pilares, que servía el
+// mismo texto de relleno para todo -"El misterio de X pertenece a la profunda
+// herencia divina..."-, sin una sola lectura. Quien busca "lecturas de la misa
+// de hoy" quiere las lecturas, no una reflexión sobre la idea de lectura.
+//
+// Las lecturas ya se descargaban y se mostraban en /liturgia-de-las-horas.
+// Aquí simplemente se sirven donde la gente las busca.
+//
+// Van registradas ANTES del router de pilares para ganarle la ruta.
+const MESES_LITURGIA = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+function fechaLargaLiturgia(fecha) {
+  const [anio, mes, dia] = String(fecha || '').split('-').map(Number);
+  if (!anio || !mes || !dia) return String(fecha || '');
+  return `${dia} de ${MESES_LITURGIA[mes - 1]} de ${anio}`;
+}
+
+function esEvangelio(titulo) {
+  return /evangelio/i.test(String(titulo || ''));
+}
+
+async function renderLecturasDelDia(req, res, { soloEvangelio }) {
+  const fecha = liturgia.todayBogota();
+  const fechaTexto = fechaLargaLiturgia(fecha);
+  let datos = null;
+  try { datos = await getOrGenerateLecturas(); } catch (err) {
+    console.error('[Lecturas] No se pudieron obtener:', err.message);
+  }
+
+  // Si lo que llegó es el texto devocional de respaldo, para esta página es
+  // como si no hubiera nada: promete las lecturas de hoy y no las tiene.
+  if (datos && datos.esRespaldo) datos = null;
+  const todas = (datos && Array.isArray(datos.lecturas) ? datos.lecturas : []).filter(l => l && l.titulo && l.texto);
+  const lecturas = soloEvangelio
+    ? (todas.filter(l => esEvangelio(l.titulo)).length ? todas.filter(l => esEvangelio(l.titulo)) : todas)
+    : todas;
+
+  const titulo = soloEvangelio ? 'Evangelio de hoy' : 'Lecturas de la Misa de hoy';
+  const bloques = lecturas.map(l => `
+    <article class="bg-white border border-[#E6DFD4] rounded-2xl p-5 flex flex-col gap-2.5">
+      <h2 class="font-display font-bold text-maroon text-lg leading-snug m-0">${escapeHtml(l.titulo)}</h2>
+      <div class="text-ink2 text-sm leading-relaxed font-serif border-l-2 border-gold pl-4">${escapeHtml(l.texto).replace(/\n/g, '<br>')}</div>
+    </article>`).join('');
+
+  // Sin lecturas no se rellena con prosa: se dice lo que pasa y se ofrece a
+  // dónde ir. Una página que promete las lecturas y entrega un sermón genérico
+  // es peor que una que reconoce que hoy no las tiene.
+  const vacio = `
+    <div class="bg-[#FFFCF4] border border-gold/30 rounded-2xl p-5 flex flex-col gap-2.5">
+      <p class="text-espresso text-sm font-bold m-0">Las lecturas de hoy todavía no están disponibles.</p>
+      <p class="text-ink2 text-sm leading-relaxed m-0">Se publican cada madrugada. Mientras tanto puedes consultar la
+        <a href="/liturgia-de-las-horas" class="text-maroon underline">Liturgia de las Horas</a> o preguntar directamente en
+        <a href="/" class="text-maroon underline">el chat de CatólicosGPT</a>.</p>
+    </div>`;
+
+  const predica = (!soloEvangelio && datos && datos.predica) ? `
+    <section class="flex flex-col gap-3">
+      <h2 class="font-display font-bold text-maroon text-xl m-0">Comentario del día</h2>
+      <div class="bg-white border border-[#E6DFD4] rounded-2xl p-5 text-ink2 text-sm leading-relaxed">${escapeHtml(datos.predica).replace(/\n/g, '<br>')}</div>
+    </section>` : '';
+
+  const fuente = (datos && datos.fuente) ? `
+    <p class="text-[11px] text-ink2 m-0">Fuente de las lecturas: ${escapeHtml(datos.fuente)}${datos.url ? ` · <a href="${escapeHtml(datos.url)}" rel="nofollow noopener" target="_blank" class="underline">ver original</a>` : ''}</p>` : '';
+
+  const esquema = lecturas.length ? `<script type="application/ld+json">${JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: `${titulo}, ${fechaTexto}`,
+    datePublished: fecha,
+    inLanguage: 'es',
+    isAccessibleForFree: true,
+    publisher: { '@type': 'Organization', name: 'CatólicosGPT' }
+  })}</script>` : '';
+
+  const html = `
+  <div class="max-w-3xl mx-auto px-4 py-8 flex flex-col gap-7">
+    <header class="flex flex-col gap-2.5">
+      <p class="text-[11px] font-bold uppercase tracking-widest text-gold m-0">${escapeHtml(fechaTexto)}</p>
+      <h1 class="font-display font-bold text-espresso text-3xl leading-tight m-0">${titulo}</h1>
+      <p class="text-ink2 text-base leading-relaxed m-0">${soloEvangelio
+        ? 'El Evangelio que se proclama hoy en la Misa, con su texto completo.'
+        : 'Las lecturas que se proclaman hoy en la Misa: primera lectura, salmo responsorial, segunda lectura cuando la hay y Evangelio.'}</p>
+      ${fuente}
+    </header>
+    <section class="flex flex-col gap-3">${lecturas.length ? bloques : vacio}</section>
+    ${predica}
+    <section class="flex flex-col gap-3">
+      <h2 class="font-display font-bold text-maroon text-xl m-0">Seguir rezando hoy</h2>
+      <div class="flex flex-wrap gap-2.5">
+        <a href="/rosario-del-dia" class="bg-maroon hover:bg-gold text-white text-xs font-bold py-2.5 px-4 rounded-xl transition">Santo Rosario de hoy</a>
+        <a href="/liturgia-de-las-horas" class="border border-maroon text-maroon hover:bg-maroon hover:text-white text-xs font-bold py-2.5 px-4 rounded-xl transition">Liturgia de las Horas</a>
+        <a href="/santo-del-dia" class="border border-maroon text-maroon hover:bg-maroon hover:text-white text-xs font-bold py-2.5 px-4 rounded-xl transition">Santo del día</a>
+      </div>
+    </section>
+    ${esquema}
+  </div>`;
+
+  const seoTitle = soloEvangelio
+    ? `Evangelio de hoy, ${fechaTexto}`.slice(0, 60)
+    : `Lecturas de la Misa de hoy, ${fechaTexto}`.slice(0, 60);
+  const metaDescription = (soloEvangelio
+    ? `Evangelio de hoy ${fechaTexto} con su texto completo, tal como se proclama en la Misa.`
+    : `Lecturas de la Misa de hoy ${fechaTexto}: primera lectura, salmo, segunda lectura y Evangelio, con su texto completo.`).slice(0, 158);
+
+  return res.send(renderPage(seoTitle, html, req, {
+    description: metaDescription,
+    keywords: soloEvangelio
+      ? 'evangelio de hoy, evangelio del dia, evangelio de hoy comentado, lecturas de hoy, misa de hoy'
+      : 'lecturas de la misa de hoy, lecturas del dia, primera lectura de hoy, salmo de hoy, evangelio de hoy',
+    ogType: 'article'
+  }));
+}
+
+app.get('/lecturas-del-dia', (req, res) => renderLecturasDelDia(req, res, { soloEvangelio: false }));
+app.get('/evangelio-del-dia', (req, res) => renderLecturasDelDia(req, res, { soloEvangelio: true }));
+
 const seoPillarsRouter = optionalRequire('./seo-pillars-router', null);
 if (seoPillarsRouter) {
   app.use('/', seoPillarsRouter);
