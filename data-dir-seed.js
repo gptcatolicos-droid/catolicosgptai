@@ -17,19 +17,26 @@ const path = require('path');
 const REPO_DATA = path.join(__dirname, 'data');
 
 function seedDataDir(destino = process.env.DATA_DIR) {
+  // Cada salida temprana deja rastro. Sin esto, un DATA_DIR mal escrito o un
+  // disco que no se puede montar se veian igual que un arranque correcto: en
+  // silencio, y el sitio aparecia vacio sin que los registros dijeran por que.
+  const fin = (resultado) => {
+    console.log(`[Disco] No se sembro nada: ${resultado.motivo}.`);
+    return resultado;
+  };
   const target = String(destino || '').trim();
   // Sin DATA_DIR el sitio ya usa la carpeta del repositorio: no hay nada que
   // sembrar y copiar sobre sí mismo sería un error.
-  if (!target) return { sembrados: [], motivo: 'sin DATA_DIR' };
+  if (!target) return fin({ sembrados: [], motivo: 'sin DATA_DIR' });
   const resuelto = path.resolve(target);
-  if (resuelto === path.resolve(REPO_DATA)) return { sembrados: [], motivo: 'DATA_DIR es la carpeta del repositorio' };
+  if (resuelto === path.resolve(REPO_DATA)) return fin({ sembrados: [], motivo: 'DATA_DIR es la carpeta del repositorio' });
 
   try { fs.mkdirSync(resuelto, { recursive: true }); }
-  catch (err) { return { sembrados: [], motivo: `no se pudo crear ${resuelto}: ${err.message}` }; }
+  catch (err) { return fin({ sembrados: [], motivo: `no se pudo crear ${resuelto}: ${err.message}` }); }
 
   let origen;
   try { origen = fs.readdirSync(REPO_DATA); }
-  catch { return { sembrados: [], motivo: 'el repositorio no trae carpeta data' }; }
+  catch { return fin({ sembrados: [], motivo: 'el repositorio no trae carpeta data' }); }
 
   const sembrados = [];
   for (const nombre of origen) {
