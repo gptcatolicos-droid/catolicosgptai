@@ -543,7 +543,7 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
   <!-- Open Graph -->
   <meta property="og:title" content="${fullTitle}">
   <meta property="og:description" content="${M.description}">
-  <meta property="og:type" content="website">
+  <meta property="og:type" content="${M.ogType || 'website'}">
   <meta property="og:url" content="${APP_URL}${M.canonical}">
   <meta property="og:image" content="${M.image || `${APP_URL}/favicon.png`}">
   <meta property="og:site_name" content="CatólicosGPT">
@@ -5957,7 +5957,10 @@ app.get('/blog/:slug', (req, res) => {
 
   res.send(renderPage(post.seoTitle || post.titulo, html, req, {
     description: post.descripcion || post.extracto || "Formación de fe católico.",
-    keywords: post.keywords || "catequesis, blog catolico"
+    keywords: post.keywords || "catequesis, blog catolico",
+    // Un artículo no es la portada del sitio: og:type lo dice y de eso depende
+    // cómo lo presentan las redes al compartirlo.
+    ogType: 'article'
   }));
 });
 
@@ -6126,6 +6129,7 @@ app.get('/blog/:categoria/:slug', (req, res) => {
   res.send(renderPage(post.seoTitle || post.titulo, html, req, {
     description: post.descripcion || post.extracto || "Formación de fe católico.",
     keywords: post.keywords || "catequesis, blog catolico",
+    ogType: 'article',
     schemas: schemas
   }));
 });

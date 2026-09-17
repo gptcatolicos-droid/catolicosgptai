@@ -546,7 +546,10 @@ function parseMarkdown(md) {
   html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
   html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
   html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  // La plantilla de la pagina ya pone el <h1> con el titulo del articulo. Si el
+  // cuerpo abre tambien con "# Titulo", la pagina acaba con DOS h1 -y en este
+  // sitio pasaba en todos los articulos-. El contenido empieza en h2.
+  html = html.replace(/^# (.+)$/gm, '<h2>$1</h2>');
 
   // Bold/italic
   html = html.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
