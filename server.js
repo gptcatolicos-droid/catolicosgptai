@@ -5523,9 +5523,15 @@ app.get('/ninos', async (req, res) => {
     </div>
   `;
 
-  res.send(renderPage('Niños | Dibujos para colorear y catequesis imprimible | CatólicosGPT', html, req, {
-    description: 'Recursos católicos para niños: dibujos para colorear, infografías imprimibles, cartillas PDF, catequesis infantil y material para catequistas de CatólicosGPT.',
-    keywords: 'catequesis para niños, dibujos católicos para colorear, recursos católicos imprimibles, cartillas de catequesis, CatólicosGPT, IA Católica, Virgen María para colorear, santos para niños',
+  // Esta página acumula 14.522 impresiones y 181 clics: un 1,2%. No es un
+  // problema de posición -Google ya la enseña mucho- sino de lo que promete.
+  // Las búsquedas que la traen son "qué es la Biblia para niños", "qué es la
+  // Eucaristía para niños", "la Virgen María para niños de catequesis"; el
+  // título hablaba de dibujos para colorear e imprimibles, que es otra cosa.
+  // Y medía 68 caracteres, así que Google lo cortaba.
+  res.send(renderPage('Catequesis para niños: la fe explicada fácil', html, req, {
+    description: 'La Biblia, la Eucaristía, los mandamientos y la Virgen María explicados a los niños con palabras sencillas, más dibujos para colorear e imprimibles.',
+    keywords: 'catequesis para niños, que es la biblia para niños, que es la eucaristia para niños, la virgen maria para niños, los mandamientos para niños, dibujos católicos para colorear, recursos de catequesis',
     canonical: '/ninos'
   }));
 });
