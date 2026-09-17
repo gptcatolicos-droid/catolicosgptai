@@ -1,7 +1,12 @@
 {
-  "version": "5.4",
+  "version": "5.5",
   "total": 4,
-  "categorias": ["documentos-pontificios", "catequesis-y-doctrina", "santos-y-devociones", "fiestas-liturgicas"],
+  "categorias": [
+    "documentos-pontificios",
+    "catequesis-y-doctrina",
+    "santos-y-devociones",
+    "fiestas-liturgicas"
+  ],
   "infografias": [
     {
       "id": "inf-magnifica-humanitas-20260916",
@@ -79,19 +84,19 @@
       "altText": "Carrusel CatolicosGPT sobre la vida de San José y la novena a San José",
       "keywords": "San José, esposo de María, padre legal de Jesús, padre putativo de Jesús, Sagrada Familia, novena a San José, 19 de marzo, Nazaret, huida a Egipto, CatolicosGPT",
       "imagenes": [
-        {"url":"https://drive.google.com/thumbnail?id=14ULHjetAAD7a_RiTARIu-qtrO6pr2Qlp&sz=w2400","slide":1,"model":"GPT Image","formato":"9:12","driveId":"14ULHjetAAD7a_RiTARIu-qtrO6pr2Qlp"},
-        {"url":"https://drive.google.com/thumbnail?id=1sqazixae5U2ZC7Mcmie9Mo102VHIGrk6&sz=w2400","slide":2,"model":"GPT Image","formato":"9:12","driveId":"1sqazixae5U2ZC7Mcmie9Mo102VHIGrk6"},
-        {"url":"https://drive.google.com/thumbnail?id=1ZDwCPnYQpf-XyunmyWUj7NpJAspcNheR&sz=w2400","slide":3,"model":"GPT Image","formato":"9:12","driveId":"1ZDwCPnYQpf-XyunmyWUj7NpJAspcNheR"},
-        {"url":"https://drive.google.com/thumbnail?id=12mbzKI-pkaJBPFiPupXfIF2j9_5ESIXa&sz=w2400","slide":4,"model":"GPT Image","formato":"9:12","driveId":"12mbzKI-pkaJBPFiPupXfIF2j9_5ESIXa"},
-        {"url":"https://drive.google.com/thumbnail?id=1Ed0ZEfjo5QOpnvNCUHypHENZHMS0Arvk&sz=w2400","slide":5,"model":"GPT Image","formato":"9:12","driveId":"1Ed0ZEfjo5QOpnvNCUHypHENZHMS0Arvk"},
-        {"url":"https://drive.google.com/thumbnail?id=1Vby4F3gdRV_mZXVkQ4Wto6GkRjK5lmas&sz=w2400","slide":6,"model":"GPT Image","formato":"9:12","driveId":"1Vby4F3gdRV_mZXVkQ4Wto6GkRjK5lmas"},
-        {"url":"https://drive.google.com/thumbnail?id=1FaZ4LYoz7ty_-Hh5Qqgge_YwJCvW9lm1&sz=w2400","slide":7,"model":"GPT Image","formato":"9:12","driveId":"1FaZ4LYoz7ty_-Hh5Qqgge_YwJCvW9lm1"},
-        {"url":"https://drive.google.com/thumbnail?id=1Z95c1ik_SkAOpXo_RPEqXVzZ3Qh9h9tZ&sz=w2400","slide":8,"model":"GPT Image","formato":"9:12","driveId":"1Z95c1ik_SkAOpXo_RPEqXVzZ3Qh9h9tZ"},
-        {"url":"https://drive.google.com/thumbnail?id=1WFz57CNtdJ6OCo9uO2M4VgJazKMsub-I&sz=w2400","slide":9,"model":"GPT Image","formato":"9:12","driveId":"1WFz57CNtdJ6OCo9uO2M4VgJazKMsub-I"},
-        {"url":"https://drive.google.com/thumbnail?id=1mxyQg7_GWl0oZx4hjdjV1KGlSxa-3NIZ&sz=w2400","slide":10,"model":"GPT Image","formato":"9:12","driveId":"1mxyQg7_GWl0oZx4hjdjV1KGlSxa-3NIZ"}
+        {"url":"https://drive.google.com/thumbnail?id=1jCVkRWOE9dYI8bX1J9JpUOwqdwMzo2zL&sz=w2400","slide":1,"model":"GPT Image","formato":"9:12","driveId":"1jCVkRWOE9dYI8bX1J9JpUOwqdwMzo2zL"},
+        {"url":"https://drive.google.com/thumbnail?id=1BPpGkyK-3bz4DsF7yiU0--dJZPgBIdmn&sz=w2400","slide":2,"model":"GPT Image","formato":"9:12","driveId":"1BPpGkyK-3bz4DsF7yiU0--dJZPgBIdmn"},
+        {"url":"https://drive.google.com/thumbnail?id=1xWYbbghXfZotUUx75kgcYUs6CkQcAQ6Z&sz=w2400","slide":3,"model":"GPT Image","formato":"9:12","driveId":"1xWYbbghXfZotUUx75kgcYUs6CkQcAQ6Z"},
+        {"url":"https://drive.google.com/thumbnail?id=1vY6UYTg1r8bJWs1k9FE-LBmpALagIQuy&sz=w2400","slide":4,"model":"GPT Image","formato":"9:12","driveId":"1vY6UYTg1r8bJWs1k9FE-LBmpALagIQuy"},
+        {"url":"https://drive.google.com/thumbnail?id=1DSk8mL7BHTg8fsrsxqges905xF5AWS4t&sz=w2400","slide":5,"model":"GPT Image","formato":"9:12","driveId":"1DSk8mL7BHTg8fsrsxqges905xF5AWS4t"},
+        {"url":"https://drive.google.com/thumbnail?id=1o9v9T8wEgaXoQPDpy2l8L9VpiujhnZfU&sz=w2400","slide":6,"model":"GPT Image","formato":"9:12","driveId":"1o9v9T8wEgaXoQPDpy2l8L9VpiujhnZfU"},
+        {"url":"https://drive.google.com/thumbnail?id=1ci5tHFvJfsTdg2_W3HNmHl_HJAzCiiLo&sz=w2400","slide":7,"model":"GPT Image","formato":"9:12","driveId":"1ci5tHFvJfsTdg2_W3HNmHl_HJAzCiiLo"},
+        {"url":"https://drive.google.com/thumbnail?id=173RcBm3TZJJVXtXbX5vApZgnmFkrQsjT&sz=w2400","slide":8,"model":"GPT Image","formato":"9:12","driveId":"173RcBm3TZJJVXtXbX5vApZgnmFkrQsjT"},
+        {"url":"https://drive.google.com/thumbnail?id=1lIkfBcGiBM1w-kRUKzOCzbEOnw7htN84&sz=w2400","slide":9,"model":"GPT Image","formato":"9:12","driveId":"1lIkfBcGiBM1w-kRUKzOCzbEOnw7htN84"},
+        {"url":"https://drive.google.com/thumbnail?id=1Oj-eWqGJyhZG7oFbI_Kqv2g4UQ5JDmpy&sz=w2400","slide":10,"model":"GPT Image","formato":"9:12","driveId":"1Oj-eWqGJyhZG7oFbI_Kqv2g4UQ5JDmpy"}
       ],
       "driveFolderId": "1O2n_IXFTgit55-WOwjcd0WxWfJ-ciPhz",
-      "zipDriveId": "12IR-_AMIcVB6YWS4oYAVV0V9NYOwHZfr",
+      "zipDriveId": "1JhnmCS2UlCSUn2JnErFgnkAVoHYk9B9J",
       "fechaCreacion": "2026-09-17T00:27:00Z",
       "fechaISO": "2026-09-16",
       "publicado": true
