@@ -115,6 +115,15 @@ if (!fs.existsSync(DATA_DIR)) {
   try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch(e) {}
 }
 
+// Sondeo de un solo uso: averigua si la API de Magisterium publica el
+// leccionario. Se enciende con MAGISTERIUM_SONDEO=1, se lee en los registros y
+// se apaga. No forma parte del funcionamiento normal.
+if (process.env.MAGISTERIUM_SONDEO === '1') {
+  setTimeout(() => {
+    require('./magisterium-sondeo').sondear().catch(e => console.warn('[Sondeo Magisterium] Falló:', e.message));
+  }, 15000);
+}
+
 // Las lecturas de hoy se traen solas, no cuando alguien entra. Si se
 // descargaran a la primera visita, esa persona se encontraría la página vacía
 // mientras espera -y es justo la que venía a leerlas-.
@@ -9782,8 +9791,9 @@ app.get('/admin', async (req, res) => {
               <input type="text" id="cl-search" oninput="debounceFilterResources()" placeholder="Buscar por nombre..." class="border border-border rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-gold bg-white text-xs outline-none w-full">
             </div>
             <div class="flex flex-col gap-1" id="cl-folder-wrap">
-              <label class="font-semibold text-espresso">Carpeta de Drive (opcional)</label>
-              <input type="text" id="cl-folder-filter" onchange="cargarImagenesDrive()" placeholder="ID de carpeta; vacío = todas" class="border border-border rounded-lg px-3 py-1.5 bg-white text-xs outline-none focus:ring-1 focus:ring-gold w-full">
+              <label class="font-semibold text-espresso">Carpeta de Drive</label>
+              <input type="text" id="cl-folder-filter" onchange="cargarImagenesDrive()" placeholder="Carpeta de infografías (por defecto)" class="border border-border rounded-lg px-3 py-1.5 bg-white text-xs outline-none focus:ring-1 focus:ring-gold w-full">
+              <span class="text-[10px] text-ink-2 leading-snug">Vacío = la carpeta de infografías. Pega otro ID para mirar en otra.</span>
             </div>
             <input type="hidden" id="cl-type-filter" value="image">
             <div class="flex flex-col gap-1">
@@ -11432,7 +11442,12 @@ app.get('/admin', async (req, res) => {
           // El mensaje real del servidor dice si falta la cuenta de servicio o
           // si la carpeta no está compartida con ella. Adivinarlo desde un
           // error genérico cuesta media tarde.
-          if (emptyMessage) emptyMessage.innerText = err.message || 'Revisa GOOGLE_SERVICE_ACCOUNT_JSON y que la carpeta esté compartida con la cuenta de servicio.';
+          // El mensaje del servidor dice qué falta de verdad. Si aún no hay
+          // cuenta de servicio, se explica qué hacer en vez de dejar un error
+          // técnico suelto.
+          if (emptyMessage) emptyMessage.innerText = /cuenta de servicio|GOOGLE_SERVICE_ACCOUNT|token de acceso/i.test(err.message || '')
+            ? 'Falta conectar la cuenta de servicio de Google. Mientras tanto puedes subir las imágenes desde este aparato en la otra pestaña.'
+            : (err.message || 'No se pudo leer el Drive de CatólicosGPT.');
           emptyAlert.classList.remove('hidden');
         }
       }
