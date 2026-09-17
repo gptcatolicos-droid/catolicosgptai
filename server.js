@@ -702,6 +702,34 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
     
     a { color: var(--maroon); text-decoration: none; transition: color 0.2s; }
     a:hover { color: var(--gold-deep); }
+
+    /* Accesos de liturgia, encima del campo del chat.
+       El color va aquí y no en utilidades de Tailwind a propósito: unas líneas
+       más arriba hay una regla .text-maroon con !important y sin capa, que le
+       gana a cualquier hover:text-white de Tailwind. Con esas clases el
+       fondo sí cambiaba al pasar el ratón pero la letra seguía carmesí sobre
+       carmesí, o sea invisible. */
+    .acceso-liturgia {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--maroon);
+      background: #FFFCF4;
+      border: 1px solid rgba(188, 138, 54, 0.4);
+      border-radius: 9999px;
+      padding: 0.45rem 0.9rem;
+      text-decoration: none;
+      transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+    }
+    .acceso-liturgia:hover,
+    .acceso-liturgia:focus-visible {
+      background: var(--maroon);
+      border-color: var(--maroon);
+      color: #FFFFFF !important;
+    }
     
     /* Double Borders */
     .sacred-border {
@@ -2160,13 +2188,13 @@ app.get('/', (req, res) => {
                busca a diario -las lecturas de hoy y el rosario- estaba a varios
                clics de distancia o directamente no se encontraba. -->
           <div class="max-w-3xl mx-auto flex gap-2 flex-wrap justify-center mb-2.5">
-            <a href="/lecturas-del-dia" class="inline-flex items-center gap-1.5 text-xs font-bold text-maroon bg-[#FFFCF4] border border-gold/40 hover:bg-gold hover:text-white hover:border-gold rounded-full py-1.5 px-3.5 transition no-underline">
+            <a href="/lecturas-del-dia" class="acceso-liturgia">
               📖 Lecturas de la Misa de hoy
             </a>
-            <a href="/rosario-del-dia" class="inline-flex items-center gap-1.5 text-xs font-bold text-maroon bg-[#FFFCF4] border border-gold/40 hover:bg-gold hover:text-white hover:border-gold rounded-full py-1.5 px-3.5 transition no-underline">
+            <a href="/rosario-del-dia" class="acceso-liturgia">
               📿 Santo Rosario de hoy
             </a>
-            <a href="/santo-del-dia" class="inline-flex items-center gap-1.5 text-xs font-bold text-maroon bg-[#FFFCF4] border border-gold/40 hover:bg-gold hover:text-white hover:border-gold rounded-full py-1.5 px-3.5 transition no-underline">
+            <a href="/santo-del-dia" class="acceso-liturgia">
               ✝ Santo del día
             </a>
           </div>
