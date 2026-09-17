@@ -10,57 +10,10 @@ const STATE_PATH = path.join(DATA_DIR, 'daily-content-state.json');
 // Cuántos artículos se publican cada día.
 const ARTICULOS_POR_DIA = Math.max(1, Number(process.env.DAILY_AUTO_CONTENT_COUNT) || 10);
 
-// Los ejes son de qué se escribe; los enfoques, desde dónde se mira. Diez ejes
-// sueltos no dan para diez artículos al día: al segundo día se vuelve a escribir
-// sobre lo mismo y salen textos gemelos. Cruzándolos con los enfoques hay cien
-// combinaciones por audiencia, y el registro de las ya usadas garantiza que no
-// se repita ninguna hasta agotarlas.
-const EJES_ADULTOS = [
-  'los sacramentos',
-  'los documentos del Magisterio',
-  'las encíclicas y la doctrina social de la Iglesia',
-  'la vida de los santos',
-  'los dogmas católicos',
-  'la apologética católica',
-  'la lectura e interpretación de la Biblia',
-  'la teología moral',
-  'la teología del cuerpo y la familia',
-  'la liturgia y la Santa Misa'
-];
-
-const EJES_CATEQUESIS = [
-  'los sacramentos',
-  'la oración de cada día',
-  'los diez mandamientos',
-  'las virtudes cristianas',
-  'la vida de los santos',
-  'la Virgen María',
-  'la Biblia y los Evangelios',
-  'la Eucaristía',
-  'la confesión',
-  'la vocación y la amistad con Jesús'
-];
-
-const ENFOQUES = [
-  'qué enseña la Iglesia y por qué',
-  'las preguntas que más hacen los fieles',
-  'cómo se vive esto en el día a día',
-  'las confusiones más comunes y su aclaración',
-  'qué dice la Sagrada Escritura',
-  'qué dice el Catecismo de la Iglesia Católica',
-  'su historia y su desarrollo',
-  'explicado con palabras sencillas',
-  'las objeciones más frecuentes y su respuesta',
-  'lo que enseñaron los santos sobre esto'
-];
-
-// Reparto del día. Catequesis IA estaba en cero: el reparto la alimenta a diario
-// en lugar de dejar todo el cupo al blog de adultos.
-const AUDIENCIAS = [
-  { audiencia: 'adultos',  ejes: EJES_ADULTOS,    contentType: 'blog de formación católica',                 categoria: null,                  peso: 4 },
-  { audiencia: 'niños',    ejes: EJES_CATEQUESIS, contentType: 'guía práctica de catequesis para niños',      categoria: 'catequesis-ninos',    peso: 3 },
-  { audiencia: 'jovenes',  ejes: EJES_CATEQUESIS, contentType: 'guía práctica de catequesis para jóvenes',    categoria: 'catequesis-jovenes',  peso: 3 }
-];
+// De qué se escribe ya no lo decidimos nosotros: lo dice Search Console. El
+// banco de consultas vive en seo-consultas.js, con la explicación de por qué
+// está cada una y por qué faltan las de intención diaria y las de marca.
+const { CONSULTAS, perfil } = require('./seo-consultas');
 
 function readState() {
   try {
@@ -95,68 +48,102 @@ function alreadyExists(title, posts) {
 }
 
 // ── El temario del día ──────────────────────────────────────────────────────
-// Se construyen todas las combinaciones eje×enfoque de una audiencia, se
-// descartan las que ya se usaron alguna vez y se toman las que hagan falta. Si
-// se agotan las trescientas, el registro se vacía y se vuelve a empezar: para
-// entonces han pasado meses y el catálogo ya es otro.
-function combosDisponibles(usados) {
-  const disponibles = [];
-  for (const bloque of AUDIENCIAS) {
-    for (const eje of bloque.ejes) {
-      for (const enfoque of ENFOQUES) {
-        const clave = `${bloque.audiencia}::${eje}::${enfoque}`;
-        if (usados.has(clave)) continue;
-        disponibles.push({ clave, eje, enfoque, ...bloque });
-      }
+// Se toman las consultas que todavía no se han escrito. El registro vive en el
+// disco persistente, así que no se repite ninguna mientras queden libres.
+function temarioDelDia(state) {
+  const usados = new Set(Array.isArray(state.consultasUsadas) ? state.consultasUsadas : []);
+  const libres = CONSULTAS.filter(c => !usados.has(c.consulta));
+
+  // Un mismo racimo -"sacramentos para niños", pongamos- no puede copar el día:
+  // saldrían cinco artículos vecinos compitiendo entre ellos en Google.
+  const porGrupo = new Map();
+  const plan = [];
+  for (const c of libres) {
+    const usadosDelGrupo = porGrupo.get(c.grupo) || 0;
+    if (usadosDelGrupo >= 2) continue;
+    porGrupo.set(c.grupo, usadosDelGrupo + 1);
+    plan.push(c);
+    if (plan.length >= ARTICULOS_POR_DIA) break;
+  }
+
+  // Si el tope por racimo dejó el día corto, se completa con lo que quede.
+  if (plan.length < ARTICULOS_POR_DIA) {
+    for (const c of libres) {
+      if (plan.length >= ARTICULOS_POR_DIA) break;
+      if (!plan.includes(c)) plan.push(c);
     }
   }
-  return disponibles;
+  return { plan, usados, libres: libres.length };
 }
 
-function temarioDelDia(state) {
-  let usados = new Set(Array.isArray(state.combosUsados) ? state.combosUsados : []);
-  let disponibles = combosDisponibles(usados);
-  if (disponibles.length < ARTICULOS_POR_DIA) {
-    console.log('[Daily Content] Se agotaron las combinaciones de temas; el registro vuelve a empezar.');
-    usados = new Set();
-    disponibles = combosDisponibles(usados);
+// ── SEO: lo que se publica cumple o no se publica ───────────────────────────
+// El modelo suele acertar, pero "suele" no basta cuando esto corre solo diez
+// veces al día sin nadie mirando. Los límites de Google para título y
+// descripción son duros: si el título pasa de 60 caracteres, Google lo corta y
+// la búsqueda deja de verse en el resultado.
+const LIMITE_SEO_TITULO = 60;
+const MIN_META = 110;
+const MAX_META = 158;
+
+function recortarEnPalabra(texto, maximo) {
+  const limpio = String(texto || '').trim().replace(/\s+/g, ' ');
+  if (limpio.length <= maximo) return limpio;
+  const corte = limpio.slice(0, maximo);
+  const ultimo = corte.lastIndexOf(' ');
+  return (ultimo > maximo * 0.6 ? corte.slice(0, ultimo) : corte).replace(/[\s,;:.\-]+$/, '');
+}
+
+function normalizarSeo(generado, consulta) {
+  const avisos = [];
+
+  let seoTitle = String(generado.seoTitle || generado.titulo || '').trim();
+  if (seoTitle.length > LIMITE_SEO_TITULO) {
+    seoTitle = recortarEnPalabra(seoTitle, LIMITE_SEO_TITULO);
+    avisos.push('seoTitle recortado');
   }
 
-  // Se toma por audiencia según su peso, para que ninguna sección se quede sin
-  // artículos cuando una tiene más combinaciones libres que otra.
-  const plan = [];
-  const pesoTotal = AUDIENCIAS.reduce((suma, a) => suma + a.peso, 0);
-  for (const bloque of AUDIENCIAS) {
-    const cupo = Math.round(ARTICULOS_POR_DIA * bloque.peso / pesoTotal);
-    const suyas = disponibles.filter(c => c.audiencia === bloque.audiencia);
-    plan.push(...suyas.slice(0, cupo));
+  let meta = String(generado.metaDescription || generado.extracto || '').trim().replace(/\s+/g, ' ');
+  if (meta.length > MAX_META) {
+    meta = recortarEnPalabra(meta, MAX_META);
+    avisos.push('metaDescription recortada');
   }
-  // Redondear por audiencia puede dejar el plan corto o largo; se ajusta con lo
-  // que quede libre.
-  for (const combo of disponibles) {
-    if (plan.length >= ARTICULOS_POR_DIA) break;
-    if (!plan.includes(combo)) plan.push(combo);
-  }
-  return { plan: plan.slice(0, ARTICULOS_POR_DIA), usados };
+  if (meta.length < MIN_META) avisos.push(`metaDescription corta (${meta.length})`);
+
+  // Las palabras de la búsqueda tienen que estar en el título; si no, el
+  // artículo no compite por lo que se escribió para competir.
+  const palabras = consulta.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/\s+/).filter(w => w.length > 3);
+  const titularPlano = seoTitle.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const cubiertas = palabras.filter(w => titularPlano.includes(w)).length;
+  if (palabras.length && cubiertas / palabras.length < 0.5) avisos.push('el título no recoge la búsqueda');
+
+  return { seoTitle, metaDescription: meta, avisos };
 }
 
 // ── Un artículo ─────────────────────────────────────────────────────────────
 // Primero se consulta Magisterium y solo después escribe OpenAI. Ese orden no es
 // un detalle: en este proyecto OpenAI nunca produce doctrina de su propia
 // memoria, únicamente redacta lo que Magisterium ya respondió con sus fuentes.
-async function createOne({ contentType, audience, eje, enfoque, categoryOverride }) {
+async function createOne(item) {
   const catalog = blog.loadBlog();
   const posts = catalog.posts || [];
-  const existingTitles = posts.slice(0, 200).map(p => p.titulo).filter(Boolean);
 
-  const consulta = `${eje}: ${enfoque}`;
+  // El slug sale de la búsqueda, no del título que invente el modelo: es la URL
+  // la que tiene que coincidir con lo que la gente escribe en Google.
+  const slug = blog.slugify(item.consulta);
+  if (posts.some(p => p.slug === slug)) {
+    return { skipped: true, reason: 'ya existe', consulta: item.consulta, slug };
+  }
+
+  const datos = perfil(item.audiencia);
+  const existingTitles = posts.slice(0, 120).map(p => p.titulo).filter(Boolean);
+
   const control = new AbortController();
   const corte = setTimeout(() => control.abort(), Number(process.env.DAILY_CONTENT_RESEARCH_TIMEOUT_MS) || 60000);
   let investigacion;
   try {
-    investigacion = await catholicAgent.research(consulta, 'auto', control.signal);
+    investigacion = await catholicAgent.research(item.consulta, 'auto', control.signal);
   } catch (err) {
-    return { skipped: true, reason: 'magisterium_sin_respuesta', detail: err.message, topic: consulta };
+    return { skipped: true, reason: 'magisterium_sin_respuesta', detail: err.message, consulta: item.consulta };
   } finally {
     clearTimeout(corte);
   }
@@ -166,40 +153,42 @@ async function createOne({ contentType, audience, eje, enfoque, categoryOverride
     .slice(0, 8);
 
   const generated = await openaiChat.generateContentJson({
-    contentType,
-    audience,
-    topic: consulta,
+    contentType: datos.contentType,
+    audience: item.audiencia,
+    consulta: item.consulta,
     existingTitles,
-    fuenteDoctrinal: {
-      texto: investigacion.answer,
-      fuentes
-    }
+    fuenteDoctrinal: { texto: investigacion.answer, fuentes }
   });
 
-  if (alreadyExists(generated.titulo, posts)) {
-    return { skipped: true, reason: 'duplicate', title: generated.titulo, topic: consulta };
-  }
+  const seo = normalizarSeo(generated, item.consulta);
 
   const post = {
-    slug: blog.slugify(generated.titulo),
-    titulo: generated.titulo,
-    seoTitle: generated.seoTitle || generated.titulo,
-    descripcion: generated.metaDescription || generated.extracto || '',
-    extracto: generated.extracto || generated.metaDescription || '',
-    keywords: generated.keywords || 'CatolicosGPT, ia catolica, catequesis catolica',
-    categoria: categoryOverride || normalizeCategory(generated.categoria, audience),
+    slug,
+    titulo: String(generated.titulo || item.consulta).trim(),
+    seoTitle: seo.seoTitle,
+    descripcion: seo.metaDescription,
+    extracto: String(generated.extracto || seo.metaDescription).trim(),
+    keywords: generated.keywords || item.consulta,
+    categoria: datos.categoria || blog.slugify(generated.categoria || 'doctrina'),
     contenidoMd: generated.contenidoMd,
     faqs: generated.faqs || [],
     fuentes: fuentes.map(f => ({ titulo: f.title, referencia: f.reference || '', url: f.url || '' })),
     fechaCreacion: new Date().toISOString(),
     publicado: true,
     generadoAutomaticamente: true,
-    temaGenerado: consulta,
+    consultaObjetivo: item.consulta,
     fuenteGeneracion: 'magisterium+openai'
   };
 
   blog.upsertPost(post);
-  return { created: true, slug: post.slug, title: post.titulo, category: post.categoria, topic: consulta };
+  return {
+    created: true,
+    slug: post.slug,
+    title: post.titulo,
+    category: post.categoria,
+    consulta: item.consulta,
+    avisosSeo: seo.avisos
+  };
 }
 
 async function runDailyContentJob({ force = false } = {}) {
@@ -242,32 +231,29 @@ async function runDailyContentJob({ force = false } = {}) {
   const results = [];
   let creados = 0;
 
-  for (const combo of plan) {
+  for (const item of plan) {
     if (creados >= faltan) break;
     let resultado;
     try {
-      resultado = await createOne({
-        contentType: combo.contentType,
-        audience: combo.audiencia,
-        eje: combo.eje,
-        enfoque: combo.enfoque,
-        categoryOverride: combo.categoria
-      });
+      resultado = await createOne(item);
     } catch (err) {
-      resultado = { skipped: true, reason: 'error', detail: err.message, topic: `${combo.eje}: ${combo.enfoque}` };
+      resultado = { skipped: true, reason: 'error', detail: err.message, consulta: item.consulta };
     }
     results.push(resultado);
-    // La combinación se marca como usada tanto si salió artículo como si el
-    // título ya existía: en ambos casos ese ángulo ya está cubierto y volver a
-    // intentarlo mañana daría el mismo choque.
-    if (resultado.created || resultado.reason === 'duplicate') usados.add(combo.clave);
+    // La consulta se marca como usada si salió artículo o si ya existía uno con
+    // esa URL. Un fallo pasajero -la red, un tiempo de espera- no la quema: se
+    // vuelve a intentar mañana.
+    if (resultado.created || resultado.reason === 'ya existe') usados.add(item.consulta);
     if (resultado.created) creados++;
+    if (resultado.created && resultado.avisosSeo && resultado.avisosSeo.length) {
+      console.log(`[Daily Content] SEO ajustado en "${resultado.slug}": ${resultado.avisosSeo.join('; ')}.`);
+    }
   }
 
   state.lastRun = key;
   state.lastRunAt = new Date().toISOString();
   state.creadosUltimaVez = existingToday.length + creados;
-  state.combosUsados = Array.from(usados);
+  state.consultasUsadas = Array.from(usados);
   state.lastResults = results;
   writeState(state);
 
@@ -292,8 +278,9 @@ function scheduleDailyContentJob() {
 module.exports = {
   runDailyContentJob,
   scheduleDailyContentJob,
-  // Expuestos para las pruebas: el temario es la pieza que garantiza que no se
-  // repitan artículos, y eso hay que poder comprobarlo.
+  // Expuestos para las pruebas: el temario garantiza que no se repita ninguna
+  // búsqueda, y normalizarSeo que lo publicado cumpla los límites de Google.
   temarioDelDia,
+  normalizarSeo,
   ARTICULOS_POR_DIA
 };

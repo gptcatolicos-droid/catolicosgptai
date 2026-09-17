@@ -467,37 +467,79 @@ test('el disco persistente se siembra en el primer arranque y no se pisa despues
 });
 
 // ── Temario diario: el sistema publica todos los días sin repetir tema ──
-test('el temario del día no repite combinaciones entre días', () => {
+test('el temario diario no repite ninguna busqueda', () => {
   const daily = require('../daily-content-module');
+  const { CONSULTAS } = require('../seo-consultas');
   const estado = {};
-  const vistos = new Set();
-  // Un mes entero de ejecuciones seguidas.
-  for (let dia = 0; dia < 30; dia++) {
+  const vistas = new Set();
+  const dias = Math.floor(CONSULTAS.length / daily.ARTICULOS_POR_DIA);
+  for (let dia = 0; dia < dias; dia++) {
     const { plan, usados } = daily.temarioDelDia(estado);
-    assert.equal(plan.length, daily.ARTICULOS_POR_DIA, `el día ${dia} no llenó el cupo`);
-    for (const combo of plan) {
-      assert.ok(!vistos.has(combo.clave), `tema repetido el día ${dia}: ${combo.clave}`);
-      vistos.add(combo.clave);
-      usados.add(combo.clave);
+    assert.equal(plan.length, daily.ARTICULOS_POR_DIA, `el dia ${dia} no llenó el cupo`);
+    for (const item of plan) {
+      assert.ok(!vistas.has(item.consulta), `búsqueda repetida el día ${dia}: ${item.consulta}`);
+      vistas.add(item.consulta);
+      usados.add(item.consulta);
     }
-    estado.combosUsados = Array.from(usados);
+    estado.consultasUsadas = Array.from(usados);
   }
-  assert.equal(vistos.size, 30 * daily.ARTICULOS_POR_DIA);
+  assert.equal(vistas.size, dias * daily.ARTICULOS_POR_DIA);
 });
 
-test('el temario reparte entre adultos, ninos y jovenes', () => {
+test('un mismo racimo de busquedas no copa el dia', () => {
   const daily = require('../daily-content-module');
   const { plan } = daily.temarioDelDia({});
-  const audiencias = new Set(plan.map(c => c.audiencia));
-  assert.ok(audiencias.has('adultos'), 'faltan articulos de adultos');
-  assert.ok(audiencias.has('niños'), 'faltan articulos de ninos');
-  assert.ok(audiencias.has('jovenes'), 'faltan articulos de jovenes');
+  const porGrupo = {};
+  for (const item of plan) porGrupo[item.grupo] = (porGrupo[item.grupo] || 0) + 1;
+  for (const [grupo, cuantos] of Object.entries(porGrupo)) {
+    assert.ok(cuantos <= 2, `el racimo ${grupo} copa ${cuantos} artículos del día`);
+  }
+});
+
+test('el banco de consultas no trae intencion diaria ni consultas de marca', () => {
+  const { CONSULTAS } = require('../seo-consultas');
+  // "rosario de hoy" o "evangelio de hoy" los sirven las páginas pilar; un
+  // artículo de blog competiría contra nuestra propia página.
+  for (const c of CONSULTAS) {
+    assert.ok(!/\bde hoy\b/i.test(c.consulta), `intención diaria en el banco: ${c.consulta}`);
+    assert.ok(!/cat[oó]licos ?gpt|\bia cat[oó]lica\b/i.test(c.consulta), `consulta de marca: ${c.consulta}`);
+  }
+  const unicas = new Set(CONSULTAS.map(c => c.consulta));
+  assert.equal(unicas.size, CONSULTAS.length, 'hay búsquedas duplicadas en el banco');
+});
+
+test('lo que se publica respeta los limites de titulo y descripcion de Google', () => {
+  const daily = require('../daily-content-module');
+
+  // Un título largo se corta por palabra, no a mitad de una.
+  const largo = daily.normalizarSeo({
+    seoTitle: 'Qué es la Eucaristía para niños: una explicación completa, sencilla y con ejemplos para catequesis',
+    metaDescription: 'x'.repeat(200)
+  }, 'qué es la eucaristía para niños');
+  assert.ok(largo.seoTitle.length <= 60, 'el seoTitle pasa de 60 caracteres');
+  assert.ok(!largo.seoTitle.endsWith(' '), 'el recorte deja un espacio suelto');
+  assert.ok(largo.metaDescription.length <= 158);
+  assert.ok(largo.avisos.includes('seoTitle recortado'));
+
+  // Un título que no recoge la búsqueda se señala.
+  const fuera = daily.normalizarSeo({
+    seoTitle: 'Reflexiones sobre el misterio de la fe',
+    metaDescription: 'a'.repeat(130)
+  }, 'qué es la eucaristía para niños');
+  assert.ok(fuera.avisos.some(a => /no recoge la búsqueda/.test(a)));
+
+  // Y uno correcto pasa sin avisos.
+  const bien = daily.normalizarSeo({
+    seoTitle: 'Qué es la Eucaristía para niños',
+    metaDescription: 'Explicamos qué es la Eucaristía para niños con palabras sencillas, ejemplos de catequesis y lo que enseña la Iglesia sobre este sacramento.'
+  }, 'qué es la eucaristía para niños');
+  assert.deepEqual(bien.avisos, []);
 });
 
 test('sin material de Magisterium no se genera ningun articulo', async () => {
   const openaiChat = require('../openai-chat-module');
   await assert.rejects(
-    () => openaiChat.generateContentJson({ contentType: 'blog', audience: 'adultos', topic: 'los sacramentos' }),
+    () => openaiChat.generateContentJson({ contentType: 'blog', audience: 'adultos', consulta: 'qué es la eucaristía' }),
     /no se inventa/
   );
 });
