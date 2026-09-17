@@ -83,6 +83,25 @@ function getDailyContentModule() {
 app.use(cors());
 app.use(express.json({ limit: '80mb' }));
 app.use(express.urlencoded({ extended: true, limit: '80mb' }));
+
+// Las páginas salían sin ninguna cabecera de caché, solo con su ETag. Sin
+// Cache-Control el navegador aplica caché heurística y puede servir una copia
+// vieja SIN preguntar al servidor: por eso un despliegue podía no llegarle a
+// quien ya había visitado el sitio, y se veía la página de ayer.
+//
+// 'no-cache' no impide guardar; obliga a revalidar. Con el ETag que ya se
+// manda, la revalidación responde 304 y no se reenvía el cuerpo, así que
+// cuesta lo mismo y garantiza que un cambio se vea al instante.
+//
+// Va antes que las rutas a propósito: lo que ponga cada ruta después (los
+// estáticos con su hora de caché, las APIs con no-store, los PDF con su
+// max-age) sobrescribe esto.
+app.use((req, res, next) => {
+  if (req.method === 'GET' || req.method === 'HEAD') {
+    res.setHeader('Cache-Control', 'no-cache');
+  }
+  next();
+});
 require('./agent-routes').register(app, { getUser: getAuthedUser, isSuperAdmin: isStrictAdminUser });
 require('./children-guides').register(app, renderPage);
 require('./agent-about').register(app, renderPage);
