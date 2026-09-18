@@ -74,6 +74,14 @@ try {
   console.warn('[Production] Historia de la Iglesia XI-XX publication skipped:', err.message);
 }
 
+// Publish San José de Cupertino additively from the verified Google Drive carousel.
+// Existing catalog records are preserved, and the item is also synchronized to Firestore.
+try {
+  require('./publish-san-jose-de-cupertino').publishSanJoseDeCupertino();
+} catch (err) {
+  console.warn('[Production] San José de Cupertino publication skipped:', err.message);
+}
+
 // Seed the 20 verified children's Bible coloring resources into the local
 // infographic catalog. The seed is additive/idempotent and keeps existing items.
 try {
