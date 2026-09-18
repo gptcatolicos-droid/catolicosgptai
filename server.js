@@ -105,6 +105,10 @@ app.use((req, res, next) => {
 // Va ANTES de las rutas de chat a propósito: su middleware anota la consulta y
 // deja pasar, así funciona para la ruta del agente y para la antigua sin tocar
 // ninguna de las dos.
+const seoConsolidacion = require('./seo-consolidacion');
+// Las redirecciones van por delante de todo: una URL retirada o duplicada tiene
+// que responder 301 antes de que ninguna ruta intente servirla.
+seoConsolidacion.register(app);
 require('./consultas-chat').register(app, { getAuthedUser, isStrictAdminUser });
 require('./agent-routes').register(app, { getUser: getAuthedUser, isSuperAdmin: isStrictAdminUser });
 require('./children-guides').register(app, renderPage);
@@ -513,9 +517,13 @@ function renderPage(title, contentHtml, req, metaTags = {}) {
   const M = { ...defaultMetaTags, ...metaTags };
   const APP_URL = getPublicSiteUrl();
   const brandTitle = 'CatólicosGPT | Inteligencia artificial católica';
+  // sinMarca: en un artículo, los 15 caracteres de " | CatólicosGPT" se comen
+  // el espacio que necesita la búsqueda. Google corta sobre los 60 y el 83% de
+  // las impresiones son de móvil, donde cabe todavía menos. En la portada y las
+  // secciones la marca ayuda; en un artículo compite contra la palabra clave.
   const fullTitle = !title || /cat[oó]licosgpt\s*\|\s*la ia cat[oó]lica/i.test(title)
     ? brandTitle
-    : (/cat[oó]licosgpt/i.test(title) ? title : `${title} | CatólicosGPT`);
+    : (M.sinMarca || /cat[oó]licosgpt/i.test(title) ? title : `${title} | CatólicosGPT`);
   const defaultSchemas = [
     {
       "@context": "https://schema.org",
@@ -6068,12 +6076,13 @@ app.get('/blog/:slug', (req, res) => {
     return res.send(html);
   }
 
-  res.send(renderPage(post.seoTitle || post.titulo, html, req, {
+  res.send(renderPage(seoConsolidacion.acortarTitulo(post.seoTitle || post.titulo), html, req, {
     description: post.descripcion || post.extracto || "Formación de fe católico.",
     keywords: post.keywords || "catequesis, blog catolico",
     // Un artículo no es la portada del sitio: og:type lo dice y de eso depende
     // cómo lo presentan las redes al compartirlo.
-    ogType: 'article'
+    ogType: 'article',
+    sinMarca: true
   }));
 });
 
@@ -6239,10 +6248,11 @@ app.get('/blog/:categoria/:slug', (req, res) => {
     });
   }
 
-  res.send(renderPage(post.seoTitle || post.titulo, html, req, {
+  res.send(renderPage(seoConsolidacion.acortarTitulo(post.seoTitle || post.titulo), html, req, {
     description: post.descripcion || post.extracto || "Formación de fe católico.",
     keywords: post.keywords || "catequesis, blog catolico",
     ogType: 'article',
+    sinMarca: true,
     schemas: schemas
   }));
 });

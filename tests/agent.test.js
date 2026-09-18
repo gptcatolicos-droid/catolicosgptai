@@ -1037,3 +1037,67 @@ test('avisa al cruzar el 70% y el 90% del mes, y solo una vez cada uno', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// ── Consolidación SEO ──
+test('el titulo se acorta sin perder la busqueda por la que compite', () => {
+  const { acortarTitulo } = require('../seo-consolidacion');
+
+  // Lo que ya cabe no se toca.
+  assert.equal(acortarTitulo('La Eucaristía para Niños: Guía Práctica'), 'La Eucaristía para Niños: Guía Práctica');
+
+  // Lo largo se corta por palabra, nunca a mitad.
+  const largo = acortarTitulo('¿Qué es la Biblia? Guía Práctica para Niños sobre la Palabra de Dios');
+  assert.ok(largo.length <= 60, `se pasa de 60: ${largo.length}`);
+  assert.ok(!/\s$/.test(largo));
+  assert.match(largo, /para Niños/i, 'perdió la audiencia, que es la búsqueda');
+
+  // Aunque la audiencia esté al final del título original, sobrevive.
+  const conAudienciaAlFinal = acortarTitulo('Mi Primer Encuentro con Jesús: Guía de Catequesis sobre el Bautismo para Niños');
+  assert.ok(conAudienciaAlFinal.length <= 60);
+  assert.match(conAudienciaAlFinal, /para Niños/i);
+
+  // Y no termina en una palabra que deja la frase colgando.
+  for (const t of [
+    'Los Sacramentos Explicados para Niños: Una Aventura con Jesús y su Iglesia',
+    '¿Qué es el Magisterio de la Iglesia y por qué es fundamental para los católicos?',
+    'Dogmas Católicos: Qué Son, Cuántos Hay y Por Qué Son Importantes'
+  ]) {
+    const r = acortarTitulo(t);
+    assert.ok(r.length <= 60, `${r} (${r.length})`);
+    assert.ok(!/\s+(y|o|de|del|la|el|los|las|en|con|por|para|sobre|que)$/i.test(r), `queda colgando: "${r}"`);
+  }
+});
+
+test('ninguna redireccion encadena con otra ni apunta a si misma', () => {
+  const { redirecciones } = require('../seo-consolidacion');
+  const mapa = redirecciones();
+  assert.ok(Object.keys(mapa).length > 100, 'el mapa de redirecciones no se cargó');
+  for (const [origen, destino] of Object.entries(mapa)) {
+    assert.notEqual(origen, destino, `se redirige a sí misma: ${origen}`);
+    assert.ok(!mapa[destino], `cadena: ${origen} -> ${destino} -> ${mapa[destino]}`);
+  }
+});
+
+test('las cadenas se aplanan aunque el fichero las traiga', () => {
+  // Se comprueba sobre el comportamiento, no sobre el fichero: si mañana
+  // alguien edita el JSON a mano y encadena dos, el código lo resuelve igual.
+  const fs = require('fs'), os = require('os'), pathMod = require('path');
+  const dir = fs.mkdtempSync(pathMod.join(os.tmpdir(), 'cgpt-redir-'));
+  const previo = process.env.DATA_DIR;
+  process.env.DATA_DIR = dir;
+  fs.writeFileSync(pathMod.join(dir, 'seo-redirecciones.json'), JSON.stringify({
+    '/a': '/b', '/b': '/c', '/c': '/destino-final', '/solo': '/destino-final'
+  }));
+  delete require.cache[require.resolve('../seo-consolidacion')];
+  try {
+    const { redirecciones } = require('../seo-consolidacion');
+    const m = redirecciones();
+    assert.equal(m['/a'], '/destino-final', 'la cadena de tres saltos no se aplanó');
+    assert.equal(m['/b'], '/destino-final');
+    assert.equal(m['/solo'], '/destino-final');
+  } finally {
+    previo === undefined ? delete process.env.DATA_DIR : process.env.DATA_DIR = previo;
+    delete require.cache[require.resolve('../seo-consolidacion')];
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
