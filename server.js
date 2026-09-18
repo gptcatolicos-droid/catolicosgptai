@@ -8442,9 +8442,17 @@ app.get('/sitemap.xml', async (req, res) => {
   const podcastsCatalog = podcast.loadPodcasts();
   const pdfCatalog = await recursosPdf.refreshFromCloud();
 
+  // Un sitemap que anuncia URLs que redirigen le hace perder el tiempo a Google
+  // y manda una señal contradictoria: "rastrea esto" y acto seguido "esto se
+  // mudó". Los artículos consolidados salen de la lista; su destino ya está.
+  const redirigidas = seoConsolidacion.redirecciones();
+  const postsCanonicos = (blogCatalog.posts || []).filter(
+    p => !redirigidas[`/blog/${p.categoria || 'doctrina'}/${p.slug}`] && !redirigidas[`/blog/${p.slug}`]
+  );
+
   const xml = seo.generateSitemapXML({
     infografias: infCatalog.infografias || [],
-    posts: blogCatalog.posts || [],
+    posts: postsCanonicos,
     sementeras,
     santos: saintsList,
     videos: videosCatalog.videos || [],
