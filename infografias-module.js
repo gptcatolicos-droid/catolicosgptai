@@ -13,6 +13,39 @@ if (!fs.existsSync(DATA_DIR)) {
 }
 const CATALOG_PATH = path.join(DATA_DIR, 'infografias-catalog.json');
 const CATALOG_BACKUP = path.join(__dirname, 'data', 'infografias-catalog.json');
+const CHILDREN_BUNDLE_PATH = path.join(__dirname, 'data', 'ninos-colorear-2026-09-18.json');
+
+function mergeBundledChildrenResources(data) {
+  if (!data || !Array.isArray(data.infografias)) return data;
+  let bundle = null;
+  try {
+    bundle = JSON.parse(fs.readFileSync(CHILDREN_BUNDLE_PATH, 'utf-8'));
+  } catch (e) {
+    return data;
+  }
+  const resources = Array.isArray(bundle?.resources) ? bundle.resources : [];
+  if (!resources.length) return data;
+
+  const existingSlugs = new Set(data.infografias.map(item => String(item?.slug || '')).filter(Boolean));
+  const existingIds = new Set(data.infografias.map(item => String(item?.id || '')).filter(Boolean));
+  const missing = resources.filter(item =>
+    item && item.slug &&
+    !existingSlugs.has(String(item.slug)) &&
+    !existingIds.has(String(item.id || ''))
+  );
+  if (!missing.length) return data;
+
+  data.infografias = [...missing, ...data.infografias];
+  data.total = data.infografias.length;
+  data.categorias = [...new Set(data.infografias.map(i => i.categoria || i.tipo).filter(Boolean))];
+  try {
+    fs.writeFileSync(CATALOG_PATH, JSON.stringify(data, null, 2), 'utf-8');
+    console.log(`[Catalog] Añadidos ${missing.length} recursos infantiles 9:16 desde el bundle.`);
+  } catch (e) {
+    console.error('[Catalog] No se pudo persistir el bundle infantil:', e.message);
+  }
+  return data;
+}
 
 const eliminadas = require('./infografias-eliminadas');
 
@@ -34,6 +67,7 @@ function loadCatalog({ incluirEliminadas = false } = {}) {
     } catch(e) {}
   }
   if (!data) return { version:'5.0', total:0, categorias:[], infografias:[] };
+  data = mergeBundledChildrenResources(data);
   if (incluirEliminadas) return data;
   const visibles = eliminadas.filter(data.infografias);
   if (visibles.length === data.infografias.length) return data;
