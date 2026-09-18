@@ -7877,6 +7877,91 @@ function applySubscriptionState(userId, subscriptionId, payPalStatus) {
   return auth.updateUser(userId, { paypalSubscriptionId: subscriptionId, paypalStatus: payPalStatus });
 }
 
+// ── Suscripciones: ver quién paga y rescatar un webhook perdido ────────────
+// Un pago que entra en PayPal pero no sube el plan es el peor fallo posible de
+// este sitio: el dinero se cobra, la persona no recibe lo que compró y nadie se
+// entera hasta que reclama. El webhook puede perderse por mil motivos -un
+// despliegue justo en ese segundo, un reintento agotado, la firma mal
+// configurada-, así que hace falta poder comprobarlo y arreglarlo a mano.
+app.get('/admin/suscripciones', requireStrictAdminPage, (req, res) => {
+  const todos = auth.loadUsers().users || [];
+  const conSuscripcion = todos.filter(u => u.paypalSubscriptionId || u.plan === 'premium');
+
+  const filas = conSuscripcion.map(u => `
+    <tr>
+      <td class="border border-[#E6DFD4] p-2 text-sm">${escapeHtml(u.email || '')}</td>
+      <td class="border border-[#E6DFD4] p-2 text-sm font-bold ${u.plan === 'premium' ? 'text-emerald-700' : 'text-ink2'}">${escapeHtml(u.plan || 'free')}</td>
+      <td class="border border-[#E6DFD4] p-2 text-[11px] font-mono text-ink2">${escapeHtml(u.paypalSubscriptionId || '—')}</td>
+      <td class="border border-[#E6DFD4] p-2 text-[11px] text-ink2">${escapeHtml(u.paypalStatus || '—')}</td>
+      <td class="border border-[#E6DFD4] p-2 text-[11px] text-ink2">${escapeHtml(String(u.premiumDesde || '').slice(0, 10) || '—')}</td>
+    </tr>`).join('');
+
+  const aviso = req.query.ok ? `<div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm text-emerald-900">${escapeHtml(String(req.query.ok).slice(0, 300))}</div>`
+    : req.query.error ? `<div class="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-900">${escapeHtml(String(req.query.error).slice(0, 300))}</div>` : '';
+
+  res.send(renderPage('Suscripciones', `
+    <div class="max-w-4xl mx-auto px-4 py-8 flex flex-col gap-6">
+      <header class="flex flex-col gap-2">
+        <a href="/admin" class="text-xs text-maroon underline">← Volver al panel</a>
+        <h1 class="font-display font-bold text-espresso text-2xl m-0">Suscripciones</h1>
+        <p class="text-ink2 text-sm m-0">${conSuscripcion.length} cuenta(s) con Premium o con suscripción registrada.</p>
+      </header>
+      ${aviso}
+      ${conSuscripcion.length ? `
+      <table class="w-full border-collapse">
+        <thead><tr class="bg-cream">
+          <th class="border border-[#E6DFD4] p-2 text-left text-[11px] uppercase tracking-wider">Correo</th>
+          <th class="border border-[#E6DFD4] p-2 text-left text-[11px] uppercase tracking-wider">Plan</th>
+          <th class="border border-[#E6DFD4] p-2 text-left text-[11px] uppercase tracking-wider">Suscripción</th>
+          <th class="border border-[#E6DFD4] p-2 text-left text-[11px] uppercase tracking-wider">Estado</th>
+          <th class="border border-[#E6DFD4] p-2 text-left text-[11px] uppercase tracking-wider">Desde</th>
+        </tr></thead>
+        <tbody>${filas}</tbody>
+      </table>` : '<p class="text-ink2 text-sm italic">Todavía no hay ninguna cuenta con Premium.</p>'}
+
+      <section class="bg-white border border-[#E6DFD4] rounded-2xl p-5 flex flex-col gap-3">
+        <h2 class="font-display font-bold text-maroon text-lg m-0">Rescatar una suscripción</h2>
+        <p class="text-ink2 text-sm leading-relaxed m-0">
+          Si alguien pagó y su cuenta no quedó en Premium, pega aquí el identificador de la suscripción
+          -el que empieza por <strong>I-</strong>, sale en PayPal junto al cobro- y se comprueba contra
+          PayPal para aplicar el plan que corresponda. No se cobra nada ni se cambia nada en PayPal:
+          solo se lee y se pone al día la cuenta.
+        </p>
+        <form method="POST" action="/admin/suscripciones/reconciliar" class="flex flex-wrap gap-2 items-center">
+          <input type="text" name="subscriptionId" required placeholder="I-XXXXXXXXXXXX" class="flex-1 min-w-[220px] border border-[#D1C7BD] rounded-lg px-3 py-2 text-sm bg-white outline-none focus:ring-1 focus:ring-gold">
+          <button type="submit" class="bg-maroon hover:bg-gold text-white text-xs font-bold py-2.5 px-5 rounded-xl transition border-0 cursor-pointer">Comprobar y aplicar</button>
+        </form>
+      </section>
+    </div>
+  `, req));
+});
+
+app.post('/admin/suscripciones/reconciliar', requireStrictAdminPage, async (req, res) => {
+  const id = String((req.body && req.body.subscriptionId) || '').trim();
+  const volver = mensaje => res.redirect('/admin/suscripciones?' + mensaje);
+  if (!id) return volver('error=' + encodeURIComponent('Falta el identificador de la suscripción.'));
+
+  try {
+    // Se pregunta a PayPal: lo que diga la API es la verdad, no lo que se pegue
+    // en el formulario.
+    const sub = await paypal.getSubscription(id);
+    if (!sub.userId) {
+      return volver('error=' + encodeURIComponent(`La suscripción ${sub.id} está ${sub.status} pero no trae custom_id, así que no se sabe a qué cuenta pertenece. Suele pasar si se creó fuera del botón del sitio.`));
+    }
+    const usuario = auth.getUserById(sub.userId);
+    if (!usuario) {
+      return volver('error=' + encodeURIComponent(`La suscripción apunta al usuario ${sub.userId}, que no existe en este sitio.`));
+    }
+    const antes = usuario.plan;
+    applySubscriptionState(sub.userId, sub.id, sub.status);
+    const despues = (auth.getUserById(sub.userId) || {}).plan;
+    console.log(`[PayPal] Suscripción ${sub.id} reconciliada a mano: ${usuario.email} ${antes} -> ${despues} (PayPal dice ${sub.status}).`);
+    return volver('ok=' + encodeURIComponent(`${usuario.email}: PayPal dice ${sub.status}. Plan ${antes} → ${despues}.`));
+  } catch (e) {
+    return volver('error=' + encodeURIComponent(`No se pudo consultar la suscripción: ${e.message}`));
+  }
+});
+
 app.get('/suscripcion/exito', async (req, res) => {
   const user = getAuthedUser(req);
   const subscriptionId = String(req.query.subscription_id || '').trim();
@@ -8714,6 +8799,7 @@ app.get('/admin', async (req, res) => {
            un toque, con el teclado y el gesto que el teléfono ya conoce. -->
       <div class="flex flex-wrap gap-2 mb-3">
         <a href="/admin/consultas" class="acceso-liturgia">💬 Qué pregunta la gente al chat</a>
+        <a href="/admin/suscripciones" class="acceso-liturgia">💳 Suscripciones</a>
       </div>
       <div class="admin-tab-select md:hidden flex flex-col gap-1 mb-1">
         <label for="admin-tab-select" class="text-[11px] font-bold text-ink-2 uppercase tracking-wide">Sección del panel</label>
