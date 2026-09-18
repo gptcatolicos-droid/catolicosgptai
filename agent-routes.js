@@ -81,7 +81,16 @@ function register(app,options={}){
   // Escalera de acceso: quien no se registra prueba el chat, quien se registra
   // tiene más margen y quien paga no tiene tope diario.
   const limit=account?envInt('AGENT_FREE_DAILY_REQUESTS',4):envInt('AGENT_ANON_DAILY_REQUESTS',2);
-  try{spending.admit(quotaKey,{unlimited,limit});}catch(e){return res.status(429).json({error:e.message==='daily_quota'?(account?'Alcanzaste tu límite diario del plan gratuito. Con Premium el chat no tiene límite diario.':'Alcanzaste el límite de consultas para visitantes. Crea una cuenta gratis para tener más, o suscríbete a Premium para no tener límite diario.'):'La investigación ha alcanzado su límite temporal de uso. Puedes seguir consultando los recursos publicados.'});}
+  try{spending.admit(quotaKey,{unlimited,limit});}catch(e){
+  // A quien paga no se le puede decir lo mismo que a un visitante que agotó su
+  // cupo: su plan no tiene tope diario, y si el chat no responde es un problema
+  // nuestro. Decirle "alcanzaste tu límite" sería mentirle sobre lo que compró.
+  const mensaje = e.message==='daily_quota'
+   ? (account?'Alcanzaste tu límite diario del plan gratuito. Con Premium el chat no tiene límite diario.':'Alcanzaste el límite de consultas para visitantes. Crea una cuenta gratis para tener más, o suscríbete a Premium para no tener límite diario.')
+   : unlimited
+   ? 'El servicio alcanzó su tope de uso de hoy. No es tu plan: tu suscripción sigue activa y sin límite de consultas. Vuelve a intentarlo en un rato; ya estamos avisados.'
+   : 'La investigación ha alcanzado su límite temporal de uso. Puedes seguir consultando los recursos publicados.';
+  return res.status(429).json({error:mensaje});}
   active++;const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),100000);const disconnect=()=>{if(!res.writableEnded)controller.abort();};res.on('close',disconnect);
   // El streaming SSE retransmite el texto del modelo apenas se genera (no espera
   // a que termine el turno completo) para que la primera palabra llegue en

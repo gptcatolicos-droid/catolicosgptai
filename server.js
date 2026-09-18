@@ -7919,6 +7919,30 @@ app.get('/admin/suscripciones', requireStrictAdminPage, (req, res) => {
         <tbody>${filas}</tbody>
       </table>` : '<p class="text-ink2 text-sm italic">Todavía no hay ninguna cuenta con Premium.</p>'}
 
+      ${(() => {
+        // El aviso del registro solo lo ve quien mira los logs. Aquí se ve el
+        // gasto del mes de un vistazo, que es donde se entra a ver quién paga.
+        let g;
+        try { g = require('./agent-budget').createBudget().resumenGasto(); } catch (_) { return ''; }
+        const pct = g.topeMes > 0 ? Math.min(100, Math.round(g.gastadoMes / g.topeMes * 100)) : 0;
+        const color = pct >= 90 ? '#B91C1C' : pct >= 70 ? '#B45309' : '#2F5D34';
+        return `
+        <section class="bg-white border border-[#E6DFD4] rounded-2xl p-5 flex flex-col gap-3">
+          <h2 class="font-display font-bold text-maroon text-lg m-0">Gasto del mes</h2>
+          <p class="text-ink2 text-sm m-0">
+            <strong style="color:${color}">${g.gastadoMes.toFixed(2)} USD</strong> de ${g.topeMes.toFixed(2)} este mes (${pct}%) ·
+            ${g.gastadoDia.toFixed(2)} de ${g.topeDia.toFixed(2)} hoy · ${g.consultasDia} consultas hoy
+          </p>
+          <div style="background:#E6DFD4;border-radius:9999px;height:10px;overflow:hidden">
+            <div style="background:${color};width:${pct}%;height:100%"></div>
+          </div>
+          <p class="text-[11px] text-ink2 leading-relaxed m-0">
+            Al llegar al tope el chat deja de responder <strong>también a quien paga</strong>.
+            Se avisa en el registro al pasar del 70% y del 90%. Se sube en OPENAI_AGENT_MONTHLY_BUDGET_USD.
+          </p>
+        </section>`;
+      })()}
+
       <section class="bg-white border border-[#E6DFD4] rounded-2xl p-5 flex flex-col gap-3">
         <h2 class="font-display font-bold text-maroon text-lg m-0">Rescatar una suscripción</h2>
         <p class="text-ink2 text-sm leading-relaxed m-0">

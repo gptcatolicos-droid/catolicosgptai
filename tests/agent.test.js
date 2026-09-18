@@ -989,3 +989,51 @@ test('los saludos y los dedazos no ensucian el informe', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// ── Aviso de presupuesto ──
+test('avisa al cruzar el 70% y el 90% del mes, y solo una vez cada uno', () => {
+  const fs = require('fs'), os = require('os'), pathMod = require('path');
+  const { createBudget } = require('../agent-budget');
+  const dir = fs.mkdtempSync(pathMod.join(os.tmpdir(), 'cgpt-presupuesto-'));
+  const previo = {
+    mes: process.env.OPENAI_AGENT_MONTHLY_BUDGET_USD,
+    dia: process.env.OPENAI_AGENT_DAILY_BUDGET_USD,
+    entrada: process.env.OPENAI_AGENT_INPUT_USD_PER_MILLION,
+    salida: process.env.OPENAI_AGENT_OUTPUT_USD_PER_MILLION
+  };
+  process.env.OPENAI_AGENT_MONTHLY_BUDGET_USD = '1';
+  process.env.OPENAI_AGENT_DAILY_BUDGET_USD = '1';
+
+  const avisos = [];
+  const warnOriginal = console.warn;
+  console.warn = (...a) => { avisos.push(a.join(' ')); };
+  try {
+    const budget = createBudget(dir);
+    // Un cuerpo que reserva algo menos de 0,25 USD por llamada.
+    const cuerpo = { model: 'gpt-4.1-mini', max_output_tokens: 150000, texto: 'x' };
+    budget.reserve(cuerpo);               // ~24%
+    assert.equal(avisos.length, 0, 'no debe avisar tan pronto');
+    budget.reserve(cuerpo);               // ~48%
+    assert.equal(avisos.length, 0);
+    budget.reserve(cuerpo);               // ~72% -> primer aviso
+    assert.equal(avisos.length, 1, 'debe avisar al pasar del 70%');
+    assert.match(avisos[0], /Presupuesto/);
+    assert.match(avisos[0], /tambi[ée]n a quien paga/i);
+    budget.reserve(cuerpo);               // ~96% -> segundo aviso
+    assert.equal(avisos.length, 2, 'debe avisar al pasar del 90%');
+    // Y el resumen cuadra con lo gastado.
+    const r = budget.resumenGasto();
+    assert.equal(r.topeMes, 1);
+    assert.ok(r.gastadoMes > 0.9 && r.gastadoMes <= 1, `gastado raro: ${r.gastadoMes}`);
+    assert.equal(r.llamadasMes, 4);
+  } finally {
+    console.warn = warnOriginal;
+    for (const [k, v] of Object.entries({
+      OPENAI_AGENT_MONTHLY_BUDGET_USD: previo.mes,
+      OPENAI_AGENT_DAILY_BUDGET_USD: previo.dia,
+      OPENAI_AGENT_INPUT_USD_PER_MILLION: previo.entrada,
+      OPENAI_AGENT_OUTPUT_USD_PER_MILLION: previo.salida
+    })) { v === undefined ? delete process.env[k] : process.env[k] = v; }
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
