@@ -7563,8 +7563,8 @@ app.get('/planes', (req, res) => {
     const n = Number(process.env[nombre]);
     return Number.isFinite(n) && n > 0 ? n : porDefecto;
   };
-  const limiteGratis = cupo('AGENT_FREE_DAILY_REQUESTS', 10);
-  const limiteVisitante = cupo('AGENT_ANON_DAILY_REQUESTS', 3);
+  const limiteGratis = cupo('AGENT_FREE_DAILY_REQUESTS', 4);
+  const limiteVisitante = cupo('AGENT_ANON_DAILY_REQUESTS', 2);
 
   const html = `
     <div class="max-w-4xl mx-auto w-full px-4 py-8 flex flex-col gap-6">

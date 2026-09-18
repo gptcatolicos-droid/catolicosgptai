@@ -44,7 +44,7 @@ function register(app,options={}){
   const account=getUser(req);
   const superAdmin=isSuperAdmin(account);
   const unlimited=superAdmin||Boolean(account && ['premium','admin'].includes(account.plan));
-  const limit=account?envInt('AGENT_FREE_DAILY_REQUESTS',10):envInt('AGENT_ANON_DAILY_REQUESTS',3);
+  const limit=account?envInt('AGENT_FREE_DAILY_REQUESTS',4):envInt('AGENT_ANON_DAILY_REQUESTS',2);
   const quotaKey=account?`user:${account.id}`:`ip:${req.ip}`;
   const used=unlimited?0:budget.usage(quotaKey).used;
   res.set('Cache-Control','no-store').json({
@@ -80,7 +80,7 @@ function register(app,options={}){
   const spending=superAdmin?budget.unmetered():budget;
   // Escalera de acceso: quien no se registra prueba el chat, quien se registra
   // tiene más margen y quien paga no tiene tope diario.
-  const limit=account?envInt('AGENT_FREE_DAILY_REQUESTS',10):envInt('AGENT_ANON_DAILY_REQUESTS',3);
+  const limit=account?envInt('AGENT_FREE_DAILY_REQUESTS',4):envInt('AGENT_ANON_DAILY_REQUESTS',2);
   try{spending.admit(quotaKey,{unlimited,limit});}catch(e){return res.status(429).json({error:e.message==='daily_quota'?(account?'Alcanzaste tu límite diario del plan gratuito. Con Premium el chat no tiene límite diario.':'Alcanzaste el límite de consultas para visitantes. Crea una cuenta gratis para tener más, o suscríbete a Premium para no tener límite diario.'):'La investigación ha alcanzado su límite temporal de uso. Puedes seguir consultando los recursos publicados.'});}
   active++;const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),100000);const disconnect=()=>{if(!res.writableEnded)controller.abort();};res.on('close',disconnect);
   // El streaming SSE retransmite el texto del modelo apenas se genera (no espera

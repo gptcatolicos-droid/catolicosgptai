@@ -25,7 +25,7 @@ function createBudget(directory=process.env.AGENT_BUDGET_DIR||process.env.DATA_D
   if(!unmetered && (m.usd>=number('OPENAI_AGENT_MONTHLY_BUDGET_USD',30)||d.usd>=number('OPENAI_AGENT_DAILY_BUDGET_USD',2)))throw Error('budget_exhausted');
   // `limit` lo decide quien llama según el tipo de visitante (anónimo o
   // registrado); si no lo pasa, se usa el tope general.
-  const cap=Number.isFinite(limit)&&limit>0?limit:number('AGENT_FREE_DAILY_REQUESTS',number('AGENT_DAILY_CLIENT_REQUESTS',10));
+  const cap=Number.isFinite(limit)&&limit>0?limit:number('AGENT_FREE_DAILY_REQUESTS',number('AGENT_DAILY_CLIENT_REQUESTS',4));
   if(!unlimited && (s.clients[key]?.count||0)>=cap)throw Error('daily_quota');
   if(!unmetered && d.research+3>number('MAGISTERIUM_AGENT_DAILY_CALLS',1500))throw Error('magisterium_budget_exhausted');
   s.clients[key]={day,count:(s.clients[key]?.count||0)+1};d.requests++;d.research+=3;
