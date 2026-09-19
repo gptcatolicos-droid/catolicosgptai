@@ -1355,7 +1355,7 @@ test('la salud SEO distingue un articulo bueno de uno de relleno', () => {
   const relleno = a.fichas.find(f => f.slug === 'relleno');
   assert.ok(relleno.problemas.includes('descripcion-corta'));
   assert.ok(relleno.problemas.includes('contenido-fino'));
-  assert.ok(relleno.problemas.includes('sin-enlaces-internos'));
+  assert.ok(relleno.problemas.includes('cuerpo-sin-enlaces'));
   assert.ok(relleno.problemas.includes('sin-preguntas'));
 });
 

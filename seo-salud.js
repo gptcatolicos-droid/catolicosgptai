@@ -105,7 +105,12 @@ function analizar(posts) {
     }
     const cuantasPalabras = palabras(post.contenidoMd);
     if (cuantasPalabras < PALABRAS_MINIMAS) problemas.push('contenido-fino');
-    if (enlacesInternos(post.contenidoMd) === 0) problemas.push('sin-enlaces-internos');
+    // Los enlaces del CUERPO. El bloque "Sigue leyendo" se anade al renderizar y
+    // no vive aqui: contarlo como problema seria repetir el error de los
+    // titulos, medir lo guardado y dar por roto lo que el servidor ya resuelve.
+    // Se mantiene porque un enlace escrito dentro del texto, en su contexto,
+    // vale mas que uno del pie -pero ya no es una pagina huerfana.
+    if (enlacesInternos(post.contenidoMd) === 0) problemas.push('cuerpo-sin-enlaces');
     if (!Array.isArray(post.faqs) || post.faqs.length === 0) problemas.push('sin-preguntas');
 
     return {
@@ -124,6 +129,26 @@ function analizar(posts) {
   for (const ficha of fichas) for (const p of ficha.problemas) resumen[p] = (resumen[p] || 0) + 1;
 
   return { total: fichas.length, resumen, fichas };
+}
+
+// El bloque del pie se calcula al servir, asi que no se ve en el catalogo. Sin
+// esta comprobacion no habria forma de saber si de verdad esta enlazando en
+// produccion -y dar por bueno un arreglo sin verlo es como llegamos aqui.
+// Va sobre una muestra: recorrer los 1372 serian dos millones de comparaciones.
+function comprobarPie(posts, muestra = 40) {
+  let sigue;
+  try { sigue = require('./seo-sigue-leyendo'); } catch (_) { return null; }
+  const lista = (Array.isArray(posts) ? posts : []).filter(p => p && p.slug && p.publicado !== false);
+  if (!lista.length) return null;
+  const paso = Math.max(1, Math.floor(lista.length / muestra));
+  let mirados = 0, conEnlaces = 0, total = 0;
+  for (let i = 0; i < lista.length && mirados < muestra; i += paso) {
+    let n = 0;
+    try { n = (sigue.enlaces(lista[i]).articulos || []).length; } catch (_) {}
+    mirados++; total += n;
+    if (n > 0) conEnlaces++;
+  }
+  return { mirados, conEnlaces, media: mirados ? +(total / mirados).toFixed(1) : 0 };
 }
 
 function resumenCorto(analisis) {
@@ -154,7 +179,7 @@ function register(app, { getAuthedUser, isStrictAdminUser, blog, renderPage } = 
       'descripcion-corta': `Descripción demasiado corta (menos de ${DESCRIPCION_MIN})`,
       'descripcion-generica': 'Descripción de molde, repetida en muchos artículos',
       'contenido-fino': `Menos de ${PALABRAS_MINIMAS} palabras`,
-      'sin-enlaces-internos': 'No enlaza a ninguna otra página del sitio',
+      'cuerpo-sin-enlaces': 'El texto no enlaza a nada (el pie sí: "Sigue leyendo")',
       'sin-preguntas': 'Sin preguntas frecuentes (se pierde el bloque de Google)'
     };
     const orden = Object.keys(r).sort((a, b) => r[b] - r[a]);
@@ -198,9 +223,14 @@ function register(app, { getAuthedUser, isStrictAdminUser, blog, renderPage } = 
   // Una línea en el arranque. Es la única forma de ver el estado del catálogo
   // sin entrar al admin, y de que quede registrado cómo evoluciona.
   setTimeout(() => {
-    try { console.log(`[SEO] Salud del blog: ${resumenCorto(analizar((blog.loadBlog().posts) || []))}`); }
+    try {
+      const posts = (blog.loadBlog().posts) || [];
+      console.log(`[SEO] Salud del blog: ${resumenCorto(analizar(posts))}`);
+      const pie = comprobarPie(posts);
+      if (pie) console.log(`[SEO] Sigue leyendo: ${pie.conEnlaces} de ${pie.mirados} artículos de muestra reciben enlaces (media ${pie.media}).`);
+    }
     catch (err) { console.warn('[SEO] No se pudo medir la salud del blog:', err.message); }
   }, 90 * 1000).unref?.();
 }
 
-module.exports = { analizar, resumenCorto, register, palabras, enlacesInternos, quitarTitulo, LIMITE_TITULO, DESCRIPCION_MAX, DESCRIPCION_MIN, PALABRAS_MINIMAS };
+module.exports = { analizar, resumenCorto, comprobarPie, register, palabras, enlacesInternos, quitarTitulo, LIMITE_TITULO, DESCRIPCION_MAX, DESCRIPCION_MIN, PALABRAS_MINIMAS };
