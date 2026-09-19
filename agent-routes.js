@@ -15,6 +15,34 @@ function register(app,options={}){
  // como el propio endpoint: si vivieran en dos sitios acabarían discrepando y
  // el usuario vería un botón que luego le rechaza.
  const esPremium=account=>Boolean(account && ['premium','admin'].includes(account.plan));
+ // ── A quién se le cuenta la cuota ──────────────────────────────────────────
+ // Con sesión iniciada es fácil: la cuenta. Sin sesión se medía por IP, y en
+ // móvil eso no identifica a una persona: los operadores meten miles de
+ // teléfonos detrás de unas pocas IPs públicas (CGNAT). El primero que
+ // consultaba dejaba sin cuota a todos los demás clientes de ese operador, que
+ // ni siquiera habían entrado.
+ //
+ // Así que a cada visitante se le da un identificador propio en una cookie. Se
+ // puede borrar para tener cuota nueva, y no pasa nada: la cuota de los
+ // anónimos es un empujón para que se registren, no una cerradura. La cerradura
+ // es la cuenta.
+ const crypto=require('crypto');
+ function claveVisitante(req,res){
+  const account=getUser(req);
+  if(account)return `user:${account.id}`;
+  let id='';
+  const crudo=req.headers&&req.headers.cookie;
+  if(crudo){
+   const par=crudo.split('; ').find(c=>c.startsWith('cgpt_visitante='));
+   if(par)id=par.slice('cgpt_visitante='.length);
+  }
+  if(!/^[a-f0-9]{32}$/.test(id)){
+   id=crypto.randomBytes(16).toString('hex');
+   // HttpOnly: este identificador no lo necesita ningún script de la página.
+   if(res&&!res.headersSent)res.setHeader('Set-Cookie',`cgpt_visitante=${id}; Path=/; Max-Age=31536000; SameSite=Lax; HttpOnly`);
+  }
+  return `anon:${id}`;
+ }
  // Solo presencia, nunca valores: permite ver en los logs por qué el agente
  // aparece desactivado sin tener que adivinar cuál variable falta.
  console.log(`[Agente] configurado=${agent.configured()} | CATHOLIC_AGENT_ENABLED=${process.env.CATHOLIC_AGENT_ENABLED||'(sin definir)'} | MAGISTERIUM_API_KEY=${process.env.MAGISTERIUM_API_KEY?'presente':'FALTA'} | OPENAI_API_KEY=${process.env.OPENAI_API_KEY?'presente':'FALTA'}`);
@@ -44,8 +72,8 @@ function register(app,options={}){
   const account=getUser(req);
   const superAdmin=isSuperAdmin(account);
   const unlimited=superAdmin||Boolean(account && ['premium','admin'].includes(account.plan));
-  const limit=account?envInt('AGENT_FREE_DAILY_REQUESTS',4):envInt('AGENT_ANON_DAILY_REQUESTS',2);
-  const quotaKey=account?`user:${account.id}`:`ip:${req.ip}`;
+  const limit=account?envInt('AGENT_FREE_DAILY_REQUESTS',12):envInt('AGENT_ANON_DAILY_REQUESTS',5);
+  const quotaKey=claveVisitante(req,res);
   const used=unlimited?0:budget.usage(quotaKey).used;
   res.set('Cache-Control','no-store').json({
    registrado:Boolean(account),
@@ -75,12 +103,12 @@ function register(app,options={}){
   const account=getUser(req);
   const superAdmin=isSuperAdmin(account);
   const unlimited=Boolean(account && ['premium','admin'].includes(account.plan));
-  const quotaKey=account?`user:${account.id}`:`ip:${req.ip}`;
+  const quotaKey=claveVisitante(req,res);
   // El gasto del súper administrador se sigue contabilizando, pero no lo frena.
   const spending=superAdmin?budget.unmetered():budget;
   // Escalera de acceso: quien no se registra prueba el chat, quien se registra
   // tiene más margen y quien paga no tiene tope diario.
-  const limit=account?envInt('AGENT_FREE_DAILY_REQUESTS',4):envInt('AGENT_ANON_DAILY_REQUESTS',2);
+  const limit=account?envInt('AGENT_FREE_DAILY_REQUESTS',12):envInt('AGENT_ANON_DAILY_REQUESTS',5);
   try{spending.admit(quotaKey,{unlimited,limit});}catch(e){
   // A quien paga no se le puede decir lo mismo que a un visitante que agotó su
   // cupo: su plan no tiene tope diario, y si el chat no responde es un problema

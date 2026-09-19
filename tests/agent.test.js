@@ -1101,3 +1101,57 @@ test('las cadenas se aplanan aunque el fichero las traiga', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// ── Quién consume la cuota ──
+test('cada visitante sin cuenta tiene su propia cuota, no la comparte por IP', () => {
+  const express = require('express');
+  const rutas = require('../agent-routes');
+  // Se captura la clave que el módulo calcula, montándolo sobre un app de
+  // mentira que solo guarda los manejadores.
+  const manejadores = {};
+  const appFalso = {
+    get: (ruta, ...fns) => { manejadores[`GET ${ruta}`] = fns[fns.length - 1]; },
+    post: () => {}, use: () => {}
+  };
+  const previo = process.env.CATHOLIC_AGENT_ENABLED;
+  delete process.env.CATHOLIC_AGENT_ENABLED;
+  try {
+    rutas.register(appFalso, { getUser: () => null, isSuperAdmin: () => false });
+    const cuota = manejadores['GET /api/agent/cuota'];
+    assert.ok(cuota, 'no se registró la ruta de cuota');
+
+    const llamar = (cookie) => {
+      let cuerpo = null, cabeceras = {};
+      const req = { headers: cookie ? { cookie } : {}, ip: '1.2.3.4', query: {} };
+      const res = {
+        headersSent: false,
+        setHeader: (k, v) => { cabeceras[k] = v; },
+        set: () => res,
+        json: (x) => { cuerpo = x; return res; }
+      };
+      cuota(req, res);
+      return { cuerpo, cabeceras };
+    };
+
+    // Dos visitantes distintos desde la MISMA IP: el segundo no hereda el gasto
+    // del primero, que es lo que pasaba con miles de móviles tras el CGNAT del
+    // operador.
+    const primero = llamar(null);
+    assert.match(primero.cabeceras['Set-Cookie'] || '', /^cgpt_visitante=[a-f0-9]{32};/,
+      'no se entrega identificador propio al visitante');
+    assert.match(primero.cabeceras['Set-Cookie'], /HttpOnly/);
+    const segundo = llamar(null);
+    assert.notEqual(primero.cabeceras['Set-Cookie'], segundo.cabeceras['Set-Cookie'],
+      'dos visitantes distintos recibieron el mismo identificador');
+
+    // Y quien vuelve con su cookie conserva la suya: no se le da una nueva.
+    const id = primero.cabeceras['Set-Cookie'].slice('cgpt_visitante='.length, 'cgpt_visitante='.length + 32);
+    const vuelve = llamar(`cgpt_visitante=${id}`);
+    assert.equal(vuelve.cabeceras['Set-Cookie'], undefined, 'se le cambió el identificador al volver');
+
+    // El límite que se anuncia es el de visitante.
+    assert.equal(primero.cuerpo.limite, 5);
+  } finally {
+    previo === undefined ? delete process.env.CATHOLIC_AGENT_ENABLED : process.env.CATHOLIC_AGENT_ENABLED = previo;
+  }
+});

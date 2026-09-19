@@ -66,6 +66,16 @@ const openaiChat    = optionalRequire('./openai-chat-module', {
 const { GoogleGenAI } = require('@google/genai');
 
 const app  = express();
+// ¡ATENCIÓN, ESTO NO ES UN DETALLE! Render sirve el sitio detrás de su balanceador.
+// Sin confiar en el proxy, req.ip devuelve la IP del balanceador -la misma para
+// TODO EL MUNDO- en vez de la del visitante. Y la cuota de los visitantes sin
+// cuenta se mide justamente por req.ip, así que el límite diario no era "dos
+// consultas por persona": era dos consultas al día para el planeta entero.
+//
+// El 1 es el número de saltos de proxy delante de la aplicación. Con un número
+// concreto, en vez de true, nadie puede falsificar su IP mandando una cabecera
+// X-Forwarded-For a mano para regalarse cuota.
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'dwbqrp7kk';
 let dailyContentModule = null;
@@ -7573,8 +7583,8 @@ app.get('/planes', (req, res) => {
     const n = Number(process.env[nombre]);
     return Number.isFinite(n) && n > 0 ? n : porDefecto;
   };
-  const limiteGratis = cupo('AGENT_FREE_DAILY_REQUESTS', 4);
-  const limiteVisitante = cupo('AGENT_ANON_DAILY_REQUESTS', 2);
+  const limiteGratis = cupo('AGENT_FREE_DAILY_REQUESTS', 12);
+  const limiteVisitante = cupo('AGENT_ANON_DAILY_REQUESTS', 5);
 
   const html = `
     <div class="max-w-4xl mx-auto w-full px-4 py-8 flex flex-col gap-6">
