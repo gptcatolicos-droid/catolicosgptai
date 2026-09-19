@@ -134,6 +134,9 @@ require('./agent-about').register(app, renderPage);
 // Subida directa de imágenes al disco persistente: el administrador ya no
 // necesita subir la foto a otro servicio y volver con el enlace.
 require('./subidas-module').register(app, { getAuthedUser, isStrictAdminUser, express });
+// Firestore hacia de segunda copia. Al apagar Google el disco se queda solo, y
+// un disco sin copia es un punto unico de fallo para las cuentas de la gente.
+require('./respaldo-module').register(app, { getAuthedUser, isStrictAdminUser });
 
 // Servidor de medios y estáticos locales
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
@@ -8860,6 +8863,10 @@ app.get('/admin', async (req, res) => {
       <div class="flex flex-wrap gap-2 mb-3">
         <a href="/admin/consultas" class="acceso-liturgia">💬 Qué pregunta la gente al chat</a>
         <a href="/admin/suscripciones" class="acceso-liturgia">💳 Suscripciones</a>
+        <!-- Al apagar Google, Firestore deja de hacer de segunda copia. Esta
+             descarga es la unica que sale de la maquina, asi que tiene que
+             estar a la vista y no detrás de una URL que haya que recordar. -->
+        <a href="/admin/respaldo/descargar" class="acceso-liturgia">⬇️ Descargar respaldo</a>
       </div>
       <div class="admin-tab-select md:hidden flex flex-col gap-1 mb-1">
         <label for="admin-tab-select" class="text-[11px] font-bold text-ink-2 uppercase tracking-wide">Sección del panel</label>

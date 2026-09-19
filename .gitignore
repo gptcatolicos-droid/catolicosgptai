@@ -8,3 +8,4 @@ data/agent-budget.json*
 
 # Imágenes subidas desde el admin: viven en el disco persistente, no en el repositorio.
 data/subidas/
+data/respaldos/

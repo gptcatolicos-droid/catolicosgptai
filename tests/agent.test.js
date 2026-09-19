@@ -1270,3 +1270,57 @@ test('una redireccion cede el paso si ese slug vuelve a tener articulo', async (
     await new Promise(r=>servidor.close(r));
   }
 });
+
+// Firestore hacía de segunda copia. Al apagarlo, el disco se queda solo, así que
+// el respaldo deja de ser una comodidad y pasa a ser lo único que hay.
+test('el respaldo recoge las cuentas y dice lo que no incluye', () => {
+  const fs=require('fs'),os=require('os'),pathMod=require('path');
+  const dir=fs.mkdtempSync(pathMod.join(os.tmpdir(),'cgpt-respaldo-'));
+  const previo=process.env.DATA_DIR;
+  process.env.DATA_DIR=dir;
+  fs.writeFileSync(pathMod.join(dir,'users.json'), JSON.stringify({ users:[{id:'1',email:'a@b.c',plan:'premium'}] }));
+  fs.writeFileSync(pathMod.join(dir,'blog-catalog.json'), JSON.stringify({ posts:[{slug:'x'},{slug:'y'}] }));
+  fs.mkdirSync(pathMod.join(dir,'subidas'));
+  fs.writeFileSync(pathMod.join(dir,'subidas','foto.png'),'binario');
+  delete require.cache[require.resolve('../respaldo-module')];
+  try {
+    const respaldo=require('../respaldo-module');
+    const copia=respaldo.construir();
+    assert.equal(copia.resumen['users.json'], 1, 'las cuentas entran, que es lo irreemplazable');
+    assert.equal(copia.resumen['blog-catalog.json'], 2);
+    assert.equal(copia.secciones['users.json'].users[0].email, 'a@b.c');
+    // Las imágenes no caben en la descarga; lo que no se puede omitir es decirlo.
+    assert.equal(copia.noIncluido.imagenesSubidas, 1);
+    assert.ok(!copia.secciones['subidas']);
+  } finally {
+    previo===undefined?delete process.env.DATA_DIR:process.env.DATA_DIR=previo;
+    delete require.cache[require.resolve('../respaldo-module')];
+    fs.rmSync(dir,{recursive:true,force:true});
+  }
+});
+
+// Una copia vacía que pisa a la de ayer es peor que no tener copia: parece buena
+// hasta el día que hace falta.
+test('una copia vacia no sobrescribe a la del dia anterior', () => {
+  const fs=require('fs'),os=require('os'),pathMod=require('path');
+  const dir=fs.mkdtempSync(pathMod.join(os.tmpdir(),'cgpt-respaldo2-'));
+  const previo=process.env.DATA_DIR;
+  process.env.DATA_DIR=dir;
+  delete require.cache[require.resolve('../respaldo-module')];
+  try {
+    const respaldo=require('../respaldo-module');
+    const vacio=respaldo.guardarEnDisco();
+    assert.equal(vacio.hecho, false, 'sin datos no se escribe nada');
+    assert.equal(respaldo.listar().length, 0);
+
+    fs.writeFileSync(pathMod.join(dir,'users.json'), JSON.stringify({ users:[{id:'1'}] }));
+    const lleno=respaldo.guardarEnDisco();
+    assert.equal(lleno.hecho, true);
+    assert.equal(lleno.registros, 1);
+    assert.equal(respaldo.listar().length, 1);
+  } finally {
+    previo===undefined?delete process.env.DATA_DIR:process.env.DATA_DIR=previo;
+    delete require.cache[require.resolve('../respaldo-module')];
+    fs.rmSync(dir,{recursive:true,force:true});
+  }
+});
