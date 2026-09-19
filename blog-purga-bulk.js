@@ -51,6 +51,16 @@ function purgarBlogBulk() {
   const plantilla = detectarPlantilla(antes);
   const quedan = antes.filter(p => !plantilla.has(p.slug || p.id));
   const retirados = antes.length - quedan.length;
+
+  // De qué está hecho el catálogo. Va aquí, antes de cualquier salida, porque es
+  // en los arranques donde NO hay nada que retirar cuando hace falta saber qué
+  // hay dentro: "quedan 1367" por sí solo no distingue entre artículos escritos
+  // de verdad y un lote que todavía no hemos mirado.
+  const conFuentes = quedan.filter(p => Array.isArray(p.fuentes) && p.fuentes.length).length;
+  const generados = quedan.filter(p => p.fuenteGeneracion).length;
+  const cuerpos = new Set(quedan.map(p => String(p.contenidoMd || '').length)).size;
+  console.log(`[Blog] Catálogo: ${quedan.length} artículos — ${generados} del generador diario, ${conFuentes} con fuentes citadas, ${cuerpos} longitudes de cuerpo distintas.`);
+
   if (retirados === 0) return { hecho: false, motivo: 'no quedaba plantilla' };
 
   catalogo.posts = quedan;
@@ -69,13 +79,6 @@ function purgarBlogBulk() {
   }
 
   console.log(`[Blog] Retirados ${retirados} artículos de plantilla; quedan ${quedan.length}.`);
-  // De qué está hecho lo que queda. Sin esto, "quedan 1367" no dice nada: no se
-  // sabe si son artículos escritos de verdad o un tercer lote que todavía no
-  // hemos visto. Cuesta un recuento en memoria y se lee en el arranque.
-  const conFuentes = quedan.filter(p => Array.isArray(p.fuentes) && p.fuentes.length).length;
-  const generados = quedan.filter(p => p.fuenteGeneracion).length;
-  const cuerpos = new Set(quedan.map(p => String(p.contenidoMd || '').length)).size;
-  console.log(`[Blog] De los ${quedan.length}: ${generados} del generador diario, ${conFuentes} con fuentes citadas, ${cuerpos} longitudes de cuerpo distintas.`);
   return { hecho: true, retirados, quedan: quedan.length };
 }
 
