@@ -1497,3 +1497,50 @@ test('las redirecciones del disco y las del repositorio se suman, no se pisan', 
     fs.rmSync(dir,{recursive:true,force:true});
   }
 });
+
+// Cada artículo se servía en dos URLs -/blog/slug y /blog/categoria/slug- y cada
+// una se declaraba canónica de sí misma. Para Google eran dos páginas iguales
+// compitiendo, en los 1372.
+test('las dos rutas de un articulo apuntan a la misma URL canonica', () => {
+  const art = require('../seo-articulo');
+  const post = { slug: 'la-eucaristia', titulo: 'La Eucaristía', categoria: 'sacramentos' };
+  assert.equal(art.urlCanonicaDeArticulo(post), '/blog/sacramentos/la-eucaristia');
+  // Un artículo sin categoría no puede quedarse sin canónica.
+  assert.equal(art.urlCanonicaDeArticulo({ slug: 'suelto', titulo: 'Suelto' }), '/blog/doctrina/suelto');
+});
+
+// El marcado vivía dentro de una sola de las dos rutas, así que según por qué
+// URL se entrara el artículo salía sin fecha, sin autor y sin migas de pan.
+test('el marcado del articulo es el mismo se entre por donde se entre', () => {
+  const art = require('../seo-articulo');
+  const post = {
+    slug: 'la-eucaristia', titulo: 'La Eucaristía', categoria: 'sacramentos',
+    descripcion: 'Qué es la Eucaristía.', fechaCreacion: '2026-01-01T00:00:00Z',
+    faqs: [{ q: '¿Qué es?', a: 'El cuerpo de Cristo.' }]
+  };
+  const tipos = art.esquemasDeArticulo(post).map(e => e['@type']);
+  assert.deepEqual(tipos, ['Article', 'BreadcrumbList', 'FAQPage']);
+
+  // Sin preguntas no se inventa un FAQPage vacío.
+  const sinFaqs = art.esquemasDeArticulo({ ...post, faqs: [] }).map(e => e['@type']);
+  assert.deepEqual(sinFaqs, ['Article', 'BreadcrumbList']);
+});
+
+// El marcado decía ai.catolicosgpt.com mientras la etiqueta canónica decía
+// www.catolicosgpt.com: dos hosts distintos para la misma página.
+test('el marcado y la canonica hablan del mismo host', () => {
+  const art = require('../seo-articulo');
+  const previo = process.env.PUBLIC_SITE_URL;
+  process.env.PUBLIC_SITE_URL = 'https://www.catolicosgpt.com';
+  try {
+    const post = { slug: 'x', titulo: 'X', categoria: 'doctrina', fechaCreacion: '2026-01-01T00:00:00Z' };
+    const [articulo, migas] = art.esquemasDeArticulo(post);
+    const esperada = 'https://www.catolicosgpt.com/blog/doctrina/x';
+    assert.equal(articulo.mainEntityOfPage['@id'], esperada);
+    assert.equal(migas.itemListElement[3].item, esperada);
+    // Nada puede quedar apuntando al host viejo escrito a mano.
+    assert.ok(!JSON.stringify(art.esquemasDeArticulo(post)).includes('ai.catolicosgpt.com'));
+  } finally {
+    previo === undefined ? delete process.env.PUBLIC_SITE_URL : process.env.PUBLIC_SITE_URL = previo;
+  }
+});

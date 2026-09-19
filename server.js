@@ -116,6 +116,7 @@ app.use((req, res, next) => {
 // deja pasar, así funciona para la ruta del agente y para la antigua sin tocar
 // ninguna de las dos.
 const seoConsolidacion = require('./seo-consolidacion');
+const { urlCanonicaDeArticulo, esquemasDeArticulo } = require('./seo-articulo');
 const sigueLeyendo    = require('./seo-sigue-leyendo');
 // Las redirecciones van por delante de todo: una URL retirada o duplicada tiene
 // que responder 301 antes de que ninguna ruta intente servirla. Con una
@@ -6113,7 +6114,14 @@ app.get('/blog/:slug', (req, res) => {
     // Un artículo no es la portada del sitio: og:type lo dice y de eso depende
     // cómo lo presentan las redes al compartirlo.
     ogType: 'article',
-    sinMarca: true
+    sinMarca: true,
+    // Esta ruta y /blog/categoria/slug sirven el MISMO articulo. Sin esto cada
+    // una se declaraba canonica de si misma y Google veia dos paginas iguales
+    // compitiendo. Manda la larga: es la que anuncia el sitemap.
+    canonical: urlCanonicaDeArticulo(post),
+    // Y aqui no habia marcado ninguno: los articulos se servian sin fecha, sin
+    // autor y sin migas de pan segun por que URL se entrara.
+    schemas: esquemasDeArticulo(post)
   }));
 });
 
@@ -6211,82 +6219,17 @@ app.get('/blog/:categoria/:slug', (req, res) => {
     return res.send(html);
   }
 
-  // Construir Structured Schemas
-  const schemas = [
-    {
-      "@context": "https://schema.org",
-      "@type": "Article",
-      "headline": post.titulo,
-      "description": post.descripcion || post.extracto || "",
-      "image": post.imagenPortada || "https://www.catolicosgpt.com/favicon.png",
-      "datePublished": post.fechaCreacion,
-      "dateModified": post.fechaModificacion || post.fechaCreacion,
-      "author": {
-        "@type": "Organization",
-        "name": "CatólicosGPT",
-        "url": "https://ai.catolicosgpt.com"
-      },
-      "publisher": {
-        "@type": "Organization",
-        "name": "CatólicosGPT",
-        "logo": {
-          "@type": "ImageObject",
-          "url": "https://www.catolicosgpt.com/favicon.png"
-        }
-      }
-    },
-    {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "Inicio",
-          "item": "https://ai.catolicosgpt.com"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Blog",
-          "item": "https://ai.catolicosgpt.com/blog"
-        },
-        {
-          "@type": "ListItem",
-          "position": 3,
-          "name": post.categoria,
-          "item": `https://ai.catolicosgpt.com/blog?categoria=${post.categoria}`
-        },
-        {
-          "@type": "ListItem",
-          "position": 4,
-          "name": post.titulo,
-          "item": `https://ai.catolicosgpt.com/blog/${post.categoria}/${post.slug}`
-        }
-      ]
-    }
-  ];
-
-  if (post.faqs && post.faqs.length > 0) {
-    schemas.push({
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      "mainEntity": post.faqs.map(f => ({
-        "@type": "Question",
-        "name": f.q,
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": f.a
-        }
-      }))
-    });
-  }
+  // El marcado se escribe una sola vez (esquemasDeArticulo) y lo usan las dos
+  // rutas del articulo. Antes vivia aqui dentro, asi que la otra ruta servia
+  // los articulos sin fecha, sin autor y sin migas de pan.
+  const schemas = esquemasDeArticulo(post);
 
   res.send(renderPage(seoConsolidacion.acortarTitulo(post.seoTitle || post.titulo), html, req, {
     description: post.descripcion || post.extracto || "Formación de fe católico.",
     keywords: post.keywords || "catequesis, blog catolico",
     ogType: 'article',
     sinMarca: true,
+    canonical: urlCanonicaDeArticulo(post),
     schemas: schemas
   }));
 });
