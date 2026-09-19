@@ -116,6 +116,7 @@ app.use((req, res, next) => {
 // deja pasar, así funciona para la ruta del agente y para la antigua sin tocar
 // ninguna de las dos.
 const seoConsolidacion = require('./seo-consolidacion');
+const sigueLeyendo    = require('./seo-sigue-leyendo');
 // Las redirecciones van por delante de todo: una URL retirada o duplicada tiene
 // que responder 301 antes de que ninguna ruta intente servirla. Con una
 // excepcion: si a esa URL le ha salido dueno -un articulo publicado con ese
@@ -6088,6 +6089,12 @@ app.get('/blog/:slug', (req, res) => {
         ${renderedBody}
       </article>
       
+      <!-- SIGUE LEYENDO -->
+      <!-- Medido sobre el catalogo real: 1364 de 1372 articulos no enlazaban a
+           ninguna otra pagina del sitio. Se calcula al servir, asi que vale para
+           los que ya estan y para los que se publiquen manana. -->
+      ${sigueLeyendo.render(post)}
+
       <!-- COMPARTIR -->
       <div class="border-t pt-5 mt-6 flex flex-col gap-3 text-xs text-ink2">
         <span>CatólicosGPT v77 — Fe constante.</span>
@@ -6189,6 +6196,9 @@ app.get('/blog/:categoria/:slug', (req, res) => {
 
       ${faqsHtml}
       
+      <!-- SIGUE LEYENDO -->
+      ${sigueLeyendo.render(post)}
+
       <!-- COMPARTIR -->
       <div class="border-t pt-5 mt-8 flex flex-col gap-3 text-xs text-ink2">
         <span>CatólicosGPT v77 — Fe constante.</span>

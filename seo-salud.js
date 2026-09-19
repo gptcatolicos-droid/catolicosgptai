@@ -15,6 +15,12 @@
 // la descripción sobre los 160, y en móvil -que aquí es el 83% de las
 // impresiones- todavía menos.
 
+// El titulo que se mide es el que SE EMITE, no el que se guarda. La pagina ya
+// pasa el suyo por acortarTitulo antes de ponerlo en la etiqueta <title>, asi
+// que medir el guardado daba 949 problemas que Google no ve: mandaria a
+// arreglar a mano lo que el servidor ya arregla solo.
+const { acortarTitulo } = require('./seo-consolidacion');
+
 const LIMITE_TITULO = 60;
 const DESCRIPCION_MAX = 160;
 const DESCRIPCION_MIN = 70;
@@ -85,7 +91,7 @@ function analizar(posts) {
   const moldes = contarDescripciones(lista);
 
   const fichas = lista.map(post => {
-    const titulo = String(post.seoTitle || post.titulo || '');
+    const titulo = acortarTitulo(String(post.seoTitle || post.titulo || ''));
     const desc = String(post.descripcion || post.extracto || '').trim();
     const molde = quitarTitulo(normalizar(desc), normalizar(post.titulo));
 
@@ -142,7 +148,7 @@ function register(app, { getAuthedUser, isStrictAdminUser, blog, renderPage } = 
     const analisis = analizar((blog.loadBlog().posts) || []);
     const r = analisis.resumen;
     const etiquetas = {
-      'titulo-largo': `Título que Google corta (más de ${LIMITE_TITULO} caracteres)`,
+      'titulo-largo': `Título que Google corta aun después de recortarlo (más de ${LIMITE_TITULO})`,
       'sin-descripcion': 'Sin descripción: Google se inventa el resumen',
       'descripcion-larga': `Descripción cortada (más de ${DESCRIPCION_MAX})`,
       'descripcion-corta': `Descripción demasiado corta (menos de ${DESCRIPCION_MIN})`,

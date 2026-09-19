@@ -1381,3 +1381,88 @@ test('una descripcion de molde se reconoce aunque lleve el titulo dentro', () =>
   assert.equal(genericas.length, temas.length, 'las seis de molde se reconocen');
   assert.ok(!genericas.includes('a-mano'), 'la escrita a mano no se toca');
 });
+
+// 1364 de 1372 artículos no enlazaban a ninguna otra página del sitio. El
+// bloque se calcula al servir, así que arregla los que ya están y los que se
+// publiquen mañana, sin editar ninguno.
+test('el bloque de sigue leyendo nunca enlaza el articulo consigo mismo', () => {
+  const sigue = require('../seo-sigue-leyendo');
+  assert.equal(sigue.esElMismo('/blog/la-eucaristia', 'la-eucaristia'), true);
+  assert.equal(sigue.esElMismo('/blog/catequesis/la-eucaristia', 'la-eucaristia'), true);
+  assert.equal(sigue.esElMismo('/blog/el-bautismo', 'la-eucaristia'), false);
+  assert.equal(sigue.esElMismo('', 'la-eucaristia'), false);
+});
+
+// El tema sale de más sitios que el título: hay artículos con título genérico
+// cuyo asunto solo se adivina por sus palabras clave.
+test('la consulta de parecido usa titulo, keywords y categoria', () => {
+  const sigue = require('../seo-sigue-leyendo');
+  const q = sigue.consultaDe({
+    titulo: 'Guía completa', keywords: 'eucaristía, comunión',
+    categoria: 'sacramentos', consultaObjetivo: 'qué es la eucaristía'
+  });
+  assert.ok(/eucarist/i.test(q));
+  assert.ok(/sacramentos/i.test(q));
+});
+
+// Un bloque de enlaces no puede tumbar un artículo: si el índice falla, la
+// página se sirve igual y solo se pierden los enlaces.
+test('si el indice de parecidos falla, el articulo se sirve sin bloque', () => {
+  const sigue = require('../seo-sigue-leyendo');
+  // Un post sin slug no puede buscar parecidos; devuelve vacío en vez de romper.
+  assert.equal(sigue.render({ titulo: 'Sin slug' }), '');
+  assert.deepEqual(sigue.enlaces(null), { articulos: [], infografias: [] });
+});
+
+// Medir el título guardado daba 949 problemas que Google no ve, porque la
+// página ya lo recorta antes de emitirlo.
+test('la salud SEO mide el titulo que se emite, no el que se guarda', () => {
+  const seo = require('../seo-salud');
+  const largo = 'La Santísima Trinidad explicada con detalle para catequistas y familias que preparan la confirmación';
+  const a = seo.analizar([{
+    slug: 'x', titulo: largo, publicado: true,
+    descripcion: 'Una descripción suficientemente larga y concreta para no disparar ninguno de los otros avisos del diagnóstico.',
+    contenidoMd: '# ' + largo + '\n\n' + 'palabra '.repeat(400) + '\n\n[Ver más](/blog/otro)',
+    faqs: [{ q: 'a', a: 'b' }]
+  }]);
+  assert.ok(!a.fichas[0].problemas.includes('titulo-largo'),
+    'el título se recorta al servir, así que no es un problema que arreglar a mano');
+  assert.ok(a.fichas[0].largoTitulo <= 60);
+});
+
+// El índice de parecidos descarta lo que no supera su umbral -y hace bien-, pero
+// eso dejaba artículos con un enlace o con ninguno, que es el problema que se
+// estaba arreglando. La categoría los completa.
+test('la categoria completa los enlaces cuando el parecido no da para mas', () => {
+  const fs=require('fs'),os=require('os'),pathMod=require('path');
+  const dir=fs.mkdtempSync(pathMod.join(os.tmpdir(),'cgpt-enlaces-'));
+  const previo=process.env.DATA_DIR;
+  process.env.DATA_DIR=dir;
+  const posts=[];
+  for (let i=0;i<8;i++) posts.push({
+    slug:'vecino-'+i, titulo:'Vecino '+i, categoria:'liturgia', publicado:true,
+    descripcion:'Uno de la misma sección.', fechaCreacion:new Date(2026,0,i+1).toISOString()
+  });
+  posts.push({ slug:'de-otra', titulo:'De otra sección', categoria:'moral', publicado:true, fechaCreacion:new Date().toISOString() });
+  fs.writeFileSync(pathMod.join(dir,'blog-catalog.json'), JSON.stringify({ posts }));
+  delete require.cache[require.resolve('../seo-sigue-leyendo')];
+  try {
+    const sigue=require('../seo-sigue-leyendo');
+    const post={ slug:'vecino-0', titulo:'Vecino 0', categoria:'liturgia' };
+    const v=sigue.vecinosDeCategoria(post, [], 3);
+    assert.equal(v.length, 3, 'rellena hasta lo que se le pide');
+    assert.ok(!v.some(x=>x.slug==='vecino-0'), 'nunca se enlaza a sí mismo');
+    assert.ok(!v.some(x=>x.slug==='de-otra'), 'no se cuela nadie de otra sección');
+
+    // Lo que ya puso el índice de parecidos no se repite.
+    const conPuestos=sigue.vecinosDeCategoria(post, [{url:'/blog/vecino-1'}], 3);
+    assert.ok(!conPuestos.some(x=>x.slug==='vecino-1'), 'no duplica un enlace ya puesto');
+
+    // Si no se pide nada, no se lee nada.
+    assert.deepEqual(sigue.vecinosDeCategoria(post, [], 0), []);
+  } finally {
+    previo===undefined?delete process.env.DATA_DIR:process.env.DATA_DIR=previo;
+    delete require.cache[require.resolve('../seo-sigue-leyendo')];
+    fs.rmSync(dir,{recursive:true,force:true});
+  }
+});
