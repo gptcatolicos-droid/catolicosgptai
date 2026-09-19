@@ -1155,3 +1155,80 @@ test('cada visitante sin cuenta tiene su propia cuota, no la comparte por IP', (
     previo === undefined ? delete process.env.CATHOLIC_AGENT_ENABLED : process.env.CATHOLIC_AGENT_ENABLED = previo;
   }
 });
+
+// Los 300 artículos sembrados dentro del blog no traían el campo `fuente`, así
+// que la retirada -que miraba ese campo- no los veía. Comparten un único cuerpo
+// palabra por palabra: eso es lo que hay que reconocer, porque una etiqueta se
+// puede olvidar y el texto no.
+test('el contenido de plantilla se reconoce por su texto aunque no venga etiquetado', () => {
+  const { detectarPlantilla } = require('../blog-contenido-plantilla');
+  const cuerpoComun = [
+    'Este profundo y fecundo estudio doctrinal nos adentra en la verdad sagrada de nuestra fe. El Catecismo de la Iglesia Catolica y la herencia milenaria del Magisterio nos ofrecen la guia segura para comprender el designio del Creador.',
+    'Como indica la rica tradicion apostolica, la Iglesia custodia y proclama con fidelidad el deposito divino. El rezo constante y el estudio guiado de los dogmas de fe configuran nuestra razon para marchar en santidad cristiana.'
+  ].join('\n\n');
+  // Ocho artículos con el mismo cuerpo y sólo el título distinto: es justo la
+  // forma del lote que se coló.
+  const plantillas = ['trinidad','eucaristia','bautismo','rosario','penitencia','maria','angeles','purgatorio']
+    .map(t => ({ slug: 'tema-' + t, titulo: 'La verdad sobre ' + t, contenidoMd: '# La verdad sobre ' + t + '\n\n' + cuerpoComun }));
+
+  const real = {
+    slug: 'que-es-la-eucaristia-para-ninos',
+    titulo: 'Qué es la Eucaristía para niños',
+    contenidoMd: '# Qué es la Eucaristía para niños\n\nCuando un niño pregunta qué es la Eucaristía, la respuesta más honesta es también la más sencilla: es Jesús mismo, que se queda con nosotros bajo la apariencia del pan y del vino, y no un recuerdo de algo que ocurrió hace mucho tiempo.\n\nA los cinco o seis años funciona la comparación del regalo, porque un regalo se entrega y no se explica. Más adelante ya se puede hablar de la diferencia entre lo que los ojos ven y lo que la fe sabe, sin adelantarse a preguntas que el niño todavía no ha hecho.'
+  };
+
+  const marcados = detectarPlantilla([...plantillas, real]);
+  assert.equal(marcados.size, plantillas.length, 'los ocho de plantilla se reconocen sin campo fuente');
+  assert.ok(!marcados.has(real.slug), 'un artículo escrito de verdad no se toca');
+});
+
+// El error caro es el falso positivo: dos artículos del mismo tema se parecen,
+// pero no comparten párrafos enteros carácter a carácter.
+test('dos articulos del mismo tema no se confunden con contenido de plantilla', () => {
+  const { detectarPlantilla } = require('../blog-contenido-plantilla');
+  const posts = [
+    { slug:'rosario-como-rezarlo', titulo:'Cómo rezar el rosario', contenidoMd:'# Cómo rezar el rosario\n\nSe empieza por la señal de la cruz y el Credo, se rezan tres avemarías por las virtudes teologales y se entra en el primer misterio. Cada decena lleva un padrenuestro, diez avemarías y un gloria, y conviene anunciar el misterio en voz alta antes de empezarla.' },
+    { slug:'rosario-misterios-luminosos', titulo:'Los misterios luminosos', contenidoMd:'# Los misterios luminosos\n\nJuan Pablo II los propuso en 2002 para cubrir la vida pública de Jesús, que hasta entonces quedaba fuera del rezo. Son el bautismo en el Jordán, las bodas de Caná, el anuncio del Reino, la transfiguración y la institución de la Eucaristía.' },
+    { slug:'rosario-en-familia', titulo:'Rezar el rosario en familia', contenidoMd:'# Rezar el rosario en familia\n\nCon niños pequeños una decena entera ya es mucho, y forzarla suele conseguir lo contrario de lo que se busca. Vale más un misterio corto, comentado en dos frases, a la misma hora cada día, que un rosario completo que nadie quiere repetir mañana.' }
+  ];
+  assert.equal(detectarPlantilla(posts).size, 0);
+});
+
+// El catálogo se rellenaba solo cuando bajaba de mil artículos, que es siempre:
+// por eso cada arranque deshacía la limpieza. Un catálogo corto se queda corto.
+test('un catalogo con pocos articulos no se rellena con contenido de plantilla', () => {
+  const fs=require('fs'),os=require('os'),pathMod=require('path');
+  const dir=fs.mkdtempSync(pathMod.join(os.tmpdir(),'cgpt-blog-'));
+  const previo=process.env.DATA_DIR;
+  process.env.DATA_DIR=dir;
+  fs.writeFileSync(pathMod.join(dir,'blog-catalog.json'), JSON.stringify({ version:'5.0', total:1, posts:[
+    { slug:'unico', titulo:'El único artículo de verdad', contenidoMd:'# El único artículo de verdad\n\nTexto escrito por una persona.', publicado:true }
+  ]}));
+  delete require.cache[require.resolve('../blog-module')];
+  try {
+    const blog=require('../blog-module');
+    const posts=blog.loadBlog().posts;
+    assert.equal(posts.length, 1, 'sigue habiendo un solo artículo, no mil');
+    assert.equal(posts[0].slug, 'unico');
+  } finally {
+    previo===undefined?delete process.env.DATA_DIR:process.env.DATA_DIR=previo;
+    delete require.cache[require.resolve('../blog-module')];
+    fs.rmSync(dir,{recursive:true,force:true});
+  }
+});
+
+// Lo que más caro sale es equivocarse al revés: retirar un artículo bueno. Un
+// artículo con fuentes citadas pasó por Magisterium, y eso el contenido de
+// plantilla no lo puede fingir.
+test('un articulo con fuentes citadas nunca se retira como plantilla', () => {
+  const { detectarPlantilla } = require('../blog-contenido-plantilla');
+  const cuerpo = 'Un párrafo largo que se repite en todos ellos porque sale del mismo molde y no lo escribió nadie pensando en el tema concreto de cada página.\n\nY un segundo párrafo igual de repetido, con la misma extensión y el mismo tono general de relleno doctrinal para todos los casos.';
+  const posts = ['a','b','c','d','e','f'].map(x => ({ slug:'clon-'+x, titulo:'Tema '+x, contenidoMd:'# Tema '+x+'\n\n'+cuerpo }));
+  // El séptimo tiene el mismo cuerpo, pero trae fuentes: no se toca.
+  posts.push({ slug:'con-fuentes', titulo:'Tema con fuentes', contenidoMd:'# Tema con fuentes\n\n'+cuerpo,
+    fuentes:[{ titulo:'Catecismo de la Iglesia Católica', referencia:'1324' }] });
+
+  const marcados = detectarPlantilla(posts);
+  assert.equal(marcados.size, 6);
+  assert.ok(!marcados.has('con-fuentes'));
+});

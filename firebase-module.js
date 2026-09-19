@@ -617,8 +617,20 @@ async function syncDownloadPosts(localList) {
       }
     });
 
-    console.log(`[Firebase Sync] Blog posts sincronizados desde la nube. Total: ${merged.length}`);
-    return merged;
+    // El filtro de arriba mira el campo `fuente`, que sólo trae el lote de mil.
+    // Había un segundo sembrador que escribía 300 artículos sin ese campo, y la
+    // nube los conserva igual. Aquí ya está el catálogo completo, que es lo que
+    // hace falta para reconocerlos: un párrafo repetido en decenas de artículos
+    // es plantilla, lo etiquete o no su autor.
+    const { detectarPlantilla } = require('./blog-contenido-plantilla');
+    const plantilla = detectarPlantilla(merged);
+    const limpio = merged.filter(p => !plantilla.has(p.slug || p.id));
+    if (plantilla.size > 0) {
+      console.log(`[Firebase Sync] ${plantilla.size} artículos de plantilla descartados de la nube.`);
+    }
+
+    console.log(`[Firebase Sync] Blog posts sincronizados desde la nube. Total: ${limpio.length}`);
+    return limpio;
   } catch (err) {
     console.error('[Firebase Sync] Error sincronizando blog posts de la nube:', err.message);
     return localList;

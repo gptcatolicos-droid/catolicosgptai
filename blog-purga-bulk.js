@@ -21,7 +21,7 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const CATALOG_PATH = path.join(DATA_DIR, 'blog-catalog.json');
 const MARCA_PATH = path.join(DATA_DIR, 'blog-purga-bulk.json');
 
-const FUENTE_BULK = 'CatolicosGPT bulk editorial local';
+const { detectarPlantilla, FUENTE_BULK } = require('./blog-contenido-plantilla');
 
 // La misma pregunta la hacen dos sitios: esta retirada y la bajada desde
 // Firestore. Si no coincidieran, la nube volvería a meter mañana lo que hoy se
@@ -31,10 +31,13 @@ function esContenidoBulk(post) {
 }
 
 function purgarBlogBulk() {
-  // La marca vive en el disco persistente: esto corre una vez y nunca más,
-  // aunque el servicio se reinicie veinte veces al día.
-  if (fs.existsSync(MARCA_PATH)) return { hecho: false, motivo: 'ya se hizo' };
-
+  // Antes esto corría una sola vez y dejaba una marca para no repetirse. Fue un
+  // error: el blog tenía un sembrador que reponía los artículos en cada
+  // arranque, y la nube devolvía los suyos, así que la retirada duraba hasta el
+  // siguiente reinicio mientras la marca decía que ya estaba hecho. El
+  // sembrador ya no existe, pero la comprobación se queda en cada arranque:
+  // sale gratis sobre un catálogo limpio y es la única forma de que un lote
+  // nuevo no se quede dentro esperando a que alguien lo note.
   let catalogo;
   try {
     catalogo = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf-8'));
@@ -43,8 +46,12 @@ function purgarBlogBulk() {
   }
 
   const antes = Array.isArray(catalogo.posts) ? catalogo.posts : [];
-  const quedan = antes.filter(p => !esContenidoBulk(p));
+  // detectarPlantilla mira el catálogo entero de una vez, porque "repetido" no
+  // es una propiedad de un artículo suelto: hace falta ver con qué se repite.
+  const plantilla = detectarPlantilla(antes);
+  const quedan = antes.filter(p => !plantilla.has(p.slug || p.id));
   const retirados = antes.length - quedan.length;
+  if (retirados === 0) return { hecho: false, motivo: 'no quedaba plantilla' };
 
   catalogo.posts = quedan;
   catalogo.total = quedan.length;
