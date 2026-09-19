@@ -1466,3 +1466,34 @@ test('la categoria completa los enlaces cuando el parecido no da para mas', () =
     fs.rmSync(dir,{recursive:true,force:true});
   }
 });
+
+// Medio dia de 404 por un fallo silencioso: esto leia el PRIMER fichero de
+// redirecciones que encontrara y paraba. El del disco persistente se siembra una
+// vez y no se vuelve a tocar, asi que 600 redirecciones nuevas en el repositorio
+// no existian -y el registro decia "211 activas", que parecia correcto.
+test('las redirecciones del disco y las del repositorio se suman, no se pisan', () => {
+  const fs=require('fs'),os=require('os'),pathMod=require('path');
+  const dir=fs.mkdtempSync(pathMod.join(os.tmpdir(),'cgpt-redir-'));
+  const previo=process.env.DATA_DIR;
+  process.env.DATA_DIR=dir;
+  // El disco trae una vieja que el repositorio ya no tiene.
+  fs.writeFileSync(pathMod.join(dir,'seo-redirecciones.json'), JSON.stringify({
+    '/blog/solo-en-el-disco': '/blog'
+  }));
+  delete require.cache[require.resolve('../seo-consolidacion')];
+  try {
+    const seo=require('../seo-consolidacion');
+    const m=seo.redirecciones();
+    assert.ok(m['/blog/solo-en-el-disco'], 'no se pierde lo que solo esta en el disco');
+    // Y siguen estando las del repositorio, que son la mayoria.
+    assert.ok(Object.keys(m).length > 500, `se esperaban las del repositorio, hay ${Object.keys(m).length}`);
+    // Sin cadenas ni bucles despues de juntarlas.
+    const claves=Object.keys(m);
+    assert.equal(claves.filter(k=>m[k] in m).length, 0, 'sin cadenas');
+    assert.equal(claves.filter(k=>m[k]===k).length, 0, 'sin bucles');
+  } finally {
+    previo===undefined?delete process.env.DATA_DIR:process.env.DATA_DIR=previo;
+    delete require.cache[require.resolve('../seo-consolidacion')];
+    fs.rmSync(dir,{recursive:true,force:true});
+  }
+});

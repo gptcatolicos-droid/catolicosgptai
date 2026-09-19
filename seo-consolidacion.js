@@ -46,18 +46,31 @@ function aplanar(crudo) {
 }
 
 let mapa = null;
+// Aqui habia un fallo silencioso que costo medio dia de 404. Esto leia el PRIMER
+// fichero que encontrara y paraba: primero el del disco persistente, y si no,
+// el del repositorio. Pero el del disco es una copia que se sembro una vez y no
+// se vuelve a tocar, asi que al anadir 600 redirecciones nuevas al repositorio
+// seguian sin existir -el disco tenia las 211 viejas y ganaba siempre-. Nada
+// avisaba: el registro decia "211 redirecciones activas" y parecia correcto.
+//
+// Ahora se leen los dos y se juntan. El del repositorio manda, porque es donde
+// se escriben: nadie edita el del disco en caliente. Y se lee el del disco por
+// si alguna vez alguien anadio una alli, que perderla seria un 404 nuevo.
 function redirecciones() {
   if (mapa) return mapa;
-  for (const ruta of [
+  const crudo = {};
+  const rutas = [
     path.join(process.env.DATA_DIR || path.join(__dirname, 'data'), 'seo-redirecciones.json'),
     path.join(__dirname, 'data', 'seo-redirecciones.json')
-  ]) {
+  ];
+  // En orden: lo ultimo que se escribe gana, y lo ultimo es el repositorio.
+  for (const ruta of rutas) {
     try {
       const datos = JSON.parse(fs.readFileSync(ruta, 'utf-8'));
-      if (datos && typeof datos === 'object') { mapa = aplanar(datos); return mapa; }
+      if (datos && typeof datos === 'object') Object.assign(crudo, datos);
     } catch (_) {}
   }
-  mapa = {};
+  mapa = aplanar(crudo);
   return mapa;
 }
 
