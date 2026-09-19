@@ -1544,3 +1544,24 @@ test('el marcado y la canonica hablan del mismo host', () => {
     previo === undefined ? delete process.env.PUBLIC_SITE_URL : process.env.PUBLIC_SITE_URL = previo;
   }
 });
+
+// La consolidacion anterior se hizo sin datos de trafico y eligio ganadores a
+// ojo: habia redirecciones mandando una pagina de 104 sesiones a otra de 60.
+// Estas son las reglas que no se pueden romper, se elija como se elija.
+test('ninguna pagina que recibe redirecciones esta ella misma redirigida', () => {
+  const { redirecciones } = require('../seo-consolidacion');
+  const mapa = redirecciones();
+  const destinos = new Set(Object.values(mapa));
+  const rotos = [...destinos].filter(d => mapa[d]);
+  assert.deepEqual(rotos, [], 'un destino redirigido manda el trafico a una pagina retirada');
+});
+
+test('las redirecciones no forman cadenas ni bucles', () => {
+  const { redirecciones } = require('../seo-consolidacion');
+  const mapa = redirecciones();
+  const claves = Object.keys(mapa);
+  assert.equal(claves.filter(k => mapa[k] === k).length, 0, 'sin bucles');
+  assert.equal(claves.filter(k => mapa[k] in mapa).length, 0, 'sin cadenas: cada salto pierde fuerza');
+  // Y ningún destino puede quedar vacío o relativo a otra cosa.
+  assert.ok(Object.values(mapa).every(d => typeof d === 'string' && d.startsWith('/')));
+});
