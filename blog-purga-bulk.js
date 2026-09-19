@@ -69,6 +69,13 @@ function purgarBlogBulk() {
   }
 
   console.log(`[Blog] Retirados ${retirados} artículos de plantilla; quedan ${quedan.length}.`);
+  // De qué está hecho lo que queda. Sin esto, "quedan 1367" no dice nada: no se
+  // sabe si son artículos escritos de verdad o un tercer lote que todavía no
+  // hemos visto. Cuesta un recuento en memoria y se lee en el arranque.
+  const conFuentes = quedan.filter(p => Array.isArray(p.fuentes) && p.fuentes.length).length;
+  const generados = quedan.filter(p => p.fuenteGeneracion).length;
+  const cuerpos = new Set(quedan.map(p => String(p.contenidoMd || '').length)).size;
+  console.log(`[Blog] De los ${quedan.length}: ${generados} del generador diario, ${conFuentes} con fuentes citadas, ${cuerpos} longitudes de cuerpo distintas.`);
   return { hecho: true, retirados, quedan: quedan.length };
 }
 

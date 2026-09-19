@@ -117,7 +117,13 @@ function acortarTitulo(titulo, max = 60) {
   return corte;
 }
 
-function register(app) {
+// `existeArticulo` decide si una ruta redirigida sigue teniendo dueño. Hace
+// falta porque estas redirecciones van por delante de todas las rutas: si
+// manana se publica un articulo con el slug de uno retirado -el generador diario
+// saca los suyos de lo que la gente busca, y ahi las coincidencias pasan-, la
+// redireccion lo dejaria inalcanzable para siempre y sin ninguna senal de que
+// algo va mal. Un articulo vivo gana siempre a una redireccion.
+function register(app, existeArticulo) {
   const mapaRutas = redirecciones();
   const cuantas = Object.keys(mapaRutas).length;
   if (!cuantas) return;
@@ -129,6 +135,14 @@ function register(app) {
     if (req.method !== 'GET' && req.method !== 'HEAD') return next();
     const destino = mapaRutas[req.path] || mapaRutas[req.path.replace(/\/$/, '')];
     if (!destino || destino === req.path) return next();
+    if (typeof existeArticulo === 'function') {
+      // Si la consulta falla, se redirige: es el comportamiento de siempre y no
+      // se pierde nada; lo que no puede pasar es que un error aqui tumbe la
+      // peticion entera.
+      let vivo = false;
+      try { vivo = Boolean(existeArticulo(req.path)); } catch (_) {}
+      if (vivo) return next();
+    }
     return res.redirect(301, destino);
   });
 

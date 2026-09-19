@@ -117,8 +117,16 @@ app.use((req, res, next) => {
 // ninguna de las dos.
 const seoConsolidacion = require('./seo-consolidacion');
 // Las redirecciones van por delante de todo: una URL retirada o duplicada tiene
-// que responder 301 antes de que ninguna ruta intente servirla.
-seoConsolidacion.register(app);
+// que responder 301 antes de que ninguna ruta intente servirla. Con una
+// excepcion: si a esa URL le ha salido dueno -un articulo publicado con ese
+// mismo slug-, manda el articulo. Una redireccion por delante de todo puede
+// esconder para siempre una pagina que si existe.
+seoConsolidacion.register(app, (ruta) => {
+  const partes = ruta.split('/').filter(Boolean);
+  if (partes[0] !== 'blog' || partes.length < 2) return false;
+  const post = blog.getPostBySlug(partes[partes.length - 1]);
+  return Boolean(post && post.publicado);
+});
 require('./consultas-chat').register(app, { getAuthedUser, isStrictAdminUser });
 require('./agent-routes').register(app, { getUser: getAuthedUser, isSuperAdmin: isStrictAdminUser });
 require('./children-guides').register(app, renderPage);

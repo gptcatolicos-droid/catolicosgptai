@@ -1232,3 +1232,41 @@ test('un articulo con fuentes citadas nunca se retira como plantilla', () => {
   assert.equal(marcados.size, 6);
   assert.ok(!marcados.has('con-fuentes'));
 });
+
+// Las redirecciones corren por delante de todas las rutas. Si a una URL retirada
+// le sale dueño -el generador diario saca sus slugs de lo que la gente busca, y
+// ahí las coincidencias pasan-, la redirección la escondería para siempre sin
+// avisar de nada.
+test('una redireccion cede el paso si ese slug vuelve a tener articulo', async () => {
+  const express=require('express');
+  const seo=require('../seo-consolidacion');
+  const http=require('http');
+
+  const pedir=(servidor,ruta)=>new Promise(resolve=>{
+    const {port}=servidor.address();
+    http.get({port,path:ruta},r=>{r.resume();resolve({codigo:r.statusCode,destino:r.headers.location});});
+  });
+
+  // Se le pasa un catálogo de mentira: aquí sólo se comprueba quién manda.
+  const vivos=new Set();
+  const app=express();
+  seo.register(app,(ruta)=>vivos.has(ruta));
+  app.get('/blog/:slug',(req,res)=>res.send('artículo'));
+  app.get('/blog/:categoria/:slug',(req,res)=>res.send('artículo'));
+  const servidor=http.createServer(app);
+  await new Promise(r=>servidor.listen(0,r));
+
+  try {
+    const retirada=Object.keys(seo.redirecciones())[0];
+    assert.ok(retirada,'hace falta al menos una redirección para la prueba');
+
+    const sinDueno=await pedir(servidor,retirada);
+    assert.equal(sinDueno.codigo,301,'sin artículo, redirige como siempre');
+
+    vivos.add(retirada);
+    const conDueno=await pedir(servidor,retirada);
+    assert.equal(conDueno.codigo,200,'con artículo publicado, gana el artículo');
+  } finally {
+    await new Promise(r=>servidor.close(r));
+  }
+});
