@@ -49,6 +49,10 @@ function register(app,options={}){
  app.get('/favicon.png',(req,res)=>res.set('Cache-Control','public, max-age=86400').type('png').sendFile(path.join(__dirname,'favicon.png')));
  const budget=require('./agent-budget').createBudget();
  const envInt=(name,fallback)=>{const n=Number(process.env[name]);return Number.isFinite(n)&&n>0?n:fallback;};
+ // Los limites que de verdad rigen, no los que dice el codigo: una variable de
+ // entorno puesta en el servidor gana al valor por defecto, y sin esto la unica
+ // forma de saber cual esta activo es agotar la cuota uno mismo.
+ console.log(`[Agente] Cuota diaria: ${envInt('AGENT_ANON_DAILY_REQUESTS',5)} sin cuenta, ${envInt('AGENT_FREE_DAILY_REQUESTS',12)} con cuenta gratis, sin tope con Premium.`);
  const requests=new Map();let active=0;let exportsActive=0;
  function limited(req,res,next){
   if(isSuperAdmin(getUser(req)))return next();
