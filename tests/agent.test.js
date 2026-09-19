@@ -1324,3 +1324,60 @@ test('una copia vacia no sobrescribe a la del dia anterior', () => {
     fs.rmSync(dir,{recursive:true,force:true});
   }
 });
+
+// Antes de arreglar el SEO del catálogo hay que poder verlo: vive en el disco
+// del servidor y desde fuera no se sabe en qué estado está.
+test('la salud SEO distingue un articulo bueno de uno de relleno', () => {
+  const seo = require('../seo-salud');
+  const cuerpoLargo = 'palabra '.repeat(400);
+  const posts = [
+    {
+      slug: 'bueno', titulo: 'Qué es la Eucaristía para niños', publicado: true,
+      descripcion: 'Explicación sencilla de la Eucaristía para niños de catequesis, con ejemplos por edades y qué responder a las preguntas que hacen.',
+      contenidoMd: '# Qué es la Eucaristía\n\n' + cuerpoLargo + '\n\nVer también [los sacramentos](/blog/los-sacramentos).',
+      faqs: [{ q: '¿A qué edad?', a: 'Hacia los nueve años.' }]
+    },
+    {
+      slug: 'relleno', titulo: 'La Trinidad', publicado: true,
+      descripcion: 'Corta.',
+      contenidoMd: '# La Trinidad\n\nDos frases y ya está.'
+    }
+  ];
+
+  const a = seo.analizar(posts);
+  assert.equal(a.total, 2);
+
+  const bueno = a.fichas.find(f => f.slug === 'bueno');
+  assert.deepEqual(bueno.problemas, [], 'un artículo completo no tiene nada que reprochar');
+  assert.ok(bueno.palabras > 300);
+  assert.equal(bueno.enlaces, 1);
+
+  const relleno = a.fichas.find(f => f.slug === 'relleno');
+  assert.ok(relleno.problemas.includes('descripcion-corta'));
+  assert.ok(relleno.problemas.includes('contenido-fino'));
+  assert.ok(relleno.problemas.includes('sin-enlaces-internos'));
+  assert.ok(relleno.problemas.includes('sin-preguntas'));
+});
+
+// Una descripción de molde es "única" solo porque le cambia el título dentro.
+// Si no se quita el título, 300 descripciones idénticas parecen 300 distintas.
+test('una descripcion de molde se reconoce aunque lleve el titulo dentro', () => {
+  const seo = require('../seo-salud');
+  const temas = ['la Trinidad','la Eucaristía','el Bautismo','el Rosario','la Penitencia','María'];
+  const posts = temas.map((t, i) => ({
+    slug: 'tema-' + i, titulo: t, publicado: true,
+    descripcion: `Explicación completa, doctrinal y teológica exhaustiva sobre: ${t}. Analizado rigurosamente según el magisterio apostólico y las sagradas escrituras.`,
+    contenidoMd: '# ' + t + '\n\n' + 'palabra '.repeat(400)
+  }));
+  // Uno escrito a mano, con la misma longitud pero contenido propio.
+  posts.push({
+    slug: 'a-mano', titulo: 'El Adviento', publicado: true,
+    descripcion: 'Las cuatro semanas antes de Navidad tienen su propio color, sus propias lecturas y una forma concreta de vivirse en casa con niños pequeños.',
+    contenidoMd: '# El Adviento\n\n' + 'palabra '.repeat(400)
+  });
+
+  const a = seo.analizar(posts);
+  const genericas = a.fichas.filter(f => f.problemas.includes('descripcion-generica')).map(f => f.slug);
+  assert.equal(genericas.length, temas.length, 'las seis de molde se reconocen');
+  assert.ok(!genericas.includes('a-mano'), 'la escrita a mano no se toca');
+});

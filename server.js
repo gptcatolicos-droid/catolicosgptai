@@ -137,6 +137,9 @@ require('./subidas-module').register(app, { getAuthedUser, isStrictAdminUser, ex
 // Firestore hacia de segunda copia. Al apagar Google el disco se queda solo, y
 // un disco sin copia es un punto unico de fallo para las cuentas de la gente.
 require('./respaldo-module').register(app, { getAuthedUser, isStrictAdminUser });
+// El catalogo vive en el disco del servidor: desde fuera no hay forma de saber
+// en que estado SEO estan sus articulos. Esto lo mide y lo deja a la vista.
+require('./seo-salud').register(app, { getAuthedUser, isStrictAdminUser, blog, renderPage });
 
 // Servidor de medios y estáticos locales
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
@@ -8867,6 +8870,7 @@ app.get('/admin', async (req, res) => {
              descarga es la unica que sale de la maquina, asi que tiene que
              estar a la vista y no detrás de una URL que haya que recordar. -->
         <a href="/admin/respaldo/descargar" class="acceso-liturgia">⬇️ Descargar respaldo</a>
+        <a href="/admin/seo" class="acceso-liturgia">📈 Salud SEO del blog</a>
       </div>
       <div class="admin-tab-select md:hidden flex flex-col gap-1 mb-1">
         <label for="admin-tab-select" class="text-[11px] font-bold text-ink-2 uppercase tracking-wide">Sección del panel</label>
