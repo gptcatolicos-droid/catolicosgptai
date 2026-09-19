@@ -58,18 +58,33 @@ let mapa = null;
 // si alguna vez alguien anadio una alli, que perderla seria un 404 nuevo.
 function redirecciones() {
   if (mapa) return mapa;
-  const crudo = {};
-  const rutas = [
-    path.join(process.env.DATA_DIR || path.join(__dirname, 'data'), 'seo-redirecciones.json'),
-    path.join(__dirname, 'data', 'seo-redirecciones.json')
-  ];
-  // En orden: lo ultimo que se escribe gana, y lo ultimo es el repositorio.
-  for (const ruta of rutas) {
+  const leer = (ruta) => {
     try {
       const datos = JSON.parse(fs.readFileSync(ruta, 'utf-8'));
-      if (datos && typeof datos === 'object') Object.assign(crudo, datos);
-    } catch (_) {}
+      return (datos && typeof datos === 'object') ? datos : {};
+    } catch (_) { return {}; }
+  };
+  const delRepositorio = leer(path.join(__dirname, 'data', 'seo-redirecciones.json'));
+  const delDisco = leer(path.join(process.env.DATA_DIR || path.join(__dirname, 'data'), 'seo-redirecciones.json'));
+
+  // El repositorio manda, y no basta con sobreescribir las claves repetidas.
+  // La copia del disco se sembro una vez y conserva decisiones viejas: si ahi
+  // dice X->Y y aqui se ha corregido a Y->X, la union tiene las dos y forman un
+  // bucle que aplanar descarta entero. Resultado: la correccion no se aplica y
+  // ademas se pierde la redireccion. Paso justo eso con tres paginas.
+  //
+  // La regla que faltaba: si el repositorio ha elegido una pagina como DESTINO,
+  // nada del disco puede redirigirla a otro sitio. Con eso la direccion la
+  // decide siempre quien tiene los datos delante.
+  const destinos = new Set(Object.values(delRepositorio));
+  const crudo = {};
+  for (const [de, a] of Object.entries(delDisco)) {
+    if (de in delRepositorio) continue;   // el repositorio ya opina de esta
+    if (destinos.has(de)) continue;       // el repositorio la quiere viva
+    crudo[de] = a;
   }
+  Object.assign(crudo, delRepositorio);
+
   mapa = aplanar(crudo);
   return mapa;
 }

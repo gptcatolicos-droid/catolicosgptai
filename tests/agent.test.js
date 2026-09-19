@@ -1565,3 +1565,32 @@ test('las redirecciones no forman cadenas ni bucles', () => {
   // Y ningún destino puede quedar vacío o relativo a otra cosa.
   assert.ok(Object.values(mapa).every(d => typeof d === 'string' && d.startsWith('/')));
 });
+
+// La copia del disco se siembra una vez y conserva decisiones viejas. Si ahí
+// dice X->Y y en el repositorio se ha corregido a Y->X, la unión tiene las dos,
+// forman un bucle y aplanar las descarta ENTERAS: la corrección no se aplica y
+// encima se pierde la redirección. Pasó con tres páginas reales.
+test('una correccion en el repositorio gana a la direccion vieja del disco', () => {
+  const fs=require('fs'),os=require('os'),pathMod=require('path');
+  const dir=fs.mkdtempSync(pathMod.join(os.tmpdir(),'cgpt-dir-'));
+  const previo=process.env.DATA_DIR;
+  process.env.DATA_DIR=dir;
+  // El disco cree que la débil se queda y la fuerte se retira.
+  fs.writeFileSync(pathMod.join(dir,'seo-redirecciones.json'), JSON.stringify({
+    '/blog/catequesis-ninos/conociendo-a-la-virgen-maria-guia-para-ninos-catolicos':
+      '/blog/catequesis-ninos/la-virgen-maria-guia-practica-para-ninos-catolicos'
+  }));
+  delete require.cache[require.resolve('../seo-consolidacion')];
+  try {
+    const seo=require('../seo-consolidacion');
+    const m=seo.redirecciones();
+    const fuerte='/blog/catequesis-ninos/conociendo-a-la-virgen-maria-guia-para-ninos-catolicos';
+    const debil='/blog/catequesis-ninos/la-virgen-maria-guia-practica-para-ninos-catolicos';
+    assert.ok(!m[fuerte], 'la que el repositorio eligió como destino no puede redirigirse');
+    assert.equal(m[debil], fuerte, 'y la otra apunta a ella, no al revés');
+  } finally {
+    previo===undefined?delete process.env.DATA_DIR:process.env.DATA_DIR=previo;
+    delete require.cache[require.resolve('../seo-consolidacion')];
+    fs.rmSync(dir,{recursive:true,force:true});
+  }
+});
