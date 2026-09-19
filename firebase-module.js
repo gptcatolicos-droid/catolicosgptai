@@ -652,7 +652,20 @@ async function syncUploadPost(item) {
       contenidoMd: item.contenidoMd || '',
       fechaCreacion: item.fechaCreacion || new Date().toISOString(),
       imagenPortada: item.imagenPortada || '',
-      publicado: typeof item.publicado === 'boolean' ? item.publicado : true
+      publicado: typeof item.publicado === 'boolean' ? item.publicado : true,
+      // Esta lista blanca se comia la procedencia de cada articulo. Todo lo que
+      // subia y volvia a bajar perdia `fuente`, `fuentes` y `fuenteGeneracion`,
+      // que es exactamente lo que distingue un articulo investigado con
+      // Magisterium de uno salido de una plantilla: por eso el filtro que
+      // buscaba plantilla por su etiqueta dejo de encontrar nada, y por eso de
+      // 1367 articulos solo 25 sabian decir de donde venian. De paso se perdian
+      // el titulo SEO y las preguntas frecuentes en cada sincronizacion.
+      seoTitle: item.seoTitle || '',
+      faqs: Array.isArray(item.faqs) ? item.faqs : [],
+      fuente: item.fuente || '',
+      fuentes: Array.isArray(item.fuentes) ? item.fuentes : [],
+      fuenteGeneracion: item.fuenteGeneracion || '',
+      consultaObjetivo: item.consultaObjetivo || ''
     };
 
     await setDoc(doc(db, 'posts', docId), sanitizedItem);

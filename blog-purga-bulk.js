@@ -61,6 +61,17 @@ function purgarBlogBulk() {
   const cuerpos = new Set(quedan.map(p => String(p.contenidoMd || '').length)).size;
   console.log(`[Blog] Catálogo: ${quedan.length} artículos — ${generados} del generador diario, ${conFuentes} con fuentes citadas, ${cuerpos} longitudes de cuerpo distintas.`);
 
+  // Los recuentos dicen cuántos hay pero no QUÉ son, y el grueso del catálogo no
+  // sabe decir de dónde viene. Una muestra de los que no traen procedencia basta
+  // para reconocerlos de un vistazo. Es contenido público del propio sitio, así
+  // que enseñarlo en el registro no descubre nada que no esté ya en la web.
+  const sinProcedencia = quedan.filter(p => !p.fuenteGeneracion && !(Array.isArray(p.fuentes) && p.fuentes.length));
+  for (let i = 0; i < Math.min(4, sinProcedencia.length); i++) {
+    const p = sinProcedencia[Math.floor(i * sinProcedencia.length / 4)];
+    const inicio = String(p.contenidoMd || '').replace(/\s+/g, ' ').slice(0, 140);
+    console.log(`[Blog] Sin procedencia: "${p.titulo}" (${p.slug}) — ${inicio}`);
+  }
+
   if (retirados === 0) return { hecho: false, motivo: 'no quedaba plantilla' };
 
   catalogo.posts = quedan;
